@@ -22,15 +22,17 @@ import { AuthService } from '../../../core/services/auth.service';
 
         <!-- Content -->
         <div class="relative z-10">
-          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 text-white mb-8">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          <div class="mb-8">
+            <img src="logo_superior.png"
+                 alt="Brochas y Rodillos Superior"
+                 style="max-width:260px; width:100%; height:auto; object-fit:contain; border-radius:8px; background:white; padding:12px;">
           </div>
           <h2 class="text-3xl font-bold tracking-tight max-w-md leading-tight">Gestión inteligente para tu inventario empresarial.</h2>
         </div>
 
         <div class="relative z-10">
           <blockquote class="text-slate-300 text-lg mb-4">
-            "La simplicidad es la máxima sofisticación. PintuCloud transforma la complejidad en claridad."
+            "Brochas y Rodillos Superior — calidad y servicio en cada orden."
           </blockquote>
           <div class="flex items-center gap-3">
              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-400"></div>
@@ -123,7 +125,7 @@ import { AuthService } from '../../../core/services/auth.service';
            </div>
            
            <div class="mt-12 lg:hidden text-center text-xs text-slate-400">
-              <p>&copy; 2026 PintuCloud Inc.</p>
+              <p>&copy; 2026 Brochas y Rodillos Superior®</p>
            </div>
         </div>
       </div>

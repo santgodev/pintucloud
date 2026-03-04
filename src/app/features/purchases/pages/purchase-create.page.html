@@ -1,0 +1,469 @@
+<div class="p-4 md:p-6 max-w-5xl mx-auto">
+
+  <!-- ──────── HEADER ──────── -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div>
+      <button (click)="goBack()"
+        class="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm font-medium mb-2 transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Volver a Compras
+      </button>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Nueva Compra</h1>
+      <p class="text-slate-500 mt-1 text-sm">Crea una compra en borrador y luego agrégale los productos.</p>
+    </div>
+
+    <div *ngIf="compraId()"
+      class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold uppercase px-3 py-1.5 rounded-full shrink-0">
+      <span class="w-2 h-2 rounded-full bg-amber-400"></span> BORRADOR
+    </div>
+  </div>
+
+  <!-- ──────── GLOBAL ERROR ──────── -->
+  <div *ngIf="error()"
+    class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mb-6 flex items-start gap-4 transition-all animate-in fade-in slide-in-from-top-4 duration-300">
+    <div class="bg-red-100 p-2 rounded-lg text-red-600 flex-shrink-0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <div>
+      <p class="font-bold text-red-900 mb-1">No se pudo completar la acción</p>
+      <p class="text-sm opacity-90 leading-relaxed">{{ error() }}</p>
+    </div>
+  </div>
+
+  <!-- ──────── SUCCESS STATE ──────── -->
+  <div *ngIf="confirmed()" class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-8 text-center">
+    <div class="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        class="text-emerald-600">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <p class="font-bold text-xl mb-1">¡Compra confirmada!</p>
+    <p class="text-sm opacity-70 mb-6">El inventario de la bodega seleccionada ha sido actualizado.</p>
+    <button (click)="goBack()"
+      class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-7 py-2.5 rounded-lg text-sm transition-all shadow-sm">
+      Ver listado de compras
+    </button>
+  </div>
+
+  <!-- ──────── PASO 1: CABECERA ──────── -->
+  <div *ngIf="currentStep() === 1 && !confirmed()"
+    class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 md:p-7 mb-6">
+
+    <h2 class="text-base font-bold text-slate-800 mb-6 flex items-center gap-2.5">
+      <span
+        class="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
+      Información general de la compra
+    </h2>
+
+    <form [formGroup]="compraForm" (ngSubmit)="onCreateCompra()" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- Proveedor -->
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Proveedor <span class="text-red-500">*</span>
+        </label>
+        <select formControlName="proveedor_id" id="proveedor_id"
+          class="w-full border bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          [class.border-red-400]="isFieldInvalid(compraForm, 'proveedor_id')"
+          [class.border-slate-200]="!isFieldInvalid(compraForm, 'proveedor_id')">
+          <option value="">Seleccionar proveedor...</option>
+          <option *ngFor="let p of proveedores" [value]="p.id">{{ p.nombre }}</option>
+        </select>
+        <p *ngIf="isFieldInvalid(compraForm, 'proveedor_id')" class="text-red-500 text-xs mt-1">
+          Selecciona un proveedor
+        </p>
+      </div>
+
+      <!-- Bodega destino -->
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Bodega destino <span class="text-red-500">*</span>
+        </label>
+        <select formControlName="bodega_id" id="bodega_id"
+          class="w-full border bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          [class.border-red-400]="isFieldInvalid(compraForm, 'bodega_id')"
+          [class.border-slate-200]="!isFieldInvalid(compraForm, 'bodega_id')">
+          <option value="">Seleccionar bodega...</option>
+          <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
+        </select>
+        <p *ngIf="isFieldInvalid(compraForm, 'bodega_id')" class="text-red-500 text-xs mt-1">
+          Selecciona una bodega destino
+        </p>
+      </div>
+
+      <!-- Número de factura -->
+      <div>
+        <label for="numero_factura" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">N°
+          Factura</label>
+        <input id="numero_factura" type="text" formControlName="numero_factura" placeholder="Ej: FAC-2024-001"
+          class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+      </div>
+
+      <!-- Condición de pago -->
+      <div>
+        <label for="condicion_pago" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Condición de pago <span class="text-red-500">*</span>
+        </label>
+        <select id="condicion_pago" formControlName="condicion_pago"
+          class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          <option value="CONTADO">Contado</option>
+          <option value="CREDITO">Crédito</option>
+        </select>
+      </div>
+
+      <!-- Días crédito (solo si CREDITO) -->
+      <div *ngIf="esCredito(); else espacioVacio">
+        <label for="dias_credito" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Plazo de crédito <span class="text-red-500">*</span>
+        </label>
+        <select id="dias_credito" formControlName="dias_credito"
+          class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          [class.border-red-400]="isFieldInvalid(compraForm, 'dias_credito')"
+          [class.border-slate-200]="!isFieldInvalid(compraForm, 'dias_credito')">
+          <option [value]="30">30 días</option>
+          <option [value]="60">60 días</option>
+          <option [value]="90">90 días</option>
+        </select>
+        <p *ngIf="isFieldInvalid(compraForm, 'dias_credito')" class="text-red-500 text-xs mt-1">Selecciona el plazo</p>
+      </div>
+      <ng-template #espacioVacio>
+        <div></div>
+      </ng-template>
+
+      <!-- Fecha vencimiento calculada (solo si CREDITO y tiene valor) -->
+      <div class="md:col-span-2" *ngIf="esCredito() && fechaVencimientoDisplay()">
+        <div class="flex items-center gap-2.5 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
+          <svg class="text-violet-500 flex-shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <p class="text-xs text-violet-700 font-medium">
+            Fecha de vencimiento:
+            <span class="font-bold ml-1">{{ fechaVencimientoDisplay() }}</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Observación -->
+      <div class="md:col-span-2">
+        <label for="observacion"
+          class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Observaciones</label>
+        <textarea id="observacion" formControlName="observacion" rows="2"
+          placeholder="Ej: Pedido urgente, entrega parcial..."
+          class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        </textarea>
+      </div>
+
+      <!-- Submit / Actualizar / Continuar -->
+      <div class="md:col-span-2 flex flex-col gap-3">
+
+        <!-- Toast de éxito (auto-oculta tras 1.8 s) -->
+        <div *ngIf="updateSuccess()"
+          class="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-3 text-sm font-medium">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            class="shrink-0">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          ¡Información actualizada! Volviendo a productos...
+        </div>
+
+        <div class="flex justify-end gap-3">
+
+          <!-- Caso A: borrador existente → Actualizar + Continuar sin cambios -->
+          <ng-container *ngIf="compraId(); else crearBtn">
+            <button type="button" (click)="currentStep.set(2)"
+              class="text-slate-600 hover:text-slate-900 font-semibold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
+              Continuar sin cambios
+            </button>
+            <button type="button" id="btn-actualizar-cabecera" (click)="updateCompraCabecera()"
+              [disabled]="updatingCabecera()"
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium px-6 py-2.5 rounded-lg transition-all text-sm shadow-sm">
+              <svg *ngIf="updatingCabecera()" class="animate-spin" width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+              </svg>
+              <svg *ngIf="!updatingCabecera()" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              {{ updatingCabecera() ? 'Guardando...' : 'Actualizar información' }}
+            </button>
+          </ng-container>
+
+          <!-- Caso B: primera vez → Crear compra -->
+          <ng-template #crearBtn>
+            <button type="submit" id="btn-crear-compra" [disabled]="compraForm.invalid || savingCompra()"
+              class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium px-6 py-2.5 rounded-lg transition-all text-sm shadow-sm">
+              <svg *ngIf="savingCompra()" class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+              </svg>
+              <svg *ngIf="!savingCompra()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"></path>
+              </svg>
+              {{ savingCompra() ? 'Guardando...' : 'Crear compra y agregar productos' }}
+            </button>
+          </ng-template>
+
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ──────── PASO 2: DETALLE ──────── -->
+  <ng-container *ngIf="currentStep() === 2 && !confirmed()">
+
+    <!-- Botón volver al Paso 1 -->
+    <div *ngIf="compraEstado() === 'BORRADOR'" class="mb-4">
+      <button type="button" (click)="goToStep1()"
+        class="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 text-sm font-semibold transition-colors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+        Editar información general
+      </button>
+    </div>
+
+    <!-- Formulario agregar producto -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 md:p-7 mb-4">
+      <h2 class="text-base font-bold text-slate-800 mb-6 flex items-center gap-2.5">
+        <span
+          class="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
+        Agregar productos a la compra
+      </h2>
+
+      <form [formGroup]="detalleForm" (ngSubmit)="onAddDetalle()"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <!-- Producto -->
+        <div class="sm:col-span-2 lg:col-span-2">
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            Producto <span class="text-red-500">*</span>
+          </label>
+          <select formControlName="producto_id" id="select-producto" (change)="onProductoChange()"
+            class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            <option value="">Seleccionar producto...</option>
+            <option *ngFor="let p of productos" [value]="p.id">{{ p.nombre }} — {{ p.sku }}</option>
+          </select>
+        </div>
+
+        <!-- Cantidad -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            Cantidad <span class="text-red-500">*</span>
+          </label>
+          <input type="number" formControlName="cantidad" id="input-cantidad" min="1" placeholder="0"
+            class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        </div>
+
+        <!-- Precio unitario (readonly — autocompleted) -->
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            Precio de compra
+            <span class="normal-case font-normal text-slate-400 ml-1">(precio base)</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+            <input type="number" formControlName="precio_unitario" id="input-precio" readonly
+              class="w-full border border-slate-200 bg-slate-100 rounded-xl pl-7 pr-3.5 py-2.5 text-sm text-slate-700 cursor-not-allowed focus:outline-none">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Se autocompleta al seleccionar el producto</p>
+        </div>
+
+        <!-- Subtotal preview -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subtotal
+            estimado</label>
+          <div
+            class="border border-slate-100 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 tabular-nums">
+            {{ subtotalPreview() | currency:'COP':'symbol-narrow':'1.0-0' }}
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Se actualiza al cambiar cantidad o precio</p>
+        </div>
+
+        <!-- Btn agregar -->
+        <div class="sm:col-span-2 lg:col-span-3 flex justify-end">
+          <button type="submit" id="btn-agregar-linea" [disabled]="detalleForm.invalid || addingDetail()"
+            class="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm">
+            <svg *ngIf="addingDetail()" class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+            </svg>
+            <svg *ngIf="!addingDetail()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            {{ addingDetail() ? 'Agregando...' : 'Agregar línea' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Tabla de detalle ── -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-6">
+      <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+        <h3 class="font-bold text-slate-800 text-sm">Productos de esta compra</h3>
+        <span class="text-xs text-slate-400 font-medium bg-slate-100 px-2.5 py-1 rounded-full">
+          {{ detalle().length }} ítem(s)
+        </span>
+      </div>
+
+      <!-- Vacío -->
+      <div *ngIf="detalle().length === 0" class="py-12 text-center">
+        <svg class="mx-auto mb-3 text-slate-200" width="40" height="40" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+        </svg>
+        <p class="text-slate-400 text-sm italic">Agrega al menos un producto para poder confirmar.</p>
+      </div>
+
+      <!-- Desktop: tabla (sin columna Bodega) -->
+      <div *ngIf="detalle().length > 0" class="hidden md:block overflow-x-auto">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="bg-slate-50">
+              <th class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                Producto</th>
+              <th
+                class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 text-center">
+                Cant.</th>
+              <th
+                class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+                Precio Unit.</th>
+              <th
+                class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">
+                Subtotal</th>
+              <th class="px-5 py-3 border-b border-slate-100 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of detalle(); trackBy: trackById"
+              class="hover:bg-slate-50/70 transition-colors border-b border-slate-50 last:border-b-0">
+              <td class="px-5 py-3.5">
+                <p class="font-semibold text-slate-900">{{ d._productoNombre }}</p>
+                <p class="text-xs text-slate-400 font-mono mt-0.5">{{ d._productoSku }}</p>
+              </td>
+              <td class="px-5 py-3.5 text-center font-mono font-bold text-slate-700">{{ d.cantidad }}</td>
+              <td class="px-5 py-3.5 text-right text-slate-500 tabular-nums">
+                {{ d.precio_unitario | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </td>
+              <td class="px-5 py-3.5 text-right font-bold text-slate-900 tabular-nums">
+                {{ (d.cantidad * d.precio_unitario) | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </td>
+              <td class="px-5 py-3.5 text-right">
+                <button *ngIf="compraEstado() === 'BORRADOR'" (click)="onRemoveDetalle(d)"
+                  [disabled]="removingId() === d.id"
+                  class="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"></path>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="bg-slate-50 border-t-2 border-slate-200">
+              <td colspan="3" class="px-5 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Total estimado
+              </td>
+              <td class="px-5 py-4 text-right text-xl font-extrabold text-slate-900 tabular-nums">
+                {{ totalEstimado() | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Mobile: cards (sin bodega) -->
+      <div *ngIf="detalle().length > 0" class="flex flex-col divide-y divide-slate-100 md:hidden">
+        <div *ngFor="let d of detalle(); trackBy: trackById" class="p-4 flex items-start justify-between gap-3">
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-900 text-sm truncate">{{ d._productoNombre }}</p>
+            <p class="text-xs font-mono text-slate-400 mt-0.5">{{ d._productoSku }}</p>
+            <p class="text-xs text-slate-500 mt-1.5">
+              {{ d.cantidad }} × {{ d.precio_unitario | currency:'COP':'symbol-narrow':'1.0-0' }}
+            </p>
+          </div>
+          <div class="flex flex-col items-end gap-2 shrink-0">
+            <span class="font-bold text-slate-900 text-sm tabular-nums">
+              {{ (d.cantidad * d.precio_unitario) | currency:'COP':'symbol-narrow':'1.0-0' }}
+            </span>
+            <button *ngIf="compraEstado() === 'BORRADOR'" (click)="onRemoveDetalle(d)"
+              class="text-slate-300 hover:text-red-500 transition-colors">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-1 14H6L5 6"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Total mobile -->
+        <div class="px-4 py-3.5 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total estimado</span>
+          <span class="text-lg font-extrabold text-slate-900 tabular-nums">
+            {{ totalEstimado() | currency:'COP':'symbol-narrow':'1.0-0' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Acciones finales ── -->
+    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+
+      <!-- Izquierda: Guardar borrador y salir + Eliminar borrador -->
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button (click)="goBack()" class="w-full sm:w-auto btn-secundario text-sm">
+          Guardar borrador y salir
+        </button>
+
+        <button *ngIf="compraEstado() === 'BORRADOR'" (click)="onDeleteBorrador()" [disabled]="deletingBorrador()"
+          id="btn-eliminar-borrador"
+          class="w-full sm:w-auto flex items-center justify-center gap-2 btn-destructive text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+          <svg *ngIf="deletingBorrador()" class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+          </svg>
+          <svg *ngIf="!deletingBorrador()" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"></path>
+          </svg>
+          {{ deletingBorrador() ? 'Eliminando...' : 'Eliminar borrador' }}
+        </button>
+      </div>
+
+      <!-- Derecha: Confirmar -->
+      <button (click)="onConfirmCompra()" id="btn-confirmar-compra" [disabled]="detalle().length === 0 || confirming()"
+        class="w-full sm:w-auto flex items-center justify-center gap-2 btn-confirmar">
+        <svg *ngIf="confirming()" class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+        </svg>
+        <svg *ngIf="!confirming()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        {{ confirming() ? 'Confirmando...' : 'Confirmar compra' }}
+      </button>
+    </div>
+
+  </ng-container>
+</div>

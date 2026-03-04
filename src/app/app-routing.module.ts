@@ -58,6 +58,14 @@ const routes: Routes = [
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
       },
       {
+        path: 'purchases',
+        loadChildren: () => import('./features/purchases/purchases.routes').then(m => m.PURCHASES_ROUTES)
+      },
+      {
+        path: 'proveedores',
+        loadChildren: () => import('./features/proveedores/routes').then(m => m.PROVEEDORES_ROUTES)
+      },
+      {
         path: 'map',
         loadChildren: () => import('./features/routes-map/routes-map.routes').then(m => m.ROUTES_MAP_ROUTES)
       }

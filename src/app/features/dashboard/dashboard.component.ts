@@ -186,7 +186,7 @@ import { Observable, map } from 'rxjs';
       </div>
 
       <!-- New Sale Modal -->
-      <app-sales-capture *ngIf="showNewSaleModal" (close)="toggleNewSaleModal()" (saleCompleted)="refreshStats()"></app-sales-capture>
+      <app-sales-capture *ngIf="showNewSaleModal" (onClose)="toggleNewSaleModal()" (saleCompleted)="refreshStats()"></app-sales-capture>
     </div>
   `,
     styles: [`

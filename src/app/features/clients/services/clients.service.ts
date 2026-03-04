@@ -4,13 +4,13 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 
 export interface Client {
     id: string;
-    name: string;
+    codigo: string;
+    razon_social: string;
+    ciudad: string;
     address: string;
     phone?: string;
     email?: string;
-    zone: string;
-    city?: string;
-    lastBuy: string; // Formatting to string for display, or Date
+    lastBuy: string;
     advisorName?: string;
 }
 
@@ -33,7 +33,7 @@ export class ClientsService {
     getClients(filters?: { city?: string, advisorId?: string }): Observable<Client[]> {
         let query = this.supabase.from('clientes')
             .select('*, usuarios(nombre_completo)')
-            .order('nombre', { ascending: true });
+            .order('razon_social', { ascending: true });
 
         if (filters?.city && filters.city !== 'Todas') {
             query = query.eq('ciudad', filters.city);
@@ -52,12 +52,12 @@ export class ClientsService {
 
                 return (data || []).map((item: any) => ({
                     id: item.id,
-                    name: item.nombre,
-                    address: item.direccion,
+                    codigo: item.codigo || '',
+                    razon_social: item.razon_social || '',
+                    ciudad: item.ciudad || '',
+                    address: item.direccion || '',
                     phone: item.telefono,
                     email: item.email,
-                    zone: item.zona || 'Sin Zona',
-                    city: item.ciudad || 'Sin Ciudad',
                     lastBuy: this.formatDate(item.ultima_compra),
                     advisorName: item.usuarios?.nombre_completo || 'Sin Asignar'
                 }));
@@ -67,14 +67,17 @@ export class ClientsService {
 
     private formatDate(dateStr: string): string {
         if (!dateStr) return 'N/A';
-        const date = new Date(dateStr);
-        // Simple distinct logic for "2 days ago" vs date string
-        // For simplicity, returning local date string
-        return date.toLocaleDateString();
+        return new Date(dateStr).toLocaleDateString();
     }
 
-    async createClient(client: Partial<Client>): Promise<string> {
-        // 1. Get current user's distribuidor_id
+    async createClient(client: {
+        codigo: string;
+        razon_social: string;
+        ciudad: string;
+        direccion: string;
+        telefono: string;
+        email?: string;
+    }): Promise<string> {
         const user = await this.supabase.auth.getUser();
         if (!user.data.user) throw new Error('Usuario no autenticado');
 
@@ -86,20 +89,17 @@ export class ClientsService {
 
         if (userError || !userData) throw new Error('No se pudo obtener la información del usuario');
 
-        // 2. Insert Client
-        const newClient = {
-            distribuidor_id: userData.distribuidor_id,
-            nombre: client.name,
-            direccion: client.address,
-            telefono: client.phone,
-            email: client.email,
-            zona: client.zone,
-            ciudad: client.city
-        };
-
         const { data, error } = await this.supabase
             .from('clientes')
-            .insert(newClient)
+            .insert({
+                distribuidor_id: userData.distribuidor_id,
+                codigo: client.codigo,
+                razon_social: client.razon_social,
+                ciudad: client.ciudad,
+                direccion: client.direccion,
+                telefono: client.telefono,
+                email: client.email || null
+            })
             .select()
             .single();
 

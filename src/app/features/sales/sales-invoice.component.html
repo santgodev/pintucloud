@@ -1,0 +1,190 @@
+﻿<div class="page-wrapper">
+
+  <!-- TOOLBAR (print hidden) -->
+  <div class="toolbar no-print">
+    <button (click)="goBack()" class="btn-back">← Volver</button>
+    <div class="toolbar-right">
+
+      <!-- Admin only: Editar (BORRADOR o CONFIRMADA) -->
+      <button *ngIf="isAdmin && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA')" (click)="editarOrden()"
+        class="btn-print">
+        ✏ Editar Orden
+      </button>
+
+      <!-- Admin only: Anular (solo si CONFIRMADA) -->
+      <button *ngIf="isAdmin && sale?.estado === 'CONFIRMADA'" (click)="anularVenta()" class="btn-anular">
+        ✕ Anular Orden
+      </button>
+
+      <!-- Todos: Descargar PDF -->
+      <button *ngIf="sale" (click)="descargarPDF()" class="btn-pdf">⬇ Descargar PDF</button>
+
+    </div>
+  </div>
+
+  <!-- SPINNER -->
+  <div *ngIf="isLoading" class="spinner-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- =============== INVOICE =============== -->
+  <div *ngIf="!isLoading" class="invoice" id="invoice-content">
+
+    <!-- BORRADOR watermark -->
+    <div *ngIf="sale?.estado === 'BORRADOR'" class="watermark">BORRADOR</div>
+    <div *ngIf="sale?.estado === 'ANULADA'" class="watermark anulada">ANULADA</div>
+
+    <!-- ===== HEADER ===== -->
+    <div class="inv-header">
+
+      <!-- Emisor -->
+      <div class="emisor">
+        <div class="logo-box">
+          <img src="logo_superior.png" alt="Brochas y Rodillos Superior"
+            style="height:80px; width:auto; max-width:260px; object-fit:contain; display:block;">
+        </div>
+        <div class="emisor-data" style="padding-left:16px; border-left:2px solid #e5e7eb; margin-left:8px;">
+          <span>Av. Industrial #45-12, Parque Empresarial</span>
+          <span>Tel: (601) 555 1234</span>
+          <span>Soacha - Colombia</span>
+          <span>contacto&#64;superior.co</span>
+        </div>
+      </div>
+
+
+
+      <!-- Título factura -->
+      <div class="inv-title">
+        <p class="inv-type">Orden de Venta</p>
+        <p class="inv-number">No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}-{{ sale?.tipo_documento }}</p>
+      </div>
+
+    </div>
+
+    <!-- ===== CLIENTE + FECHAS ===== -->
+    <div class="client-dates-row">
+
+      <!-- Datos del cliente -->
+      <table class="client-table">
+        <tbody>
+          <tr>
+            <td class="label">Cliente</td>
+            <td class="value" colspan="3"><strong>{{ sale?.clientName | uppercase }}</strong></td>
+          </tr>
+          <tr>
+            <td class="label">Teléfono</td>
+            <td class="value">{{ sale?.clientes?.telefono || '—' }}</td>
+            <td class="label">Ciudad</td>
+            <td class="value">{{ sale?.clientes?.ciudad || 'Colombia' }}</td>
+          </tr>
+          <tr>
+            <td class="label">Dirección</td>
+            <td class="value" colspan="3">{{ sale?.clientes?.direccion || '—' }}</td>
+          </tr>
+          <tr>
+            <td class="label">Forma Pago</td>
+            <td class="value">{{ sale?.condicion_pago }}</td>
+            <td class="label">Medio Pago</td>
+            <td class="value">{{ sale?.condicion_pago === 'CREDITO' ? '—' : sale?.metodo_pago }}</td>
+          </tr>
+          <tr>
+            <td class="label">Bodega Despacho</td>
+            <td class="value" colspan="3">{{ sale?.bodegas?.nombre || '—' }}</td>
+          </tr>
+          <tr>
+            <td class="label">Asesor</td>
+            <td class="value" colspan="3">{{ sale?.vendedorName || 'Sistema' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Fechas -->
+      <table class="dates-table">
+        <thead>
+          <tr>
+            <th colspan="2">Fecha y hora Factura</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="label">Generación</td>
+            <td class="value">{{ sale?.fecha | date:'dd/MM/yyyy' }}, {{ today | date:'HH:mm' }}</td>
+          </tr>
+          <tr>
+            <td class="label">Expedición</td>
+            <td class="value">{{ sale?.fecha | date:'dd/MM/yyyy' }}, {{ today | date:'HH:mm' }}</td>
+          </tr>
+          <tr>
+            <td class="label">Vencimiento</td>
+            <td class="value">{{ sale?.fecha_vencimiento | date:'dd/MM/yyyy' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+    <!-- ===== PRODUCTOS ===== -->
+    <table class="products-table">
+      <thead>
+        <tr>
+          <th class="col-item">Ítem</th>
+          <th class="col-desc">Descripción</th>
+          <th class="col-cant">Cantidad</th>
+          <th class="col-unit">Vr. Unitario</th>
+          <th class="col-total">Vr. Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- 🔍 DEBUG TEMPORAL - eliminar después -->
+        <tr *ngIf="(sale?.detalle_ventas?.length || 0) === 0" style="background:#fff3cd;">
+          <td colspan="5" style="padding:8px; color:#856404; font-size:11px;">
+            ⚠ DEBUG: detalle_ventas = {{ sale?.detalle_ventas | json }}
+          </td>
+        </tr>
+        <tr *ngFor="let item of (sale?.detalle_ventas || []); let i = index">
+          <td class="center">{{ i + 1 }}</td>
+          <td>{{ item.productos?.nombre || item.producto_id || 'SIN NOMBRE' }}</td>
+          <td class="right">{{ item.cantidad | number:'1.2-2' }}</td>
+          <td class="right">{{ item.precio_unitario | number:'1.2-2' }}</td>
+          <td class="right">{{ item.subtotal | number:'1.2-2' }}</td>
+        </tr>
+        <!-- Empty filler rows for visual balance -->
+        <tr class="filler" *ngFor="let f of fillerRows">
+          <td colspan="5">&nbsp;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== FOOTER / TOTALES ===== -->
+    <div class="footer-row">
+
+      <!-- Left info -->
+      <div class="footer-info">
+        <p class="footer-note">Documento generado el {{ today | date:'dd/MM/yyyy HH:mm' }}</p>
+      </div>
+
+      <!-- Right totals box -->
+      <table class="totals-table">
+        <tbody>
+          <tr>
+            <td class="tot-label">Subtotal bruto</td>
+            <td class="tot-value">$ {{ (sale?.total + (sale?.descuento_valor || 0)) | number:'1.2-2' }}</td>
+          </tr>
+          <tr *ngIf="sale?.descuento_porcentaje > 0">
+            <td class="tot-label">Descuento ({{ sale?.descuento_porcentaje }}%)</td>
+            <td class="tot-value" style="color:#dc2626;">- $ {{ sale?.descuento_valor | number:'1.2-2' }}</td>
+          </tr>
+          <tr>
+            <td class="tot-label">IVA (0%)</td>
+            <td class="tot-value">$ 0.00</td>
+          </tr>
+          <tr class="total-row">
+            <td class="tot-label"><strong>Total a Pagar</strong></td>
+            <td class="tot-value"><strong>$ {{ sale?.total | number:'1.2-2' }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /invoice -->
+</div>

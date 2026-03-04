@@ -1,0 +1,435 @@
+/* =====================================
+   PAGE WRAPPER (screen background)
+===================================== */
+.page-wrapper {
+  background: #e5e7eb;
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* =====================================
+   TOOLBAR
+===================================== */
+.toolbar {
+  max-width: 820px;
+  margin: 0 auto 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+
+  &:hover {
+    color: #4f46e5;
+  }
+}
+
+.btn-print {
+  padding: 0.45rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #f9fafb;
+  }
+}
+
+.btn-pdf {
+  padding: 0.45rem 1rem;
+  border: 1px solid #4f46e5;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #4338ca;
+  }
+}
+
+.btn-anular {
+  padding: 0.45rem 1rem;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  background: #fff1f2;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #dc2626;
+  cursor: pointer;
+
+  &:hover {
+    background: #fee2e2;
+  }
+}
+
+/* =====================================
+   INVOICE DOCUMENT
+===================================== */
+.invoice {
+  position: relative;
+  width: 820px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  font-size: 11.5px;
+  color: #111827;
+  overflow: hidden;
+}
+
+/* =====================================
+   WATERMARKS
+===================================== */
+.watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 110px;
+  font-weight: 900;
+  color: #1e293b;
+  opacity: 0.04;
+  transform: rotate(-35deg);
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+.watermark.anulada {
+  color: #dc2626;
+  opacity: 0.12;
+}
+
+/* =====================================
+   HEADER (Logo | QR | Title)
+===================================== */
+.inv-header {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 0;
+  border-bottom: 1px solid #9ca3af;
+  padding: 22px 16px 14px;
+  align-items: center;
+}
+
+.emisor {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  .logo-box {
+    width: auto;
+    height: auto;
+    max-width: 220px;
+    background: transparent;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .emisor-data {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #374151;
+
+    strong {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 2px;
+    }
+  }
+}
+
+.qr-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inv-title {
+  text-align: right;
+  padding-left: 12px;
+  border-left: 1px solid #e5e7eb;
+
+  .inv-type {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 6px;
+  }
+
+  .inv-number {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+  }
+}
+
+/* =====================================
+   CLIENT + DATES ROW
+===================================== */
+.client-dates-row {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 0;
+  border-bottom: 1px solid #9ca3af;
+}
+
+/* Client table */
+.client-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  td {
+    padding: 5px 10px;
+    border: 1px solid #e5e7eb;
+    font-size: 11.5px;
+    vertical-align: middle;
+  }
+
+  td.label {
+    font-weight: 700;
+    color: #374151;
+    white-space: nowrap;
+    width: 70px;
+    background: #f9fafb;
+  }
+
+  td.value {
+    color: #111827;
+  }
+}
+
+/* Dates table */
+.dates-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-left: 1px solid #9ca3af;
+
+  thead th {
+    background: #374151;
+    color: #fff;
+    text-align: center;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  td {
+    padding: 4px 8px;
+    border: 1px solid #e5e7eb;
+    font-size: 11px;
+    vertical-align: middle;
+  }
+
+  td.label {
+    font-weight: 700;
+    background: #f9fafb;
+    white-space: nowrap;
+    color: #374151;
+  }
+
+  td.value {
+    color: #111827;
+  }
+}
+
+/* =====================================
+   PRODUCTS TABLE
+===================================== */
+.products-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-bottom: 1px solid #9ca3af;
+
+  thead tr {
+    background: #374151;
+    color: #fff;
+
+    th {
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: left;
+      border-right: 1px solid #4b5563;
+    }
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+
+    &:nth-child(even) {
+      background: #f9fafb;
+    }
+
+    td {
+      padding: 6px 10px;
+      font-size: 11.5px;
+      border-right: 1px solid #e5e7eb;
+    }
+  }
+
+  .filler td {
+    height: 22px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .col-item {
+    width: 40px;
+  }
+
+  .col-cant {
+    width: 80px;
+  }
+
+  .col-unit {
+    width: 110px;
+  }
+
+  .col-total {
+    width: 120px;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .right {
+    text-align: right;
+  }
+}
+
+/* =====================================
+   FOOTER ROW
+===================================== */
+.footer-row {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 0;
+  padding: 14px 16px 16px;
+  align-items: start;
+}
+
+.footer-info {
+  font-size: 11px;
+  color: #9ca3af;
+  padding-right: 16px;
+  display: flex;
+  align-items: flex-end;
+
+  .footer-note {
+    font-style: italic;
+  }
+}
+
+/* Totals table */
+.totals-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #9ca3af;
+
+  td {
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 1px solid #d1d5db;
+  }
+
+  td.tot-label {
+    font-weight: 600;
+    background: #f9fafb;
+    white-space: nowrap;
+  }
+
+  td.tot-value {
+    text-align: right;
+    font-weight: 500;
+  }
+
+  tr.total-row td {
+    background: #1f2937;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+  }
+}
+
+/* =====================================
+   SPINNER
+===================================== */
+.spinner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e7ff;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =====================================
+   PRINT
+===================================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .page-wrapper {
+    background: white;
+    padding: 0;
+  }
+
+  .invoice {
+    width: 100%;
+    border: none;
+    box-shadow: none;
+  }
+
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+}

@@ -1,0 +1,249 @@
+<div class="p-4 md:p-6 max-w-5xl mx-auto">
+
+    <!-- ── HEADER ── -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+            <button (click)="goBack()"
+                class="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm font-medium mb-2 transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Volver al listado
+            </button>
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Detalle de Compra</h1>
+            <p class="text-slate-500 mt-1 text-sm">Vista de solo lectura — compra confirmada.</p>
+        </div>
+
+        <!-- Mensajes visuales -->
+        <div *ngIf="successAnulacion()"
+            class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 mb-4 flex items-center gap-3 text-sm animate-in fade-in slide-in-from-top-4 duration-300">
+            <svg class="text-emerald-500" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Compra anulada correctamente.</span>
+        </div>
+
+        <div *ngIf="errorAnulacion()"
+            class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mb-4 flex items-start gap-4 transition-all animate-in fade-in slide-in-from-top-4 duration-300">
+            <div class="bg-red-100 p-2 rounded-lg text-red-600 flex-shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <div>
+                <p class="font-bold text-red-900 mb-1">{{ errorAnulacionTitle() || 'No se pudo completar la acción' }}
+                </p>
+                <p class="text-sm opacity-90 leading-relaxed">{{ errorAnulacion() }}</p>
+            </div>
+        </div>
+
+        <!-- Banner profesional cuando estado = ANULADA -->
+        <div *ngIf="compra()?.estado === 'ANULADA'" class="banner-anulada">
+            <div class="banner-icon">⚠</div>
+            <div>
+                <strong>Compra anulada</strong>
+                <div class="banner-text">
+                    Anulada el {{ compra()?.fecha_anulacion | date:'dd/MM/yyyy HH:mm' }}.
+                    El inventario fue revertido automáticamente.
+                </div>
+            </div>
+        </div>
+
+        <!-- Badge estado -->
+        <div *ngIf="compra()" class="mt-4 sm:mt-0">
+            <span class="badge estado-badge" [ngClass]="{
+                'badge-green': compra()?.estado === 'CONFIRMADA',
+                'badge-gray': compra()?.estado === 'ANULADA'
+              }">
+                {{ compra()?.estado }}
+            </span>
+        </div>
+    </div>
+
+    <!-- ── LOADING ── -->
+    <div *ngIf="loading()" class="flex justify-center items-center py-24">
+        <div class="animate-spin w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full"></div>
+    </div>
+
+    <!-- ── ERROR ── -->
+    <div *ngIf="error() && !loading()"
+        class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-5 flex items-center gap-3 text-sm font-medium">
+        <svg class="flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        {{ error() }}
+    </div>
+
+    <!-- ── CONTENT ── -->
+    <ng-container *ngIf="!loading() && !error() && compra() as c">
+
+        <!-- ── Cabecera de la compra ── -->
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 md:p-7 mb-6">
+            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-5">Información general</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                <!-- Fila 1 -->
+                <!-- Proveedor -->
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Proveedor</p>
+                    <p class="font-bold text-slate-900 text-sm">{{ c.proveedores?.nombre ?? '—' }}</p>
+                    <p *ngIf="c.proveedores?.nit" class="text-xs text-slate-400 font-mono mt-0.5">NIT: {{
+                        c.proveedores!.nit }}</p>
+                </div>
+
+                <!-- Bodega destino -->
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bodega destino</p>
+                    <p class="text-sm font-semibold text-slate-800">{{ c.bodegas?.nombre ?? '—' }}</p>
+                </div>
+
+                <!-- Número factura -->
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">N° Factura</p>
+                    <p class="font-semibold text-slate-800 text-sm">{{ c.numero_factura || '—' }}</p>
+                </div>
+
+                <!-- Fila 2 -->
+                <!-- Fecha creación -->
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha creación</p>
+                    <p class="font-semibold text-slate-800 text-sm">{{ formattedFechaCreacion() }}</p>
+                </div>
+
+                <!-- Condición de pago -->
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Condición de pago</p>
+                    <p class="text-sm font-semibold text-slate-800">
+                        {{ c.condicion_pago === 'CONTADO' ? 'Contado' : ('Crédito · ' + c.dias_credito + ' días') }}
+                    </p>
+                </div>
+
+                <!-- Fecha de vencimiento -->
+                <div *ngIf="formattedFechaVencimiento()">
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha de vencimiento
+                    </p>
+                    <p class="text-sm font-semibold text-slate-800">{{ formattedFechaVencimiento() }}</p>
+                </div>
+
+                <!-- Observación (Abajo, ocupando toda la fila) -->
+                <div *ngIf="c.observacion" class="md:col-span-3 pt-2 border-t border-slate-50">
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Observaciones</p>
+                    <p class="text-sm text-slate-600 italic">{{ c.observacion }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tabla de detalle ── -->
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-6">
+            <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm">Productos incluidos</h3>
+                <span class="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full font-medium">
+                    {{ (c.compras_detalle ?? []).length }} ítem(s)
+                </span>
+            </div>
+
+            <!-- Sin líneas -->
+            <div *ngIf="(c.compras_detalle ?? []).length === 0" class="py-10 text-center text-slate-400 text-sm italic">
+                Sin líneas registradas.</div>
+
+            <!-- Desktop tabla -->
+            <div *ngIf="(c.compras_detalle ?? []).length > 0" class="hidden md:block overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-100">
+                            <th class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Producto
+                            </th>
+                            <th class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                                Cant.</th>
+                            <th class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                                Precio Unit.</th>
+                            <th class="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
+                                Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let d of c.compras_detalle; trackBy: trackById"
+                            class="border-b border-slate-50 last:border-b-0 hover:bg-slate-50/60 transition-colors">
+                            <td class="px-5 py-3.5">
+                                <p class="font-semibold text-slate-900">{{ d.productos?.nombre ?? '—' }}</p>
+                                <p class="text-xs text-slate-400 font-mono mt-0.5">{{ d.productos?.sku ?? '' }}</p>
+                            </td>
+                            <td class="px-5 py-3.5 text-center font-mono font-bold text-slate-700">{{ d.cantidad }}</td>
+                            <td class="px-5 py-3.5 text-right text-slate-500 tabular-nums">
+                                {{ d.precio_unitario | currency:'COP':'symbol-narrow':'1.0-0' }}
+                            </td>
+                            <td class="px-5 py-3.5 text-right font-bold text-slate-900 tabular-nums">
+                                {{ (d.subtotal ?? d.cantidad * d.precio_unitario) |
+                                currency:'COP':'symbol-narrow':'1.0-0' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-slate-50 border-t-2 border-slate-200">
+                            <td colspan="3"
+                                class="px-5 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                Total</td>
+                            <td class="px-5 py-4 text-right text-xl font-extrabold text-slate-900 tabular-nums">
+                                {{ totalCalculado() | currency:'COP':'symbol-narrow':'1.0-0' }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Mobile cards -->
+            <div *ngIf="(c.compras_detalle ?? []).length > 0" class="flex flex-col divide-y divide-slate-100 md:hidden">
+                <div *ngFor="let d of c.compras_detalle; trackBy: trackById" class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-semibold text-slate-900 text-sm">{{ d.productos?.nombre ?? '—' }}</p>
+                            <p class="text-xs font-mono text-slate-400 mt-0.5">{{ d.productos?.sku ?? '' }}</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-sm mt-1.5">
+                        <span class="text-slate-400">{{ d.cantidad }} × {{ d.precio_unitario |
+                            currency:'COP':'symbol-narrow':'1.0-0' }}</span>
+                        <span class="font-bold text-slate-900 tabular-nums">
+                            {{ (d.subtotal ?? d.cantidad * d.precio_unitario) | currency:'COP':'symbol-narrow':'1.0-0'
+                            }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total mobile -->
+                <div class="px-4 py-3.5 bg-slate-50 flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total</span>
+                    <span class="text-lg font-extrabold text-slate-900 tabular-nums">
+                        {{ totalCalculado() | currency:'COP':'symbol-narrow':'1.0-0' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Acciones ── -->
+        <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+
+            <button (click)="goBack()"
+                class="w-full sm:w-auto text-slate-600 font-semibold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
+                Volver al listado
+            </button>
+
+            <!-- Botón Anular compra -->
+            <button *ngIf="compra()?.estado === 'CONFIRMADA'" class="btn btn-danger" (click)="onAnularCompra()"
+                [disabled]="anulando()">
+
+                <span *ngIf="!anulando()">Anular compra</span>
+                <span *ngIf="anulando()">Anulando...</span>
+
+            </button>
+
+        </div>
+    </ng-container>
+</div>

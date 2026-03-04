@@ -20,11 +20,12 @@ import { Client } from '../../services/clients.service';
           <div class="p-6 space-y-4" *ngIf="client">
              <div class="flex items-center gap-4 mb-6">
                 <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold border border-primary/20">
-                    {{ client.name.charAt(0) }}
+                    {{ client.razon_social.charAt(0) }}
                 </div>
                 <div>
-                     <h3 class="font-bold text-xl text-main">{{ client.name }}</h3>
-                     <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">{{ client.zone }}</span>
+                     <h3 class="font-bold text-xl text-main">{{ client.razon_social }}</h3>
+                     <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">{{ client.codigo }}</span>
+                     <p class="text-xs text-muted mt-0.5">{{ client.ciudad }}</p>
                 </div>
              </div>
 

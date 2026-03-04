@@ -11,13 +11,13 @@ import { UiService } from '../../../core/services/ui.service';
    template: `
     <aside class="sidebar" [class.mobile-open]="(uiService.sidebarVisible$ | async)">
        <div class="logo-area">
-          <h1 class="logo-text">
-            PIN<img src="icono_sin_fondo.png" alt="T" class="logo-t-roller">U<span class="text-primary">CLOUD</span>
-          </h1>
+          <div class="logo-img-wrap">
+            <img src="logo_superior.png" alt="Brochas y Rodillos Superior" class="logo-img">
+          </div>
           <button class="mobile-close-btn" (click)="uiService.setSidebarVisible(false)">
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
-          <p class="logo-sub">Gestión de Pinturas y Obras</p>
+
        </div>
        
        <nav class="nav-links">
@@ -39,6 +39,18 @@ import { UiService } from '../../../core/services/ui.service';
                <span>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                   Clientes
+               </span>
+            </a>
+            <a routerLink="/purchases" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+               <span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                  Compras
+               </span>
+            </a>
+            <a routerLink="/proveedores" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+               <span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  Proveedores
                </span>
             </a>
           </div>
@@ -119,12 +131,11 @@ import { UiService } from '../../../core/services/ui.service';
     }
     
     .logo-area {
-      padding: 1.5rem 1.25rem;
-      margin-bottom: 0.5rem;
+      padding: 0.75rem 0.75rem 0.5rem 1rem;
+      margin-bottom: 0.25rem;
       display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
     .mobile-close-btn {
@@ -143,32 +154,28 @@ import { UiService } from '../../../core/services/ui.service';
       }
     }
     
-    .logo-t-roller {
-      height: 1.8rem;
-      width: auto;
-      vertical-align: middle;
-      margin: 0 -14px;
-      position: relative;
-      top: -2px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    }
-    
-    .logo-text {
-      font-size: 1.5rem;
-      font-weight: 900;
-      color: var(--text-main);
-      margin: 0;
-      line-height: 1;
-      letter-spacing: -0.04em;
+    .logo-img-wrap {
+      width: 100%;
       display: flex;
-      align-items: center;
-      white-space: nowrap;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+
+    .logo-img {
+      width: 100%;
+      max-width: 240px;
+      height: auto;
+      max-height: 110px;
+      object-fit: contain;
+      object-position: left center;
+      display: block;
     }
     
     .logo-sub {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      margin-top: 0.25rem;
+      margin-top: 2px;
+      margin-left: 2px;
       font-weight: 500;
     }
 

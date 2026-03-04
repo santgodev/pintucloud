@@ -38,10 +38,10 @@ import { ClientDetailModalComponent } from './components/client-detail-modal/cli
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
        <app-card *ngFor="let client of clients$ | async">
           <div class="flex items-center gap-4 mb-4">
-             <div class="avatar-placeholder">{{client.name.charAt(0)}}</div>
+             <div class="avatar-placeholder">{{client.razon_social.charAt(0)}}</div>
              <div>
-                <h3 class="font-bold text-lg text-main">{{client.name}}</h3>
-                <p class="text-sm text-muted">{{client.address}}</p>
+                <h3 class="font-bold text-lg text-main">{{client.razon_social}}</h3>
+                <p class="text-sm text-muted">{{ client.codigo }} &bull; {{client.ciudad}}</p>
              </div>
           </div>
           <div class="info-grid text-sm mb-4">
@@ -50,8 +50,8 @@ import { ClientDetailModalComponent } from './components/client-detail-modal/cli
                 <span class="value">{{client.lastBuy}}</span>
              </div>
               <div class="info-item">
-                <span class="label">Zona</span>
-                <span class="value">{{client.zone}}</span>
+                <span class="label">Dirección</span>
+                <span class="value">{{client.address || '—'}}</span>
              </div>
           </div>
           <div class="actions border-t border-slate-200 pt-4">

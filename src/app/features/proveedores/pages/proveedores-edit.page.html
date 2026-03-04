@@ -1,0 +1,141 @@
+<div class="p-4 md:p-6 max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <button (click)="goBack()"
+            class="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm font-medium mb-3 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Volver a Proveedores
+        </button>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Editar Proveedor</h1>
+        <p class="text-slate-500 mt-1 text-sm">Actualiza los datos del proveedor.</p>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loadingData()" class="flex justify-center items-center py-20">
+        <div class="animate-spin w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full"></div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="error() && !loadingData()"
+        class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-6 flex items-center gap-3 text-sm font-medium">
+        <svg class="flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        {{ error() }}
+    </div>
+
+    <!-- Form -->
+    <div *ngIf="!loadingData() && form" class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 md:p-7">
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            <!-- Nombre -->
+            <div class="md:col-span-2">
+                <label for="e-nombre"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nombre <span
+                        class="text-red-500">*</span></label>
+                <input id="e-nombre" type="text" formControlName="nombre"
+                    class="w-full border rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    [class.border-red-400]="isInvalid('nombre')" [class.border-slate-200]="!isInvalid('nombre')">
+                <p *ngIf="isInvalid('nombre')" class="text-red-500 text-xs mt-1">El nombre es obligatorio</p>
+            </div>
+
+            <!-- NIT -->
+            <div>
+                <label for="e-nit"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">NIT</label>
+                <input id="e-nit" type="text" formControlName="nit"
+                    class="w-full border rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    [class.border-red-400]="isInvalid('nit')" [class.border-slate-200]="!isInvalid('nit')">
+                <p *ngIf="isInvalid('nit')" class="text-red-500 text-xs mt-1">Formato inválido. Ej: 900.123.456-7</p>
+                <p *ngIf="!isInvalid('nit')" class="text-slate-400 text-[11px] mt-1">Dígitos, puntos y guion (6-15
+                    chars)</p>
+            </div>
+
+            <!-- Teléfono -->
+            <div>
+                <label for="e-tel"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Teléfono</label>
+                <input id="e-tel" type="tel" formControlName="telefono"
+                    class="w-full border rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    [class.border-red-400]="isInvalid('telefono')" [class.border-slate-200]="!isInvalid('telefono')">
+                <p *ngIf="isInvalid('telefono')" class="text-red-500 text-xs mt-1">Formato inválido (7-15 dígitos)</p>
+                <p *ngIf="!isInvalid('telefono')" class="text-slate-400 text-[11px] mt-1">Móvil (3XX) o fijo con
+                    indicativo</p>
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label for="e-email"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
+                <input id="e-email" type="email" formControlName="email"
+                    class="w-full border rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    [class.border-red-400]="isInvalid('email')" [class.border-slate-200]="!isInvalid('email')">
+                <p *ngIf="isInvalid('email')" class="text-red-500 text-xs mt-1">Email inválido</p>
+            </div>
+
+            <!-- Ciudad -->
+            <div>
+                <label for="e-ciudad"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ciudad</label>
+                <input id="e-ciudad" type="text" formControlName="ciudad"
+                    class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            </div>
+
+            <!-- Contacto principal -->
+            <div class="md:col-span-2">
+                <label for="e-contacto"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Contacto
+                    principal</label>
+                <input id="e-contacto" type="text" formControlName="contacto_principal"
+                    class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            </div>
+
+            <!-- Dirección -->
+            <div class="md:col-span-2">
+                <label for="e-dir"
+                    class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Dirección</label>
+                <input id="e-dir" type="text" formControlName="direccion"
+                    class="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+            </div>
+
+            <!-- Toggle puede_comprar -->
+            <div class="md:col-span-2">
+                <label
+                    class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 cursor-pointer">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Habilitado para compras</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Si está desactivado, no aparecerá al crear compras</p>
+                    </div>
+                    <div class="relative ml-4 flex-shrink-0">
+                        <input type="checkbox" formControlName="puede_comprar" id="e-puede" class="sr-only peer">
+                        <label for="e-puede"
+                            class="w-11 h-6 bg-slate-300 peer-checked:bg-indigo-600 rounded-full cursor-pointer transition-colors block after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5"></label>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Acciones -->
+            <div class="md:col-span-2 flex flex-col sm:flex-row justify-end gap-3 pt-2">
+                <button type="button" (click)="goBack()"
+                    class="w-full sm:w-auto text-slate-600 font-semibold px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
+                    Cancelar
+                </button>
+                <button type="submit" id="btn-actualizar-proveedor" [disabled]="saving()"
+                    class="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold px-7 py-2.5 rounded-xl shadow-lg shadow-indigo-200 transition-colors text-sm">
+                    <svg *ngIf="saving()" class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                    </svg>
+                    {{ saving() ? 'Actualizando...' : 'Actualizar proveedor' }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
