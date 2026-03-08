@@ -2,7 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../shared/shared.module';
 import { InventoryService, InventoryItem } from './services/inventory.service';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { map, take } from 'rxjs/operators';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { ProductModalComponent } from './components/product-modal/product-modal.component';
 import { FormsModule } from '@angular/forms';
 
@@ -18,7 +21,7 @@ import { FormsModule } from '@angular/forms';
           <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
         </div>
         <div class="flex gap-3">
-          <button class="btn btn-outline flex items-center gap-2" (click)="notImplemented()">
+          <button class="btn btn-outline flex items-center gap-2" (click)="exportInventory()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Exportar
           </button>
@@ -35,9 +38,9 @@ import { FormsModule } from '@angular/forms';
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Productos</p>
           <p class="text-2xl font-bold text-slate-900">{{ (inventory$ | async)?.length || 0 }}</p>
         </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" (click)="showLowStock()">
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bajo Stock</p>
-          <p class="text-2xl font-bold text-slate-900">0</p>
+          <p class="text-2xl font-bold text-slate-900">{{ lowStockCount$ | async }}</p>
         </div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bodegas Activas</p>
@@ -52,25 +55,31 @@ import { FormsModule } from '@angular/forms';
       <!-- Filters -->
       <div class="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div class="flex-1 relative">
-          <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900" placeholder="Buscar por nombre, SKU o categoría...">
+          <input [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900" placeholder="Buscar por nombre, SKU o categoría...">
         </div>
         <div class="flex gap-2 flex-wrap md:flex-nowrap">
-          <select [(ngModel)]="selectedBodega" (change)="refreshInventory()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+          <select [(ngModel)]="selectedBodega" (ngModelChange)="refreshInventory()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
             <option [value]="''">Todas las Bodegas</option>
             <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
           </select>
-          <select class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium">
-            <option>Todas las Categorías</option>
-            <option>Rodillos</option>
-            <option>Brochas</option>
+          <select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+            <option value="">Todas las Categorías</option>
+            <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
           </select>
-          <select class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium">
-            <option>Todos los Estados</option>
-            <option>En Stock</option>
-            <option>Bajo Stock</option>
-            <option>Agotado</option>
+          <select [(ngModel)]="selectedStatus" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+            <option value="">Todos los Estados</option>
+            <option value="En Stock">En Stock</option>
+            <option value="Bajo Stock">Bajo Stock</option>
+            <option value="Agotado">Agotado</option>
           </select>
         </div>
+      </div>
+
+      <div *ngIf="showLowStockOnly" class="bg-orange-100 text-orange-700 p-3 rounded-lg border border-orange-200 mb-4 flex justify-between items-center text-sm font-medium">
+        <span>Mostrando productos en Bajo Stock</span>
+        <button (click)="clearLowStockFilter()" class="underline hover:text-orange-900 transition-colors">
+          Ver todo
+        </button>
       </div>
 
       <app-card class="p-0 overflow-hidden shadow-xl border-slate-200">
@@ -116,17 +125,22 @@ import { FormsModule } from '@angular/forms';
                 <td class="p-4 text-xs font-bold">
                   <span class="px-2.5 py-1 rounded-md" 
                     [ngClass]="{
-                      'bg-emerald-50 text-emerald-700 border border-emerald-100': item.status === 'In Stock',
-                      'bg-amber-50 text-amber-700 border border-amber-100': item.status === 'Low Stock',
-                      'bg-rose-50 text-rose-700 border border-rose-100': item.status === 'Out of Stock'
+                      'bg-emerald-50 text-emerald-700 border border-emerald-100': item.status === 'En Stock',
+                      'bg-amber-50 text-amber-700 border border-amber-100': item.status === 'Bajo Stock',
+                      'bg-rose-50 text-rose-700 border border-rose-100': item.status === 'Agotado'
                     }">
                     {{ item.status }}
                   </span>
                 </td>
-                <td class="p-4 text-right pr-6">
-                  <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white hover:shadow-md text-slate-400 hover:text-primary transition-all border-none bg-transparent cursor-pointer" (click)="editProduct(item)" title="Editar">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                  </button>
+                <td class="p-4">
+                  <div class="flex items-center justify-center gap-3">
+                    <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="adjustStock(item)" title="Ajustar inventario">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 20V10"/> <path d="M18 20V4"/> <path d="M6 20v-4"/> </svg>
+                    </button>
+                    <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="editProduct(item)" title="Editar producto">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr *ngIf="(inventory$ | async)?.length === 0">
@@ -147,16 +161,29 @@ import { FormsModule } from '@angular/forms';
   `]
 })
 export class InventoryComponent implements OnInit {
-  inventory$!: Observable<InventoryItem[]>;
+  private _allInventory: InventoryItem[] = [];
+  private inventorySubject = new BehaviorSubject<InventoryItem[]>([]);
+  inventory$: Observable<InventoryItem[]> = this.inventorySubject.asObservable();
+
+  lowStockCount$!: Observable<number>;
+  showLowStockOnly = false;
   showProductModal = false;
   selectedProduct: InventoryItem | null = null;
   bodegas: any[] = [];
   selectedBodega: string = '';
+  categorias: string[] = [];
+  selectedCategory: string = '';
+  selectedStatus: string = '';
+  searchTerm: string = '';
 
   constructor(private inventoryService: InventoryService) { }
 
   async ngOnInit() {
+    this.lowStockCount$ = this.inventory$.pipe(
+      map(items => items.filter(item => item.stock <= (item.stockMinimo || 0)).length)
+    );
     await this.loadBodegas();
+    await this.loadCategorias();
     this.loadInventory();
   }
 
@@ -164,17 +191,94 @@ export class InventoryComponent implements OnInit {
     this.bodegas = await this.inventoryService.getBodegas();
   }
 
+  async loadCategorias() {
+    this.categorias = await this.inventoryService.getCategories();
+  }
+
   async loadInventory() {
-    this.inventory$ = await this.inventoryService.getInventory(this.selectedBodega || undefined);
+    const inv$ = await this.inventoryService.getInventory(this.selectedBodega || undefined);
+    inv$.pipe(take(1)).subscribe(items => {
+      this._allInventory = items;
+      this.applyFilters();
+    });
+  }
+
+  applyFilters() {
+    let filtered = [...this._allInventory];
+
+    if (this.selectedCategory) {
+      filtered = filtered.filter(item => item.category === this.selectedCategory);
+    }
+
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.productName?.toLowerCase().includes(term) ||
+        item.sku?.toLowerCase().includes(term) ||
+        item.category?.toLowerCase().includes(term)
+      );
+    }
+
+    if (this.showLowStockOnly) {
+      filtered = filtered.filter(
+        item => item.stock <= (item.stockMinimo ?? 0)
+      );
+    }
+
+    if (this.selectedStatus) {
+      filtered = filtered.filter(
+        item => item.status === this.selectedStatus
+      );
+    }
+
+    this.inventorySubject.next(filtered);
   }
 
   refreshInventory() {
     this.loadInventory();
   }
 
+  showLowStock() {
+    this.showLowStockOnly = true;
+    this.applyFilters();
+  }
+
+  clearLowStockFilter() {
+    this.showLowStockOnly = false;
+    this.applyFilters();
+  }
+
   openModal() {
     this.selectedProduct = null;
     this.showProductModal = true;
+  }
+
+  adjustStock(item: InventoryItem) {
+    const nuevaCantidad = prompt(
+      `Stock actual: ${item.stock}\n\nIngrese el stock contado físicamente:`
+    );
+
+    if (nuevaCantidad === null) return;
+
+    const cantidad = Number(nuevaCantidad);
+
+    if (isNaN(cantidad) || cantidad < 0) {
+      alert('Cantidad inválida');
+      return;
+    }
+
+    this.inventoryService.adjustInventory(
+      item.productId,
+      // @ts-ignore
+      item.bodegaId || this.bodegas.find(b => b.nombre === item.bodegaName)?.id, // Quick patch to send the ID even if the interface misses it
+      cantidad,
+      'Ajuste manual de inventario'
+    ).then(() => {
+      this.refreshInventory();
+    }).catch((err: any) => {
+      console.error(err);
+      alert('Error ajustando inventario');
+    });
   }
 
   editProduct(item: InventoryItem) {
@@ -192,7 +296,25 @@ export class InventoryComponent implements OnInit {
     item.imageUrl = '';
   }
 
-  notImplemented() {
-    alert('Esta funcionalidad estará disponible en la próxima actualización.');
+  exportInventory() {
+    this.inventory$.pipe(take(1)).subscribe(items => {
+      const exportData = items.map(item => ({
+        Producto: item.productName,
+        SKU: item.sku,
+        Categoría: item.category || 'General',
+        Bodega: item.bodegaName,
+        Stock: item.stock,
+        'Stock mínimo': item.stockMinimo || 0,
+        Estado: item.status
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+
+      const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data: Blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+      saveAs(data, 'inventario.xlsx');
+    });
   }
 }

@@ -313,7 +313,7 @@ export class DashboardComponent implements OnInit {
         const inventory = await this.inventoryService.getInventory();
         // Since inventory is now an Observable, we need to pipe from it
         this.lowStockCount$ = inventory.pipe(
-            map(items => items.filter(item => item.status !== 'In Stock').length)
+            map(items => items.filter(item => item.status !== 'En Stock').length)
         );
     }
 

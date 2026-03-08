@@ -2,7 +2,7 @@
 
   <!-- TOOLBAR (print hidden) -->
   <div class="toolbar no-print">
-    <button (click)="goBack()" class="btn-back">← Volver</button>
+    <button (click)="goBack()" class="btn-back text-indigo-600 hover:text-indigo-800">← Volver</button>
     <div class="toolbar-right">
 
       <!-- Admin only: Editar (BORRADOR o CONFIRMADA) -->
@@ -11,13 +11,13 @@
         ✏ Editar Orden
       </button>
 
+      <!-- Todos: Descargar PDF -->
+      <button *ngIf="sale" (click)="descargarPDF()" class="btn-pdf">⬇ Descargar PDF</button>
+
       <!-- Admin only: Anular (solo si CONFIRMADA) -->
       <button *ngIf="isAdmin && sale?.estado === 'CONFIRMADA'" (click)="anularVenta()" class="btn-anular">
         ✕ Anular Orden
       </button>
-
-      <!-- Todos: Descargar PDF -->
-      <button *ngIf="sale" (click)="descargarPDF()" class="btn-pdf">⬇ Descargar PDF</button>
 
     </div>
   </div>
@@ -55,8 +55,9 @@
 
       <!-- Título factura -->
       <div class="inv-title">
-        <p class="inv-type">Orden de Venta</p>
-        <p class="inv-number">No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}-{{ sale?.tipo_documento }}</p>
+        <p class="inv-type">ORDEN DE VENTA</p>
+        <p class="inv-number font-bold text-lg">No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}-{{
+          sale?.tipo_documento }}</p>
       </div>
 
     </div>
@@ -69,31 +70,32 @@
         <tbody>
           <tr>
             <td class="label">Cliente</td>
-            <td class="value" colspan="3"><strong>{{ sale?.clientName | uppercase }}</strong></td>
+            <td class="value text-slate-900 font-semibold" colspan="3">{{ sale?.clientName | uppercase }}</td>
           </tr>
           <tr>
             <td class="label">Teléfono</td>
-            <td class="value">{{ sale?.clientes?.telefono || '—' }}</td>
+            <td class="value text-slate-900 font-semibold">{{ sale?.clientes?.telefono || '—' }}</td>
             <td class="label">Ciudad</td>
-            <td class="value">{{ sale?.clientes?.ciudad || 'Colombia' }}</td>
+            <td class="value text-slate-900 font-semibold">{{ sale?.clientes?.ciudad || 'Colombia' }}</td>
           </tr>
           <tr>
             <td class="label">Dirección</td>
-            <td class="value" colspan="3">{{ sale?.clientes?.direccion || '—' }}</td>
+            <td class="value text-slate-900 font-semibold" colspan="3">{{ sale?.clientes?.direccion || '—' }}</td>
           </tr>
           <tr>
             <td class="label">Forma Pago</td>
-            <td class="value">{{ sale?.condicion_pago }}</td>
+            <td class="value text-slate-900 font-semibold">{{ sale?.condicion_pago }}</td>
             <td class="label">Medio Pago</td>
-            <td class="value">{{ sale?.condicion_pago === 'CREDITO' ? '—' : sale?.metodo_pago }}</td>
+            <td class="value text-slate-900 font-semibold">{{ sale?.condicion_pago === 'CREDITO' ? '—' :
+              sale?.metodo_pago }}</td>
           </tr>
           <tr>
             <td class="label">Bodega Despacho</td>
-            <td class="value" colspan="3">{{ sale?.bodegas?.nombre || '—' }}</td>
+            <td class="value text-slate-900 font-semibold" colspan="3">{{ sale?.bodegas?.nombre || '—' }}</td>
           </tr>
           <tr>
             <td class="label">Asesor</td>
-            <td class="value" colspan="3">{{ sale?.vendedorName || 'Sistema' }}</td>
+            <td class="value text-slate-900 font-semibold" colspan="3">{{ sale?.vendedorName || 'Sistema' }}</td>
           </tr>
         </tbody>
       </table>
@@ -102,7 +104,7 @@
       <table class="dates-table">
         <thead>
           <tr>
-            <th colspan="2">Fecha y hora Factura</th>
+            <th colspan="2">Fecha y hora de la factura</th>
           </tr>
         </thead>
         <tbody>
@@ -130,8 +132,8 @@
           <th class="col-item">Ítem</th>
           <th class="col-desc">Descripción</th>
           <th class="col-cant">Cantidad</th>
-          <th class="col-unit">Vr. Unitario</th>
-          <th class="col-total">Vr. Total</th>
+          <th class="col-unit text-right">Vr. Unitario</th>
+          <th class="col-total text-right">Vr. Total</th>
         </tr>
       </thead>
       <tbody>
@@ -145,8 +147,8 @@
           <td class="center">{{ i + 1 }}</td>
           <td>{{ item.productos?.nombre || item.producto_id || 'SIN NOMBRE' }}</td>
           <td class="right">{{ item.cantidad | number:'1.2-2' }}</td>
-          <td class="right">{{ item.precio_unitario | number:'1.2-2' }}</td>
-          <td class="right">{{ item.subtotal | number:'1.2-2' }}</td>
+          <td class="right text-right">{{ item.precio_unitario | number:'1.2-2' }}</td>
+          <td class="right text-right">{{ item.subtotal | number:'1.2-2' }}</td>
         </tr>
         <!-- Empty filler rows for visual balance -->
         <tr class="filler" *ngFor="let f of fillerRows">
@@ -160,7 +162,7 @@
 
       <!-- Left info -->
       <div class="footer-info">
-        <p class="footer-note">Documento generado el {{ today | date:'dd/MM/yyyy HH:mm' }}</p>
+        <p class="footer-note text-xs text-slate-400">Documento generado el {{ today | date:'dd/MM/yyyy HH:mm' }}</p>
       </div>
 
       <!-- Right totals box -->
@@ -178,9 +180,9 @@
             <td class="tot-label">IVA (0%)</td>
             <td class="tot-value">$ 0.00</td>
           </tr>
-          <tr class="total-row">
-            <td class="tot-label"><strong>Total a Pagar</strong></td>
-            <td class="tot-value"><strong>$ {{ sale?.total | number:'1.2-2' }}</strong></td>
+          <tr class="total-row text-xl font-bold text-indigo-600">
+            <td class="tot-label">Total a Pagar</td>
+            <td class="tot-value">$ {{ sale?.total | number:'1.2-2' }}</td>
           </tr>
         </tbody>
       </table>

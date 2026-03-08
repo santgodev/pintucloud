@@ -51,6 +51,8 @@ export interface SalesQueryParams {
     fechaHasta?: string;
     asesorId?: string;
     bodegaId?: string;
+    sortField?: string;
+    sortDirection?: 'asc' | 'desc';
 }
 
 @Injectable({
@@ -135,9 +137,17 @@ export class SalesService {
         }
 
         /* 🔥 ORDER Y RANGE SIEMPRE AL FINAL */
-        query = query
-            .order('created_at', { ascending: false })
-            .range(from, to);
+        if (params.sortField) {
+            if (params.sortField === 'clientName') {
+                query = query.order('razon_social', { foreignTable: 'clientes', ascending: params.sortDirection === 'asc' });
+            } else {
+                query = query.order(params.sortField, { ascending: params.sortDirection === 'asc' });
+            }
+        } else {
+            query = query.order('fecha', { ascending: false });
+        }
+
+        query = query.range(from, to);
 
         const { data, error, count } = await query;
 

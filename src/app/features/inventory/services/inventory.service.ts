@@ -8,13 +8,15 @@ export interface InventoryItem {
     productId: string;
     productName: string;
     sku: string;
+    bodegaId: string;
     bodegaName: string;
     stock: number;
     price: number;
     imageUrl: string;
     description?: string;
     category?: string;
-    status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+    stockMinimo?: number;
+    status: 'En Stock' | 'Bajo Stock' | 'Agotado';
 }
 
 @Injectable({
@@ -36,6 +38,21 @@ export class InventoryService {
         return data || [];
     }
 
+    async getCategories(): Promise<string[]> {
+        const { data, error } = await this.supabase
+            .from('productos')
+            .select('categoria')
+            .order('categoria');
+
+        if (error) {
+            console.error('Error fetching categories:', error);
+            return [];
+        }
+
+        const categories = data.map((item: any) => item.categoria).filter((c: any) => c);
+        return [...new Set(categories)] as string[];
+    }
+
     async getInventory(bodegaId?: string): Promise<Observable<InventoryItem[]>> {
         // 1. Get User Profile for Context
         const user = await this.supabase.auth.getUser();
@@ -52,7 +69,7 @@ export class InventoryService {
             .select(`
                 id,
                 cantidad,
-                productos (id, nombre, sku, imagen_url, precio_base, categoria, descripcion),
+                productos (id, nombre, sku, imagen_url, precio_base, categoria, descripcion, stock_minimo),
                 bodegas (id, nombre)
             `);
 
@@ -74,18 +91,22 @@ export class InventoryService {
 
                 return (data || []).map((item: any) => {
                     const quantity = item.cantidad;
-                    let status: InventoryItem['status'] = 'In Stock';
-                    if (quantity === 0) status = 'Out of Stock';
-                    else if (quantity < 50) status = 'Low Stock';
+                    const minStock = item.productos?.stock_minimo || 0;
+
+                    let status: InventoryItem['status'] = 'En Stock';
+                    if (quantity === 0) status = 'Agotado';
+                    else if (quantity <= minStock) status = 'Bajo Stock';
 
                     return {
                         id: item.id,
                         productId: item.productos?.id,
                         productName: item.productos?.nombre,
                         sku: item.productos?.sku,
+                        bodegaId: item.bodegas?.id,
                         bodegaName: item.bodegas?.nombre,
                         stock: quantity,
                         price: item.productos?.precio_base,
+                        stockMinimo: item.productos?.stock_minimo,
                         imageUrl: item.productos?.imagen_url,
                         description: item.productos?.descripcion,
                         category: item.productos?.categoria,
@@ -101,6 +122,7 @@ export class InventoryService {
         sku: string;
         price: number;
         category: string;
+        stock_minimo?: number;
         description?: string;
         imageUrl?: string;
     }, initialStock: number, targetBodegaId?: string): Promise<string> {
@@ -140,8 +162,10 @@ export class InventoryService {
             nombre: product.name,
             descripcion: product.description || '',
             precio_base: product.price,
+            stock_minimo: product.stock_minimo || 0,
             imagen_url: product.imageUrl,
-            categoria: product.category
+            categoria: product.category,
+            distribuidor_id: userData.distribuidor_id
         };
 
         const { data: prodData, error: prodError } = await this.supabase
@@ -152,20 +176,16 @@ export class InventoryService {
 
         if (prodError) throw prodError;
 
-        // 3. Insert Inventory
-        const inventoryItem = {
-            bodega_id: bodegaId,
-            producto_id: prodData.id,
-            cantidad: initialStock
-        };
+        if (initialStock && initialStock > 0) {
+            const { error: invError } = await this.supabase.rpc('registrar_movimiento', {
+                p_producto_id: prodData.id,
+                p_bodega_id: bodegaId,
+                p_tipo_movimiento: 'INICIAL',
+                p_cantidad: initialStock,
+                p_referencia_id: null
+            });
 
-        const { error: invError } = await this.supabase
-            .from('inventario_bodega')
-            .insert(inventoryItem);
-
-        if (invError) {
-            console.error('Error creating inventory, but product created', invError);
-            // Optionally rollback product deletion?
+            if (invError) throw invError;
         }
 
         return prodData.id;
@@ -206,6 +226,7 @@ export class InventoryService {
             .update({
                 nombre: productData.name,
                 precio_base: productData.price,
+                stock_minimo: productData.stock_minimo || 0,
                 descripcion: productData.description,
                 imagen_url: finalImageUrl,
                 categoria: productData.category
@@ -225,6 +246,25 @@ export class InventoryService {
                 .eq('id', productData.inventoryId);
 
             if (invError) throw invError;
+        }
+    }
+
+    async adjustInventory(
+        productoId: string,
+        bodegaId: string,
+        nuevaCantidad: number,
+        motivo: string
+    ) {
+        const { error } = await this.supabase.rpc('ajustar_inventario', {
+            p_producto_id: productoId,
+            p_bodega_id: bodegaId,
+            p_nueva_cantidad: nuevaCantidad,
+            p_motivo: motivo
+        });
+
+        if (error) {
+            console.error('Error ajustando inventario:', error);
+            throw error;
         }
     }
 }

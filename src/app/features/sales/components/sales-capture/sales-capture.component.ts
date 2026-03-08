@@ -27,7 +27,7 @@ interface CartItem {
           <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-white">
              <div>
                 <h2 class="text-xl font-bold text-main">Nueva Venta</h2>
-                <p class="text-sm text-muted">Registrar transacción y descontar inventario</p>
+                <p class="text-sm text-slate-600 mt-1">Registrar transacción</p>
              </div>
              <button type="button" (click)="closeModal()" class="btn-icon relative z-50 cursor-pointer hover:bg-red-50 hover:text-red-500">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -37,7 +37,7 @@ interface CartItem {
           <!-- Body -->
           <div class="flex-1 overflow-hidden flex flex-col md:flex-row">
              
-             <!-- Left: Selection -->
+             <!-- Left: Selection (50%) -->
              <div class="flex-1 p-6 overflow-y-auto border-r border-slate-200 bg-white">
                 
                 <!-- Bodega Select (Obligatorio para Admin) -->
@@ -49,14 +49,14 @@ interface CartItem {
                          {{ b.nombre }}
                       </option>
                    </select>
-                   <p class="text-[10px] text-muted mt-1 uppercase tracking-wider">Debe seleccionar una bodega para ver inventario</p>
+                   <p class="text-xs text-slate-500 mt-1">Seleccione una bodega para consultar el inventario disponible</p>
                 </div>
 
                 <!-- Client Select -->
                 <div class="mb-6">
                    <label class="block text-sm font-medium text-main mb-2">Cliente</label>
                    <select [(ngModel)]="selectedClientId" class="input-premium w-full">
-                      <option [ngValue]="null">Seleccionar Cliente...</option>
+                      <option [ngValue]="null">Buscar o seleccionar cliente</option>
                       <option *ngFor="let client of clients$ | async" [value]="client.id">
                          {{ client.codigo }} — {{ client.razon_social }}
                       </option>
@@ -67,10 +67,10 @@ interface CartItem {
                 <div class="mb-4">
                    <label class="block text-sm font-medium text-main mb-2">Agregar Producto</label>
                    <div class="relative">
-                        <input type="text" placeholder="Buscar producto..." 
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" placeholder="Buscar producto por nombre o código" 
                                [ngModel]="searchTerm" (ngModelChange)="search($event)"
-                               class="input-premium w-full pl-10" />
-                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                               class="input-premium w-full pl-10 pr-3" />
                    </div>
                 </div>
 
@@ -99,15 +99,15 @@ interface CartItem {
                       </div>
                       <div class="text-right">
                          <div class="font-bold text-primary">{{ item.price | currency:'COP':'symbol-narrow':'1.0-0' }}</div>
-                         <div *ngIf="item.stock > 0" class="text-[10px] text-muted uppercase tracking-wider group-hover:text-primary transition-colors">Añadir +</div>
+                         <div *ngIf="item.stock > 0" class="text-[10px] text-indigo-600 font-semibold uppercase tracking-wider hover:text-indigo-800 transition-colors">Añadir +</div>
                          <div *ngIf="item.stock === 0" class="text-[10px] text-danger uppercase tracking-wider">Agotado</div>
                       </div>
                    </div>
                 </div>
              </div>
 
-             <!-- Right: Cart -->
-             <div class="w-full md:w-[380px] bg-slate-50 flex flex-col border-l border-slate-200">
+             <!-- Right: Cart & Summary (50%) -->
+             <div class="flex-1 flex flex-col bg-slate-50/50 border-l border-slate-200">
                 <div class="p-6 flex-1 overflow-y-auto">
                    <h3 class="text-sm font-bold uppercase tracking-wider text-muted mb-4">Resumen de Venta</h3>
                    
@@ -120,14 +120,14 @@ interface CartItem {
                       <div *ngFor="let item of cart; let i = index" class="flex gap-3 items-start animate-in slide-in-from-right duration-200 p-3 bg-white rounded-lg border border-slate-200 shadow-sm">
                          <div class="flex-1">
                             <div class="text-sm font-semibold text-main">{{ item.product.productName }}</div>
-                            <div class="text-xs text-muted">{{ item.subtotal | currency:'COP':'symbol-narrow':'1.0-0' }}</div>
+                            <div class="text-xs text-slate-500">{{ item.subtotal | currency:'COP':'symbol-narrow':'1.0-0' }}</div>
                          </div>
                          <div class="flex items-center gap-2 bg-slate-100 rounded px-2 py-1 border border-slate-200">
-                            <button (click)="updateQuantity(i, -1)" class="hover:text-primary text-secondary font-bold px-1">-</button>
+                            <button (click)="updateQuantity(i, -1)" class="bg-slate-100 hover:bg-slate-200 rounded-md hover:text-primary text-secondary font-bold px-1">-</button>
                             <input type="number" [ngModel]="item.quantity" (ngModelChange)="setQuantity(i, $event)" 
                                    class="w-12 text-center bg-transparent border-none focus:outline-none text-main font-medium text-sm p-0 appearance-none" 
                                    min="1" [max]="item.product.stock">
-                            <button (click)="updateQuantity(i, 1)" class="hover:text-primary text-secondary font-bold px-1">+</button>
+                            <button (click)="updateQuantity(i, 1)" class="bg-slate-100 hover:bg-slate-200 rounded-md hover:text-primary text-secondary font-bold px-1">+</button>
                          </div>
                          <button (click)="removeFromCart(i)" class="text-muted hover:text-danger p-1">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -193,14 +193,19 @@ interface CartItem {
                    </div>
                    <div class="flex justify-between items-center mb-4">
                       <span class="text-muted font-medium">Total a Pagar</span>
-                      <span class="text-2xl font-bold text-primary">{{ totalConDescuento | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
+                       <span class="text-xl font-bold text-indigo-600">{{ totalConDescuento | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
                    </div>
-                   <button (click)="submitSale()" 
-                           [disabled]="cart.length === 0 || !selectedClientId || processing || (isAdmin && !selectedBodegaId)"
-                           class="btn btn-primary w-full py-3 flex justify-center items-center gap-2 shadow-lg shadow-indigo-500/30">
-                      <span *ngIf="processing" class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></span>
-                      {{ processing ? 'Procesando...' : 'Confirmar Venta' }}
-                   </button>
+                   <div class="flex gap-3 mt-4">
+                       <button (click)="closeModal()" type="button" class="w-1/3 py-3 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-medium text-sm flex justify-center items-center">
+                          Cancelar
+                       </button>
+                       <button (click)="submitSale()" 
+                               [disabled]="cart.length === 0 || !selectedClientId || processing || (isAdmin && !selectedBodegaId)"
+                               class="btn btn-primary flex-1 py-3 flex justify-center items-center gap-2 shadow-lg shadow-indigo-500/30">
+                          <span *ngIf="processing" class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full"></span>
+                          {{ processing ? 'Procesando...' : 'Confirmar Venta' }}
+                       </button>
+                   </div>
                 </div>
              </div>
           </div>
@@ -228,7 +233,7 @@ export class SalesCaptureComponent implements OnInit {
    @Output() onClose = new EventEmitter<void>();
    @Output() saleCompleted = new EventEmitter<void>();
 
-   clients$: Observable<Client[]>;
+   clients$: Observable<Client[]> = new BehaviorSubject<Client[]>([]).asObservable();
    inventory$: Observable<InventoryItem[]>;
    filteredInventory$: Observable<InventoryItem[]>;
 
@@ -254,7 +259,6 @@ export class SalesCaptureComponent implements OnInit {
       private salesService: SalesService,
       private router: Router
    ) {
-      this.clients$ = this.clientsService.getClients();
       this.inventory$ = new BehaviorSubject<InventoryItem[]>([]).asObservable();
       this.filteredInventory$ = new BehaviorSubject<InventoryItem[]>([]).asObservable();
    }
@@ -264,6 +268,9 @@ export class SalesCaptureComponent implements OnInit {
    }
 
    async ngOnInit() {
+      // 0. Load Clients for the selector directly without non-existent filters
+      this.loadClientsDirectly();
+
       // 1. Get Context (Role & Bodega)
       const userResp = await this.salesService['supabase'].auth.getUser();
       const userId = userResp.data.user?.id;
@@ -286,9 +293,10 @@ export class SalesCaptureComponent implements OnInit {
                .eq('distribuidor_id', profile?.distribuidor_id);
             this.bodegas = bods || [];
 
-            // Si no tiene una bodega asignada, usar la primera encontrada
-            if (!this.selectedBodegaId && this.bodegas.length > 0) {
-               this.selectedBodegaId = this.bodegas[0].id;
+            // Si el administrador tiene una bodega asignada, profile?.bodega_asignada_id ya se estableció arriba.
+            // Si no tiene una bodega asignada, mantenemos el comportamiento actual (permitir seleccionar).
+            if (!this.selectedBodegaId) {
+               this.selectedBodegaId = null;
             }
          } else if (this.selectedBodegaId) {
             // Un asesor solo ve su bodega, pero necesitamos el nombre para la UI si el selector fuera visible
@@ -302,6 +310,16 @@ export class SalesCaptureComponent implements OnInit {
       }
 
       await this.loadInventory();
+   }
+
+   async loadClientsDirectly() {
+      try {
+         const data = await this.clientsService.getClientsList();
+         this.clients$ = new BehaviorSubject<any[]>(data).asObservable();
+      } catch (error) {
+         console.error('Error loading clients list', error);
+         this.clients$ = new BehaviorSubject<any[]>([]).asObservable();
+      }
    }
 
    async onBodegaChange() {

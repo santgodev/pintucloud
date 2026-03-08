@@ -58,6 +58,13 @@ import { InventoryService } from '../../services/inventory.service';
                          </div>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-main mb-1">Stock mínimo</label>
+                        <input formControlName="stock_minimo" type="number" class="input-premium w-full" placeholder="Cantidad mínima para alerta de inventario">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-sm font-medium text-main mb-1">{{ product ? 'Stock Actual' : 'Stock a Ingresar' }}</label>
                         <input formControlName="stock" type="number" class="input-premium w-full" placeholder="0">
                     </div>
@@ -137,6 +144,7 @@ export class ProductModalComponent implements OnInit {
          name: ['', Validators.required],
          description: [''],
          price: [0, [Validators.required, Validators.min(0)]],
+         stock_minimo: [0, [Validators.required, Validators.min(0)]],
          stock: [0, [Validators.required, Validators.min(0)]],
          category: ['general'],
          imageUrl: [''],
@@ -154,6 +162,7 @@ export class ProductModalComponent implements OnInit {
             name: this.product.productName,
             description: '',
             price: this.product.price,
+            stock_minimo: this.product.stockMinimo || 0,
             stock: this.product.stock,
             category: this.product.category || 'general',
             imageUrl: this.product.imageUrl
@@ -204,6 +213,7 @@ export class ProductModalComponent implements OnInit {
                description: formVal.description,
                imageUrl: formVal.imageUrl, // Existing URL
                category: formVal.category,
+               stock_minimo: formVal.stock_minimo,
                stock: formVal.stock
             }, this.selectedFile || undefined); // Only pass file if new one selected
 
@@ -220,6 +230,7 @@ export class ProductModalComponent implements OnInit {
                price: formVal.price,
                description: formVal.description,
                imageUrl: imageUrl,
+               stock_minimo: formVal.stock_minimo,
                category: formVal.category || 'general'
             }, formVal.stock, formVal.bodegaId);
          }

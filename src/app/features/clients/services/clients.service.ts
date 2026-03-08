@@ -14,6 +14,11 @@ export interface Client {
     advisorName?: string;
 }
 
+export interface PaginatedClients {
+    data: Client[];
+    total: number;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -21,48 +26,93 @@ export class ClientsService {
 
     constructor(private supabase: SupabaseService) { }
 
-    getAdvisors(): Observable<any[]> {
-        return from(
-            this.supabase.from('usuarios')
-                .select('id, nombre_completo')
-                .eq('rol', 'asesor')
-                .then(({ data }) => data || [])
-        );
+
+
+    getClients(filters?: {
+        page?: number,
+        pageSize?: number,
+        search?: string,
+        sortField?: string,
+        sortDirection?: 'asc' | 'desc'
+    }): Observable<any> {
+        return from(this.fetchClients(filters));
     }
 
-    getClients(filters?: { city?: string, advisorId?: string }): Observable<Client[]> {
+    async getClientsList(): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('clientes')
+            .select('id, codigo, razon_social, telefono, ciudad')
+            .order('razon_social');
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    private async fetchClients(filters?: {
+        page?: number,
+        pageSize?: number,
+        search?: string,
+        sortField?: string,
+        sortDirection?: 'asc' | 'desc'
+    }): Promise<any> {
+        const page = filters?.page || 0;
+        const pageSize = filters?.pageSize || 10;
+        const sortField = filters?.sortField || 'razon_social';
+        const sortDirection = filters?.sortDirection || 'asc';
+
         let query = this.supabase.from('clientes')
-            .select('*, usuarios(nombre_completo)')
-            .order('razon_social', { ascending: true });
+            .select('*, usuarios(nombre_completo), ventas(fecha)', { count: 'exact' });
 
-        if (filters?.city && filters.city !== 'Todas') {
-            query = query.eq('ciudad', filters.city);
+        if (filters?.search) {
+            const s = `%${filters.search}%`;
+            query = query.or(`codigo.ilike.${s},razon_social.ilike.${s},ciudad.ilike.${s},telefono.ilike.${s}`);
         }
 
-        if (filters?.advisorId && filters.advisorId !== 'Todos') {
-            query = query.eq('usuario_id', filters.advisorId);
+        // Apply sorting
+        // Handle special sort fields mapping to DB columns if necessary
+        const dbSortField = sortField === 'clientName' ? 'razon_social' :
+            sortField === 'Última compra' ? 'ultima_compra' :
+                sortField === 'Código' ? 'codigo' :
+                    sortField === 'Ciudad' ? 'ciudad' : sortField;
+
+        query = query.order(dbSortField, { ascending: sortDirection === 'asc' });
+
+        // Apply pagination
+        const fromRow = page * pageSize;
+        const toRow = fromRow + pageSize - 1;
+        query = query.range(fromRow, toRow);
+
+        const { data, count, error } = await query;
+
+        if (error) {
+            console.error('Error fetching clients', error);
+            return { data: [], total: 0 };
         }
 
-        return from(query).pipe(
-            map(({ data, error }) => {
-                if (error) {
-                    console.error('Error fetching clients', error);
-                    return [];
-                }
+        const formattedData = (data || []).map((item: any) => {
+            const ventas = item.ventas || [];
+            let lastBuyDateStr = item.ultima_compra; // default to existing field if present
 
-                return (data || []).map((item: any) => ({
-                    id: item.id,
-                    codigo: item.codigo || '',
-                    razon_social: item.razon_social || '',
-                    ciudad: item.ciudad || '',
-                    address: item.direccion || '',
-                    phone: item.telefono,
-                    email: item.email,
-                    lastBuy: this.formatDate(item.ultima_compra),
-                    advisorName: item.usuarios?.nombre_completo || 'Sin Asignar'
-                }));
-            })
-        );
+            if (ventas.length > 0) {
+                // Find max date from ventas array
+                const maxFecha = ventas.reduce((max: any, p: any) => p.fecha > max ? p.fecha : max, ventas[0].fecha);
+                lastBuyDateStr = maxFecha;
+            }
+
+            return {
+                id: item.id,
+                codigo: item.codigo || '',
+                razon_social: item.razon_social || '',
+                ciudad: item.ciudad || '',
+                address: item.direccion || '',
+                phone: item.telefono,
+                email: item.email,
+                lastBuy: lastBuyDateStr ? this.formatDate(lastBuyDateStr) : 'N/A',
+                advisorName: item.usuarios?.nombre_completo || 'Sin Asignar'
+            };
+        });
+
+        return { data: formattedData, total: count || 0 };
     }
 
     private formatDate(dateStr: string): string {
@@ -105,5 +155,28 @@ export class ClientsService {
 
         if (error) throw error;
         return data.id;
+    }
+
+    async updateClient(id: string, client: {
+        codigo: string;
+        razon_social: string;
+        ciudad: string;
+        direccion: string;
+        telefono: string;
+        email?: string;
+    }): Promise<void> {
+        const { error } = await this.supabase
+            .from('clientes')
+            .update({
+                codigo: client.codigo,
+                razon_social: client.razon_social,
+                ciudad: client.ciudad,
+                direccion: client.direccion,
+                telefono: client.telefono,
+                email: client.email || null
+            })
+            .eq('id', id);
+
+        if (error) throw error;
     }
 }

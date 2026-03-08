@@ -1,5 +1,5 @@
 ﻿import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
@@ -12,12 +12,13 @@ import { SupabaseService } from '../../core/services/supabase.service';
    selector: 'app-sales',
    standalone: true,
    imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedModule, SalesCaptureComponent],
+   providers: [DatePipe],
    template: `
     <div class="sales-container p-6 animate-in fade-in duration-500">
        <div class="flex justify-between items-center mb-6">
           <h1 class="text-2xl font-bold text-slate-900">Gestión de Ventas</h1>
-          <button class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700 flex items-center justify-center gap-2 transition-all" (click)="toggleNewSaleModal()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl shadow-sm hover:bg-indigo-700 flex items-center justify-center transition-all" (click)="toggleNewSaleModal()">
+            <svg class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
@@ -25,8 +26,10 @@ import { SupabaseService } from '../../core/services/supabase.service';
           </button>
        </div>
        
-       <!-- Filtros Avanzados -->
-       <div class="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+       <!-- Contenedor Principal de Filtros -->
+       <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+         <!-- Filtros Avanzados -->
+         <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           
           <!-- Búsqueda Debounced -->
           <div class="relative lg:col-span-2">
@@ -37,7 +40,6 @@ import { SupabaseService } from '../../core/services/supabase.service';
                 <input type="text" 
                        class="w-full h-10 pl-10 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm" 
                        [formControl]="searchControl" 
-                       (keyup.enter)="loadSales()"
                        placeholder="Buscar por factura o cliente..." />
              </div>
           </div>
@@ -86,22 +88,31 @@ import { SupabaseService } from '../../core/services/supabase.service';
                    class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all">
               Filtrar por fecha
            </button>
-           <button *ngIf="isFiltering || fechaInicio || fechaFin" (click)="limpiarFiltro()"
-                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all">
+           <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
+                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white">
               Limpiar
            </button>
         </div>
+       </div>
 
         <!-- Tabla de Resultados -->
        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
            <table class="w-full text-left border-collapse">
               <thead>
                  <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
-                    <th class="p-4 border-b border-slate-200">Factura</th>
-                    <th class="p-4 border-b border-slate-200">Fecha</th>
-                    <th class="p-4 border-b border-slate-200">Cliente</th>
+                    <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('numero_factura')">
+                       <div class="flex items-center gap-1">Factura <span *ngIf="sortField === 'numero_factura'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'numero_factura'" class="text-slate-300 opacity-50">↕</span></div>
+                    </th>
+                    <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('fecha')">
+                       <div class="flex items-center gap-1">Fecha <span *ngIf="sortField === 'fecha'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'fecha'" class="text-slate-300 opacity-50">↕</span></div>
+                    </th>
+                    <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('clientName')">
+                       <div class="flex items-center gap-1">Cliente <span *ngIf="sortField === 'clientName'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'clientName'" class="text-slate-300 opacity-50">↕</span></div>
+                    </th>
                     <th class="p-4 border-b border-slate-200">Asesor</th>
-                    <th class="p-4 border-b border-slate-200">Total</th>
+                    <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('total')">
+                       <div class="flex items-center gap-1">Total <span *ngIf="sortField === 'total'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'total'" class="text-slate-300 opacity-50">↕</span></div>
+                    </th>
                     <th class="p-4 border-b border-slate-200 text-center">Estado</th>
                     <th class="p-4 border-b border-slate-200 text-right">Acciones</th>
                  </tr>
@@ -111,11 +122,11 @@ import { SupabaseService } from '../../core/services/supabase.service';
                  <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
 
                  <tr *ngFor="let sale of paginatedSales" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                     <td class="p-4 font-mono text-sm font-bold text-indigo-600">
+                     <td class="p-4 font-mono text-sm font-bold text-indigo-600 cursor-pointer hover:underline" (click)="verDetalle(sale.id)">
                         {{ formatFactura(sale.numero_factura) }}
                     </td>
                     <td class="p-4 text-sm text-slate-800">
-                        {{ formatFecha(sale.fecha) }}
+                        {{ sale.fecha | date:'dd-MMM-yyyy' | lowercase }}
                     </td>
                     <td class="p-4">
                         <div class="text-sm font-medium text-slate-900">{{ sale.clientName }}</div>
@@ -124,22 +135,25 @@ import { SupabaseService } from '../../core/services/supabase.service';
                         {{ sale.vendedorName }}
                     </td>
                     <td class="p-4 font-bold text-slate-900">
-                        {{ sale.total | currency:'COP':'symbol-narrow':'1.0-0' }}
+                        \${{ sale.total | number: '1.0-0' }}
                     </td>
                     <td class="p-4 text-center">
                         <span class="badge-premium" 
                             [class.success]="sale.estado === 'CONFIRMADA'"
                             [class.warning]="sale.estado === 'BORRADOR'"
                             [class.danger]="sale.estado === 'ANULADA'">
-                            {{ sale.estado | titlecase }}
+                            <span *ngIf="sale.estado === 'CONFIRMADA'">✔ </span>
+                            <span *ngIf="sale.estado === 'BORRADOR'">⏳ </span>
+                            <span *ngIf="sale.estado === 'ANULADA'">✖ </span>
+                            {{ sale.estado }}
                         </span>
                     </td>
                     <td class="p-4 text-right">
-                        <div class="flex justify-end gap-1">
+                        <div class="flex justify-end gap-2">
                             <!-- EDITAR -->
                              <button *ngIf="sale.estado !== 'ANULADA'" 
                                      (click)="editarVenta(sale)" 
-                                    class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
+                                    class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" 
                                      title="Editar">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -149,7 +163,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
                             
                             <!-- VER (Siempre visible) -->
                             <button (click)="verDetalle(sale.id)" 
-                                    class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
+                                    class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all" 
                                     title="Ver Factura">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -256,8 +270,10 @@ export class SalesComponent implements OnInit {
    // Filtro por rango de fechas
    fechaInicio: string = '';
    fechaFin: string = '';
-   isFiltering: boolean = false;
-   filteredSales: any[] = [];
+
+   // Ordenamiento
+   sortField: string = 'fecha';
+   sortDirection: 'asc' | 'desc' = 'desc';
 
    constructor(
       private salesService: SalesService,
@@ -313,6 +329,8 @@ export class SalesComponent implements OnInit {
          const result = await this.salesService.getSales({
             page: this.page,
             pageSize: this.pageSize,
+            sortField: this.sortField,
+            sortDirection: this.sortDirection,
             ...this.filters
          });
          this.sales = result.data as any;
@@ -329,77 +347,62 @@ export class SalesComponent implements OnInit {
       this.loadSales();
    }
 
-   async filtrarPorFecha() {
-      if (!this.fechaInicio || !this.fechaFin) return;
-      this.loading = true;
-      this.page = 0;
-      this.isFiltering = true;
-      const { data, error } = await this.salesService.getSalesByDateRange(
-         this.fechaInicio, this.fechaFin
-      );
-      this.loading = false;
-      if (!error && data) {
-         this.filteredSales = (data as any[]).map((item: any) => ({
-            ...item,
-            clientName: item.cliente?.razon_social || 'Cliente Desconocido'
-         }));
+   sortBy(field: string) {
+      if (this.sortField === field) {
+         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+         this.sortField = field;
+         this.sortDirection = 'asc';
       }
+      this.page = 0;
+      this.loadSales();
+   }
+
+   filtrarPorFecha() {
+      if (!this.fechaInicio || !this.fechaFin) return;
+      this.filters.fechaDesde = this.fechaInicio;
+      this.filters.fechaHasta = this.fechaFin;
+      this.page = 0;
+      this.loadSales();
    }
 
    limpiarFiltro() {
       this.fechaInicio = '';
       this.fechaFin = '';
-      this.isFiltering = false;
-      this.filteredSales = [];
+      this.filters.fechaDesde = '';
+      this.filters.fechaHasta = '';
       this.page = 0;
       this.loadSales();
    }
 
    nextPage() {
-      if (this.isFiltering) {
-         if ((this.page + 1) * this.pageSize < this.filteredSales.length) this.page++;
-      } else {
-         if ((this.page + 1) * this.pageSize < this.totalRecords) {
-            this.page++;
-            this.loadSales();
-         }
+      if ((this.page + 1) * this.pageSize < this.totalRecords) {
+         this.page++;
+         this.loadSales();
       }
    }
 
    previousPage() {
       if (this.page > 0) {
          this.page--;
-         if (!this.isFiltering) this.loadSales();
+         this.loadSales();
       }
    }
 
    get totalItems(): number {
-      return this.isFiltering ? this.filteredSales.length : this.totalRecords;
+      return this.totalRecords;
    }
 
    get paginatedSales(): any[] {
-      if (this.isFiltering) {
-         const start = this.page * this.pageSize;
-         return this.filteredSales.slice(start, start + this.pageSize);
-      }
       return this.sales;
    }
 
    get totalPages(): number {
-      return Math.ceil(this.totalItems / this.pageSize);
+      return Math.ceil(this.totalRecords / this.pageSize);
    }
 
    formatFactura(num: number | null) {
       return num ? `#${num.toString().padStart(6, '0')}` : '—';
-   }
-
-   formatFecha(fecha: string) {
-      // Parseamos manualmente para evitar conversión UTC→local que retrocede un día
-      const [anio, mes, dia] = fecha.split('T')[0].split('-').map(Number);
-      const date = new Date(anio, mes - 1, dia); // mes-1 porque Date usa 0-based
-      const diaStr = date.getDate().toString().padStart(2, '0');
-      const mesStr = date.toLocaleString('es-CO', { month: 'short' }).replace('.', '').toLowerCase();
-      return `${diaStr}-${mesStr}-${anio}`;
    }
 
    toggleNewSaleModal() {

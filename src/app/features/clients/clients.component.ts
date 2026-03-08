@@ -3,133 +3,144 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SharedModule } from '../../shared/shared.module';
 import { ClientsService, Client } from './services/clients.service';
-import { Observable } from 'rxjs';
+import { Observable, debounceTime, distinctUntilChanged } from 'rxjs';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ClientModalComponent } from './components/client-modal/client-modal.component';
 import { ClientDetailModalComponent } from './components/client-detail-modal/client-detail-modal.component';
+import { Router } from '@angular/router';
 
 @Component({
    selector: 'app-clients',
    standalone: true,
-   imports: [CommonModule, SharedModule, FormsModule, ClientModalComponent, ClientDetailModalComponent],
-   template: `
-    <div class="flex flex-col md:flex-row justify-between mb-6 gap-4">
-       <div>
-         <h1 class="title-lg">Cartera de Clientes</h1>
-         <p class="text-muted text-sm">Gestiona tus clientes y prospectos.</p>
-       </div>
-       <div class="flex gap-2 items-center">
-          <!-- Filters -->
-          <select [(ngModel)]="selectedCity" (change)="refreshClients()" class="input-premium py-1 text-sm w-32 md:w-40">
-             <option value="Todas">Todas las Ciudades</option>
-             <option value="Barranquilla">Barranquilla</option>
-             <option value="Santa Marta">Santa Marta</option>
-             <option value="Medellín">Medellín</option>
-          </select>
-          
-          <select *ngIf="isAdmin" [(ngModel)]="selectedAdvisor" (change)="refreshClients()" class="input-premium py-1 text-sm w-32 md:w-40">
-              <option value="Todos">Todos los Asesores</option>
-              <option *ngFor="let adv of advisors" [value]="adv.id">{{ adv.nombre_completo }}</option>
-          </select>
-
-          <button class="btn btn-primary whitespace-nowrap" (click)="openModal()">+ Nuevo Cliente</button>
-       </div>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-       <app-card *ngFor="let client of clients$ | async">
-          <div class="flex items-center gap-4 mb-4">
-             <div class="avatar-placeholder">{{client.razon_social.charAt(0)}}</div>
-             <div>
-                <h3 class="font-bold text-lg text-main">{{client.razon_social}}</h3>
-                <p class="text-sm text-muted">{{ client.codigo }} &bull; {{client.ciudad}}</p>
-             </div>
-          </div>
-          <div class="info-grid text-sm mb-4">
-             <div class="info-item">
-                <span class="label">Última Compra</span>
-                <span class="value">{{client.lastBuy}}</span>
-             </div>
-              <div class="info-item">
-                <span class="label">Dirección</span>
-                <span class="value">{{client.address || '—'}}</span>
-             </div>
-          </div>
-          <div class="actions border-t border-slate-200 pt-4">
-             <button class="btn btn-outline w-full text-sm" (click)="openDetail(client)">Ver Detalle</button>
-          </div>
-       </app-card>
-       
-       <!-- Empty State -->
-       <div *ngIf="(clients$ | async)?.length === 0" class="col-span-full text-center p-8 text-muted border border-dashed border-slate-300 rounded bg-slate-50">
-          No hay clientes registrados. Añade uno nuevo.
-       </div>
-       
-       <app-client-modal *ngIf="showClientModal" (onClose)="showClientModal = false" (saved)="refreshClients()"></app-client-modal>
-       
-       <app-client-detail-modal *ngIf="selectedClient" [client]="selectedClient" (onClose)="selectedClient = null"></app-client-detail-modal>
-    </div>
-  `,
+   imports: [CommonModule, SharedModule, FormsModule, ReactiveFormsModule, ClientModalComponent, ClientDetailModalComponent],
+   templateUrl: './clients.component.html',
    styles: [`
-    .grid { display: grid; gap: 1.5rem; }
-    .grid-cols-1 { grid-template-columns: 1fr; }
-    @media(min-width: 768px) { .md\\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); } }
-    @media(min-width: 1024px) { .lg\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); } }
-    
-    .avatar-placeholder {
-       width: 48px; height: 48px; background: var(--color-slate-50); border: 1px solid var(--border-subtle);
-       border-radius: 50%; display: flex; align-items: center; justify-content: center;
-       font-weight: 700; color: var(--color-primary);
-       font-size: 1.125rem;
+    .btn-nav { 
+        @apply px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-all shadow-sm;
     }
-    .text-muted { color: var(--text-muted); }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .label { display: block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-    .value { color: var(--text-main); font-weight: 600; font-size: 0.95rem; }
-    .w-full { width: 100%; }
-    .col-span-full { grid-column: 1 / -1; }
+    .input-premium {
+        @apply bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all shadow-sm h-10;
+    }
+    table {
+        border-collapse: collapse;
+    }
+    table th,
+    table td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 10px 12px;
+    }
+    table th:not(:last-child),
+    table td:not(:last-child) {
+        border-right: 1px solid #f1f5f9;
+    }
+    tbody tr {
+        height: 42px;
+    }
+    .client-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .client-code {
+        color: #4f46e5;
+        font-weight: 500;
+    }
+    thead th {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+        background: #f9fafb;
+    }
   `]
 })
 export class ClientsComponent implements OnInit {
-   clients$!: Observable<Client[]>;
+   clients: Client[] = [];
+   totalRecords = 0;
+   loading = false;
+   page = 0;
+   pageSize = 10;
+   Math = Math;
+
+   // Search & Filters
+   searchControl = new FormControl('');
+
+   // Sorting
+   sortField: string = 'razon_social';
+   sortDirection: 'asc' | 'desc' = 'asc';
+
+   // Modals
    showClientModal = false;
    selectedClient: Client | null = null;
+   clientToEdit: Client | null = null;
 
-   // Filters and State
-   selectedCity = 'Todas';
-   selectedAdvisor = 'Todos';
-   advisors: any[] = [];
-   isAdmin = false; // TODO: Fetch from actual user role
-
-   constructor(private clientsService: ClientsService) { }
+   constructor(private clientsService: ClientsService, private router: Router) { }
 
    ngOnInit() {
-      // Check role (mock or real) -> In real app, check authService.currentUser
-      // For now, let's assume if we can fetch advisors, we are admin-like or we just show the filter anyway
-      this.checkRole();
+      this.searchControl.valueChanges
+         .pipe(
+            debounceTime(400),
+            distinctUntilChanged()
+         )
+         .subscribe(() => {
+            this.page = 0;
+            this.loadClients();
+         });
 
       this.loadClients();
-      this.loadAdvisors();
    }
 
-   checkRole() {
-      // Logic to check if user is admin. For now, we enable it if fetch returns something or just true for demo
-      this.isAdmin = true;
-   }
 
-   loadAdvisors() {
-      this.clientsService.getAdvisors().subscribe(data => {
-         this.advisors = data;
-      });
-   }
 
    loadClients() {
-      this.clients$ = this.clientsService.getClients({
-         city: this.selectedCity,
-         advisorId: this.selectedAdvisor
+      this.loading = true;
+      this.clientsService.getClients({
+         page: this.page,
+         pageSize: this.pageSize,
+         search: this.searchControl.value || '',
+         sortField: this.sortField,
+         sortDirection: this.sortDirection
+      }).subscribe(result => {
+         this.clients = result.data;
+         this.totalRecords = result.total;
+         this.loading = false;
       });
+   }
+
+   onFilterChange() {
+      this.page = 0;
+      this.loadClients();
+   }
+
+   sortBy(field: string) {
+      if (this.sortField === field) {
+         this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+         this.sortField = field;
+         this.sortDirection = 'asc';
+      }
+      this.page = 0;
+      this.loadClients();
+   }
+
+   nextPage() {
+      if ((this.page + 1) * this.pageSize < this.totalRecords) {
+         this.page++;
+         this.loadClients();
+      }
+   }
+
+   previousPage() {
+      if (this.page > 0) {
+         this.page--;
+         this.loadClients();
+      }
+   }
+
+   get totalPages(): number {
+      return Math.ceil(this.totalRecords / this.pageSize);
    }
 
    refreshClients() {
+      this.page = 0;
       this.loadClients();
    }
 
@@ -139,5 +150,15 @@ export class ClientsComponent implements OnInit {
 
    openDetail(client: Client) {
       this.selectedClient = client;
+   }
+
+   editarCliente(client: Client) {
+      this.clientToEdit = client;
+      this.showClientModal = true;
+   }
+
+   openEditModal(client: Client) {
+      this.selectedClient = null;
+      this.editarCliente(client);
    }
 }
