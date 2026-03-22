@@ -57,7 +57,7 @@ interface CartItem {
             <label class="block text-sm font-medium text-slate-700 mb-2">Cliente</label>
             <select [(ngModel)]="selectedClientId" class="input-edit w-full">
               <option [ngValue]="null">Seleccionar cliente...</option>
-              <option *ngFor="let c of clients$ | async" [value]="c.id">{{ c.name }}</option>
+              <option *ngFor="let c of clients$ | async" [value]="c.id">{{ c.razon_social }}</option>
             </select>
           </div>
 
