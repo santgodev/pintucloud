@@ -53,7 +53,7 @@ export class InventoryService {
         return [...new Set(categories)] as string[];
     }
 
-    async getInventory(bodegaId?: string): Promise<Observable<InventoryItem[]>> {
+    async getInventory(bodegaId?: string, lowStock?: boolean): Promise<Observable<InventoryItem[]>> {
         // 1. Get User Profile for Context
         const user = await this.supabase.auth.getUser();
         if (!user.data.user) return new Observable(obs => obs.next([]));
@@ -89,7 +89,7 @@ export class InventoryService {
                     return [];
                 }
 
-                return (data || []).map((item: any) => {
+                let items = (data || []).map((item: any) => {
                     const quantity = item.cantidad;
                     const minStock = item.productos?.stock_minimo || 0;
 
@@ -113,6 +113,12 @@ export class InventoryService {
                         status: status
                     };
                 });
+
+                if (lowStock) {
+                    items = items.filter(item => item.stock <= (item.stockMinimo || 0));
+                }
+
+                return items;
             })
         );
     }
@@ -252,14 +258,16 @@ export class InventoryService {
     async adjustInventory(
         productoId: string,
         bodegaId: string,
-        nuevaCantidad: number,
+        diferencia: number,
         motivo: string
     ) {
-        const { error } = await this.supabase.rpc('ajustar_inventario', {
+        const { error } = await this.supabase.rpc('registrar_movimiento', {
             p_producto_id: productoId,
             p_bodega_id: bodegaId,
-            p_nueva_cantidad: nuevaCantidad,
-            p_motivo: motivo
+            p_tipo_movimiento: 'AJUSTE',
+            p_cantidad: diferencia,
+            p_referencia_id: null,
+            p_observacion: motivo
         });
 
         if (error) {

@@ -55,10 +55,10 @@ interface CartItem {
             </select>
           </div>
 
-          <!-- Bodega (solo admin) -->
-          <div *ngIf="isAdmin" class="mb-6">
+          <!-- Bodega (si hay varias) -->
+          <div *ngIf="bodegas.length > 1" class="mb-6">
             <label class="block text-sm font-medium text-slate-700 mb-2">Bodega de Despacho *</label>
-            <select [(ngModel)]="selectedBodegaId" (ngModelChange)="onBodegaChange()" class="input-premium w-full" [class.border-red-500]="isAdmin && !selectedBodegaId">
+            <select [(ngModel)]="selectedBodegaId" (ngModelChange)="onBodegaChange()" class="input-premium w-full" [class.border-red-500]="bodegas.length > 1 && !selectedBodegaId">
               <option [ngValue]="null">Seleccionar Bodega...</option>
               <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
             </select>
@@ -78,7 +78,7 @@ interface CartItem {
 
           <!-- Lista productos -->
           <div class="space-y-2 overflow-y-auto max-h-[500px]">
-             <div *ngIf="isAdmin && !selectedBodegaId" class="text-center py-10 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+             <div *ngIf="bodegas.length > 1 && !selectedBodegaId" class="text-center py-10 bg-slate-50 rounded-lg border border-dashed border-slate-300">
                  <p class="text-sm text-slate-400 italic">Seleccione una bodega arriba para ver productos</p>
              </div>
 
@@ -255,7 +255,7 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
   selectedBodegaId: string | null = null;
   condicionPago: 'CONTADO' | 'CREDITO' = 'CONTADO';
   diasCredito = 30;
-  paymentMethod = 'Efectivo';
+  paymentMethod = 'EFECTIVO';
   tipoDocumento: number = 2;
   descuentoPorcentaje: number = 0;
 
@@ -324,7 +324,7 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
       this.selectedBodegaId = this.sale.bodega_id;
       this.condicionPago = this.sale.condicion_pago ?? 'CONTADO';
       this.diasCredito = this.sale.dias_credito ?? 30;
-      this.paymentMethod = this.sale.metodo_pago ?? '';
+      this.paymentMethod = (this.sale.metodo_pago ?? '').toUpperCase();
       this.tipoDocumento = this.sale.tipo_documento ?? 2;
       this.descuentoPorcentaje = this.sale.descuento_porcentaje ?? 0;
 
@@ -435,7 +435,7 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
       this.paymentMethod = '';
       this.diasCredito = 15;
     } else {
-      this.paymentMethod = 'Efectivo';
+      this.paymentMethod = 'EFECTIVO';
     }
   }
 
@@ -454,10 +454,12 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
     try {
       const supabase = (this.salesService as any)['supabase'];
 
+      const method = (this.paymentMethod || '').toUpperCase();
+
       // 1. Actualizar encabezado de la venta
       await supabase.from('ventas').update({
         cliente_id: this.selectedClientId,
-        metodo_pago: this.condicionPago === 'CREDITO' ? null : this.paymentMethod,
+        metodo_pago: this.condicionPago === 'CREDITO' ? null : method,
         condicion_pago: this.condicionPago,
         dias_credito: this.condicionPago === 'CREDITO' ? this.diasCredito : null,
         tipo_documento: this.tipoDocumento,

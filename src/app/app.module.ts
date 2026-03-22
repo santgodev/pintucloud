@@ -28,7 +28,7 @@ registerLocaleData(localeEsCo);
   ],
   providers: [
     { provide: LOCALE_ID, useValue: 'es-CO' },
-    { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: '-0500' } }
+    { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: 'America/Bogota' } }
   ],
   bootstrap: [AppComponent]
 })

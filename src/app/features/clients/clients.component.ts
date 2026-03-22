@@ -8,6 +8,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ClientModalComponent } from './components/client-modal/client-modal.component';
 import { ClientDetailModalComponent } from './components/client-detail-modal/client-detail-modal.component';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
    selector: 'app-clients',
@@ -72,7 +73,22 @@ export class ClientsComponent implements OnInit {
    selectedClient: Client | null = null;
    clientToEdit: Client | null = null;
 
-   constructor(private clientsService: ClientsService, private router: Router) { }
+   constructor(
+      private clientsService: ClientsService, 
+      private router: Router,
+      private authService: AuthService
+   ) { }
+
+   get isAdmin(): boolean {
+      const role = this.authService.currentUserValue?.role;
+      return role === 'ADMIN';
+   }
+
+   formatCurrency(valor: number): string {
+      return '$ ' + new Intl.NumberFormat('es-CO', {
+         maximumFractionDigits: 0
+      }).format(valor);
+   }
 
    ngOnInit() {
       this.searchControl.valueChanges

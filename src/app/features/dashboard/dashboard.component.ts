@@ -5,13 +5,17 @@ import { SalesService } from '../sales/services/sales.service';
 import { ShowcaseService } from '../showcase/services/showcase.service';
 import { InventoryService } from '../inventory/services/inventory.service';
 import { SalesCaptureComponent } from '../sales/components/sales-capture/sales-capture.component';
+import { DashboardService } from './services/dashboard.service';
+import { Chart } from 'chart.js/auto';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Observable, map } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
-    selector: 'app-dashboard',
-    standalone: true,
-    imports: [CommonModule, SharedModule, SalesCaptureComponent],
-    template: `
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule, SharedModule, SalesCaptureComponent],
+  template: `
     <div class="dashboard-container">
       <div class="header mb-8 flex justify-between items-end">
          <div>
@@ -29,27 +33,28 @@ import { Observable, map } from 'rxjs';
       <!-- Stats Row -->
       <div class="stats-grid mb-6">
          <!-- Sales Stats -->
-         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-1">
+         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-1 card-dashboard" (click)="goToVentasHoy()">
             <div class="absolute top-0 right-0 p-4 opacity-10">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             </div>
             <div class="stat-box">
                <div>
                  <div class="stat-label mb-1">Ventas Hoy</div>
-                 <div class="stat-value text-primary">{{ (salesToday$ | async) | currency:'COP':'symbol-narrow':'1.0-0' }}</div>
+                 <div class="stat-value text-primary">$ {{ ventasHoy | number }}</div>
                </div>
             </div>
             <div class="stat-footer bg-primary-soft-solid">
-               <span class="text-primary font-bold flex items-center gap-1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                  +15%
+               <span class="font-bold flex items-center gap-1"
+                     [ngClass]="variacionVentas >= 0 ? 'text-green-600' : 'text-red-600'">
+                  <svg *ngIf="variacionVentas >= 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                  <svg *ngIf="variacionVentas < 0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="transform: rotate(90deg)"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                  {{ variacionVentas | number:'1.1-1' }}% vs ayer
                </span>
-               <span class="opacity-70 ml-1">vs ayer</span>
             </div>
          </app-card>
 
          <!-- Product Count -->
-         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-2">
+         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-2 card-dashboard" (click)="goToProductos()">
             <div class="absolute top-0 right-0 p-4 opacity-10 text-secondary">
                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
             </div>
@@ -65,7 +70,7 @@ import { Observable, map } from 'rxjs';
          </app-card>
 
          <!-- Low Stock Alerts -->
-         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-3">
+         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-3 card-dashboard" (click)="goToStockBajo()">
              <div class="absolute top-0 right-0 p-4 opacity-10 text-warning">
                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
              </div>
@@ -81,7 +86,7 @@ import { Observable, map } from 'rxjs';
          </app-card>
          
          <!-- Mock Visits -->
-         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-4">
+         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-4 card-dashboard" (click)="goToVisitas()">
              <div class="absolute top-0 right-0 p-4 opacity-10 text-info">
                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
              </div>
@@ -98,41 +103,39 @@ import { Observable, map } from 'rxjs';
       </div>
 
       <!-- Main Content Grid -->
-      <div class="dashboard-main-grid">
-          <!-- Left: Hero Map -->
-          <app-card header="Ruta en Tiempo Real" class="slide-in-5 map-card h-full">
-          <div class="map-container relative h-full min-h-[400px] w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
-                   <!-- Grid Pattern Background -->
-                  <div class="absolute inset-0" style="background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px); background-size: 40px 40px;"></div>
-                  
-                  <!-- Mock Map UI -->
-                  <div class="absolute top-4 left-4 bg-white/90 backdrop-blur-md p-3 rounded-lg border border-slate-200 shadow-sm max-w-[200px]">
-                      <div class="text-xs text-muted uppercase font-bold tracking-wider mb-1">Vendedor Activo</div>
-                      <div class="flex items-center gap-2">
-                          <img src="https://ui-avatars.com/api/?name=Carlos+R&background=random" class="w-6 h-6 rounded-full">
-                          <span class="text-sm font-semibold text-main">Carlos Rodriguez</span>
+      <div class="grid grid-cols-12 gap-6">
+          <!-- Ventas por Producto -->
+          <div class="col-span-12 lg:col-span-9 card bg-white rounded-xl border border-slate-200 p-6 shadow-sm slide-in-5 flex flex-col min-h-[500px]">
+            <h3 class="text-lg font-semibold mb-4 text-slate-800">
+              Ventas por Producto (Mes)
+            </h3>
+            <div class="flex-1 mt-4 products-container pr-2">
+                <div class="product-row" *ngFor="let item of productosVentasMes; let i = index">
+                    <span class="product-name" [title]="item.producto">
+                      {{item.producto}}
+                    </span>
+                    
+                    <div class="bar-container">
+                      <div class="bar" 
+                           [style.width.%]="item.width"
+                           [style.background]="coloresBarras[i]">
                       </div>
-                  </div>
-
-                  <!-- Pulsing Dots (Locations) -->
-                  <div class="map-marker" style="top: 30%; left: 40%">
-                      <div class="pulsing-dot bg-success"></div>
-                      <div class="marker-label">Cliente A</div>
-                  </div>
-                   <div class="map-marker" style="top: 55%; left: 65%">
-                      <div class="pulsing-dot bg-warning"></div>
-                      <div class="marker-label">Cliente B</div>
-                  </div>
-                  
-                  <!-- Route Line (SVG) -->
-                  <svg class="absolute inset-0 w-full h-full pointer-events-none">
-                      <path d="M400 200 Q 550 300 650 350" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="5,5" fill="none" opacity="0.6"></path>
-                  </svg>
-              </div>
-          </app-card>
+                    </div>
+                    
+                    <span class="percent">
+                      {{item.porcentaje | number:'1.0-1'}}%
+                    </span>
+                    
+                    <span class="amount">
+                      \${{item.total_ventas | number}}
+                    </span>
+                </div>
+            </div>
+          </div>
 
           <!-- Right: Activity Feed -->
-          <app-card header="Actividad Reciente" class="slide-in-6 h-full">
+          <div class="col-span-12 lg:col-span-3 h-full">
+            <app-card header="Actividad Reciente" class="slide-in-6 h-full">
                <div class="feed-list">
                    <div class="feed-item">
                        <div class="feed-icon bg-success-soft-solid">
@@ -173,7 +176,7 @@ import { Observable, map } from 'rxjs';
                        </div>
                        <div class="feed-content">
                            <div class="feed-title">Nuevo Cliente</div>
-                           <div class="feed-desc">Registrado "Constructora A&M".</div>
+                           <div class="feed-desc">Registrado \"Constructora A&M\".</div>
                            <div class="feed-time">Hace 1 hora</div>
                        </div>
                    </div>
@@ -182,14 +185,15 @@ import { Observable, map } from 'rxjs';
                <div class="mt-4 pt-4 border-t border-white/5 text-center">
                   <button class="btn btn-outline w-full text-sm py-2">Ver Todo el Historial</button>
                </div>
-          </app-card>
+            </app-card>
+        </div>
       </div>
 
       <!-- New Sale Modal -->
       <app-sales-capture *ngIf="showNewSaleModal" (onClose)="toggleNewSaleModal()" (saleCompleted)="refreshStats()"></app-sales-capture>
     </div>
   `,
-    styles: [`
+  styles: [`
     .dashboard-container {
       max-width: 1400px;
       margin: 0 auto;
@@ -227,28 +231,6 @@ import { Observable, map } from 'rxjs';
     .bg-primary-soft-solid { background: var(--color-slate-50); }
     .bg-warning-soft-solid { background: #fffbeb; }
 
-    /* Main Grid Layout */
-    .dashboard-main-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-        height: auto;
-    }
-    @media (min-width: 1024px) {
-        .dashboard-main-grid { 
-            grid-template-columns: 2fr 1fr; 
-            height: 500px; /* Fixed height for Hero feel on desktop */
-        }
-    }
-
-    /* Map Styles */
-    .map-marker { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; transform: translate(-50%, -50%); }
-    .marker-label { background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: var(--text-main); font-weight: 600; }
-    
-    .pulsing-dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); animation: pulse 2s infinite; }
-    .pulsing-dot.bg-success { background: var(--color-success); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-    .pulsing-dot.bg-warning { background: var(--color-warning); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-
     /* Feed Styles */
     .feed-list { display: flex; flex-direction: column; gap: 1.25rem; }
     .feed-item { display: flex; gap: 1rem; align-items: flex-start; }
@@ -284,44 +266,198 @@ import { Observable, map } from 'rxjs';
     .slide-in-6 { animation-delay: 0.35s; }
 
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .products-container {
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .product-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .product-name {
+      width: 260px;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .bar-container {
+      flex: 1;
+      height: 16px;
+      background: #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 16px;
+      background: #6366f1;
+      border-radius: 8px;
+    }
+
+    .percent {
+      width: 50px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    .amount {
+      width: 90px;
+      text-align: right;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    .card-dashboard {
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .card-dashboard:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 18px rgba(0,0,0,.08);
+    }
   `]
 })
 export class DashboardComponent implements OnInit {
 
-    salesToday$!: Observable<number>;
-    productCount$!: Observable<number>;
-    lowStockCount$!: Observable<number>;
-    showNewSaleModal = false;
+  salesToday$!: Observable<number>;
+  productCount$!: Observable<number>;
+  lowStockCount$!: Observable<number>;
+  showNewSaleModal = false;
+  productosVentasMes: any[] = [];
+  ventasHoy: number = 0;
+  ventasAyer: number = 0;
+  variacionVentas: number = 0;
+  coloresBarras = [
+    '#6366f1',
+    '#22c55e',
+    '#f59e0b',
+    '#ef4444',
+    '#06b6d4',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#84cc16',
+    '#f97316',
+    '#3b82f6',
+    '#10b981',
+    '#a855f7',
+    '#eab308',
+    '#64748b'
+  ];
 
-    constructor(
-        private salesService: SalesService,
-        private showcaseService: ShowcaseService,
-        private inventoryService: InventoryService
-    ) { }
+  readonly chartColors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1'];
 
-    ngOnInit() {
-        this.loadStats();
+  constructor(
+    private salesService: SalesService,
+    private showcaseService: ShowcaseService,
+    private inventoryService: InventoryService,
+    private dashboardService: DashboardService,
+    private router: Router
+  ) { }
+
+  ngOnInit() {
+    this.loadStats();
+    this.loadVentasProductos();
+  }
+
+
+
+  getChartColor(index: number): string {
+    return this.chartColors[index % this.chartColors.length];
+  }
+
+  async loadVentasProductos() {
+    try {
+      const data = await this.dashboardService.getVentasProductosMes();
+      console.log('Productos ventas mes:', data);
+      console.log('Cantidad registros:', data?.length);
+
+      // Versión segura con tipos y normalización de barras
+      this.productosVentasMes = data.map((p: any) => ({
+        ...p,
+        porcentaje: Number(p.porcentaje || 0),
+        total_ventas: Number(p.total_ventas || 0)
+      }));
+
+      const max = Math.max(...this.productosVentasMes.map(p => p.porcentaje), 0);
+
+      this.productosVentasMes = this.productosVentasMes.map(p => ({
+        ...p,
+        width: max > 0 ? (p.porcentaje / max) * 100 : 0
+      }));
+
+      console.log('Ranking Procesado:', this.productosVentasMes);
+
+    } catch (err) {
+      console.error('Error cargando ranking de productos:', err);
+      this.productosVentasMes = [];
     }
+  }
 
-    async loadStats() {
-        this.salesToday$ = this.salesService.getSalesToday();
+  async loadStats() {
+    try {
+      // Real sales summary from RPC - returns an array
+      const data = await this.dashboardService.getVentasResumen();
+      console.log("Resumen ventas:", data);
 
-        this.productCount$ = this.showcaseService.getProducts().pipe(
-            map(products => products.length)
-        );
+      if (data && data.length > 0) {
+        this.ventasHoy = Number(data[0].ventas_hoy || 0);
+        this.ventasAyer = Number(data[0].ventas_ayer || 0);
+        this.variacionVentas = Number(data[0].variacion || 0);
+      }
 
-        const inventory = await this.inventoryService.getInventory();
-        // Since inventory is now an Observable, we need to pipe from it
-        this.lowStockCount$ = inventory.pipe(
-            map(items => items.filter(item => item.status !== 'En Stock').length)
-        );
+      this.productCount$ = this.showcaseService.getProducts().pipe(
+        map(products => products.length)
+      );
+
+      const inventory = await this.inventoryService.getInventory();
+      this.lowStockCount$ = inventory.pipe(
+        map(items => items.filter(item => item.status !== 'En Stock').length)
+      );
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
     }
+  }
 
-    toggleNewSaleModal() {
-        this.showNewSaleModal = !this.showNewSaleModal;
-    }
+  toggleNewSaleModal() {
+    this.showNewSaleModal = !this.showNewSaleModal;
+  }
 
-    refreshStats() {
-        this.loadStats();
-    }
+  refreshStats() {
+    this.loadStats();
+    this.loadVentasProductos();
+  }
+
+  goToVentasHoy() {
+    this.router.navigate(['/sales'], {
+      queryParams: { today: true }
+    });
+  }
+
+  goToProductos() {
+    this.router.navigate(['/inventory']);
+  }
+
+  goToStockBajo() {
+    this.router.navigate(['/inventory'], {
+      queryParams: { lowStock: true }
+    });
+  }
+
+  goToVisitas() {
+    this.router.navigate(['/geo-ruta']);
+  }
 }

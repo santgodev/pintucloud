@@ -44,6 +44,28 @@ import { PurchasesService, Compra, CompraDetalle } from '../../services/purchase
             color: white;
             border: none;
         }
+        .badge-premium {
+            font-size: 12px;
+            line-height: 1;
+            padding: 4px 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-premium.warning {
+            background-color: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .badge-premium.success {
+            background-color: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
     `]
 })
 export class PurchaseDetailPage implements OnInit {
@@ -67,6 +89,22 @@ export class PurchaseDetailPage implements OnInit {
             (sum, d) => sum + (d.subtotal ?? d.cantidad * d.precio_unitario),
             0
         );
+    });
+
+    /** Subtítulo dinámico según el estado */
+    readonly subtitle = computed(() => {
+        const estado = this.compra()?.estado;
+        if (estado === 'CONFIRMADA') return 'Vista de solo lectura — compra confirmada.';
+        if (estado === 'ANULADA') return 'Vista de solo lectura — compra anulada.';
+        return null;
+    });
+
+    /** Fecha de compra formateada */
+    readonly formattedFechaCompra = computed(() => {
+        const c = this.compra();
+        if (!c || !c.fecha) return '—';
+        const [year, month, day] = c.fecha.split('-');
+        return `${day}/${month}/${year}`;
     });
 
     /** Fecha de creación formateada con hora */

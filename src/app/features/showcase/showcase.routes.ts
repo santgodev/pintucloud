@@ -7,9 +7,8 @@ export const SHOWCASE_ROUTES: Routes = [
         path: '',
         component: ShowcaseLayoutComponent,
         children: [
-            { path: '', redirectTo: 'all', pathMatch: 'full' },
-            { path: 'all', component: ProductGridComponent },
-            { path: ':category', component: ProductGridComponent }
+            { path: '', component: ProductGridComponent },
+            { path: '**', redirectTo: '' }
         ]
     }
 ];

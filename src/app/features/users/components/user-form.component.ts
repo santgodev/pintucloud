@@ -45,12 +45,33 @@ import { SupabaseService } from '../../../core/services/supabase.service';
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1.5">Bodega Asignada</label>
-                <select formControlName="bodega_asignada_id" class="input-premium w-full">
+                <label class="block text-sm font-bold text-slate-700 mb-1.5">Bodega Asignada (Principal)</label>
+                <select formControlName="bodega_asignada_id" class="input-premium w-full text-indigo-700 font-bold border-indigo-100">
                   <option [ngValue]="null">Sin Asignación</option>
                   <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
                 </select>
               </div>
+            </div>
+
+            <!-- MULTIPLE WAREHOUSES -->
+            <div *ngIf="bodegas.length > 0">
+              <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                Bodegas Permitidas (Multiselección)
+              </label>
+              <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-inner max-h-48 overflow-y-auto">
+                <div *ngFor="let b of bodegas" class="flex items-center gap-3 p-3 border-b border-slate-100 last:border-0 hover:bg-slate-100/50 transition-colors">
+                  <input type="checkbox" 
+                         [id]="'bodega-' + b.id"
+                         [checked]="selectedBodegas.includes(b.id)"
+                         (change)="onBodegaToggle(b.id)"
+                         class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300">
+                  <label [for]="'bodega-' + b.id" class="text-sm font-medium text-slate-600 cursor-pointer select-none">
+                    {{ b.nombre }}
+                  </label>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-2 italic">* Seleccione las bodegas sobre las que el asesor tendrá visibilidad.</p>
             </div>
           </div>
 
@@ -75,6 +96,7 @@ export class UserFormComponent implements OnInit {
   userForm: FormGroup;
   isLoading = false;
   bodegas: any[] = [];
+  selectedBodegas: string[] = [];
 
   constructor(private fb: FormBuilder, private supabase: SupabaseService) {
     this.userForm = this.fb.group({
@@ -94,6 +116,26 @@ export class UserFormComponent implements OnInit {
         rol: this.user.rol,
         bodega_asignada_id: this.user.bodega_asignada_id
       });
+      await this.loadSelectedBodegas();
+    }
+  }
+
+  async loadSelectedBodegas() {
+    const { data, error } = await this.supabase
+      .from('usuarios_bodegas')
+      .select('bodega_id')
+      .eq('usuario_id', this.user.id);
+    
+    if (data) {
+      this.selectedBodegas = data.map((d: any) => d.bodega_id);
+    }
+  }
+
+  onBodegaToggle(bodegaId: string) {
+    if (this.selectedBodegas.includes(bodegaId)) {
+      this.selectedBodegas = this.selectedBodegas.filter(id => id !== bodegaId);
+    } else {
+      this.selectedBodegas.push(bodegaId);
     }
   }
 
@@ -144,6 +186,23 @@ export class UserFormComponent implements OnInit {
           .eq('email', val.email);
 
         if (error) throw error;
+      }
+
+      // 3. ACTUALIZAR TABLA DE ASIGNACIÓN MÚLTIPLE (usuarios_bodegas)
+      const targetUserId = this.user ? this.user.id : (await this.supabase.from('usuarios').select('id').eq('email', val.email).single()).data?.id;
+
+      if (targetUserId) {
+        // ELIMINAR PREVIOS
+        await this.supabase.from('usuarios_bodegas').delete().eq('usuario_id', targetUserId);
+
+        // INSERTAR NUEVOS
+        if (this.selectedBodegas.length > 0) {
+          const inserts = this.selectedBodegas.map(bid => ({
+            usuario_id: targetUserId,
+            bodega_id: bid
+          }));
+          await this.supabase.from('usuarios_bodegas').insert(inserts);
+        }
       }
 
       this.saved.emit();

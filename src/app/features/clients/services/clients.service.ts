@@ -10,7 +10,10 @@ export interface Client {
     address: string;
     phone?: string;
     email?: string;
+    sector?: string;
+    nit?: string;
     lastBuy: string;
+    cartera_pendiente: number;
     advisorName?: string;
 }
 
@@ -32,6 +35,7 @@ export class ClientsService {
         page?: number,
         pageSize?: number,
         search?: string,
+        sector?: string,
         sortField?: string,
         sortDirection?: 'asc' | 'desc'
     }): Observable<any> {
@@ -52,6 +56,7 @@ export class ClientsService {
         page?: number,
         pageSize?: number,
         search?: string,
+        sector?: string,
         sortField?: string,
         sortDirection?: 'asc' | 'desc'
     }): Promise<any> {
@@ -65,7 +70,11 @@ export class ClientsService {
 
         if (filters?.search) {
             const s = `%${filters.search}%`;
-            query = query.or(`codigo.ilike.${s},razon_social.ilike.${s},ciudad.ilike.${s},telefono.ilike.${s}`);
+            query = query.or(`codigo.ilike.${s},razon_social.ilike.${s},ciudad.ilike.${s},telefono.ilike.${s},sector.ilike.${s}`);
+        }
+
+        if (filters?.sector) {
+            query = query.eq('sector', filters.sector);
         }
 
         // Apply sorting
@@ -83,11 +92,22 @@ export class ClientsService {
         query = query.range(fromRow, toRow);
 
         const { data, count, error } = await query;
-
         if (error) {
             console.error('Error fetching clients', error);
             return { data: [], total: 0 };
         }
+
+        // Obtener la deuda real de todos los clientes mediante un RPC
+        const { data: carteraData, error: carteraError } = await this.supabase.rpc('get_cartera_por_cliente', {});
+        if (carteraError) {
+            console.error('Error fetching cartera por cliente:', carteraError);
+        }
+
+        // Crear mapa cliente_id -> deuda
+        const carteraMap = new Map<string, number>();
+        (carteraData || []).forEach((row: any) => {
+            carteraMap.set(row.cliente_id, Number(row.deuda || 0));
+        });
 
         const formattedData = (data || []).map((item: any) => {
             const ventas = item.ventas || [];
@@ -107,7 +127,10 @@ export class ClientsService {
                 address: item.direccion || '',
                 phone: item.telefono,
                 email: item.email,
+                sector: item.sector,
+                nit: item.nit,
                 lastBuy: lastBuyDateStr ? this.formatDate(lastBuyDateStr) : 'N/A',
+                cartera_pendiente: carteraMap.get(item.id) || 0, // Real debt or 0
                 advisorName: item.usuarios?.nombre_completo || 'Sin Asignar'
             };
         });
@@ -127,6 +150,8 @@ export class ClientsService {
         direccion: string;
         telefono: string;
         email?: string;
+        sector: string;
+        nit?: string;
     }): Promise<string> {
         const user = await this.supabase.auth.getUser();
         if (!user.data.user) throw new Error('Usuario no autenticado');
@@ -148,7 +173,9 @@ export class ClientsService {
                 ciudad: client.ciudad,
                 direccion: client.direccion,
                 telefono: client.telefono,
-                email: client.email || null
+                email: client.email || null,
+                sector: client.sector,
+                nit: client.nit || null
             })
             .select()
             .single();
@@ -164,6 +191,8 @@ export class ClientsService {
         direccion: string;
         telefono: string;
         email?: string;
+        sector: string;
+        nit?: string;
     }): Promise<void> {
         const { error } = await this.supabase
             .from('clientes')
@@ -173,7 +202,9 @@ export class ClientsService {
                 ciudad: client.ciudad,
                 direccion: client.direccion,
                 telefono: client.telefono,
-                email: client.email || null
+                email: client.email || null,
+                sector: client.sector,
+                nit: client.nit || null
             })
             .eq('id', id);
 

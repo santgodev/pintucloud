@@ -4,19 +4,20 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { SharedModule } from '../../shared/shared.module';
 import { WarehousesService } from './services/warehouses.service';
 import { Observable } from 'rxjs';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
-   selector: 'app-warehouses',
-   standalone: true,
-   imports: [CommonModule, SharedModule, ReactiveFormsModule],
-   template: `
+  selector: 'app-warehouses',
+  standalone: true,
+  imports: [CommonModule, SharedModule, ReactiveFormsModule],
+  template: `
     <div class="mb-8 p-4">
       <div class="flex justify-between items-start mb-8 gap-4">
         <div>
           <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Bodegas</h1>
           <p class="text-slate-500 text-lg">Administración de centros de distribución y niveles de ocupación.</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3" *ngIf="isAdmin">
           <button class="btn btn-primary flex items-center gap-2 px-6" (click)="abrirFormulario()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Crear Bodega
@@ -46,6 +47,14 @@ import { Observable } from 'rxjs';
              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
              {{ b.codigo }}<span *ngIf="b.direccion"> &bull; {{ b.direccion }}</span>
           </p>
+
+          <!-- Inventory type badge -->
+          <div class="mt-2 mb-4">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase border"
+              [class]="b.maneja_inventario !== false ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'">
+              {{ b.maneja_inventario !== false ? '📦 Con inventario' : '📋 Bajo pedido' }}
+            </span>
+          </div>
 
           <div class="space-y-4">
              <div>
@@ -105,6 +114,21 @@ import { Observable } from 'rxjs';
             <input formControlName="direccion" type="text" class="input-premium w-full" placeholder="Ej. Calle 45 #12-34, Bogotá">
           </div>
 
+          <!-- Maneja Inventario -->
+          <div class="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div class="relative mt-0.5">
+              <input type="checkbox" formControlName="maneja_inventario" id="manejaInventario"
+                     class="w-4 h-4 accent-indigo-600 cursor-pointer">
+            </div>
+            <div class="flex-1">
+              <label for="manejaInventario" class="text-sm font-bold text-slate-800 cursor-pointer select-none">Maneja inventario</label>
+              <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                Si está desactivado, las ventas desde esta bodega no validarán inventario
+                y se registrarán como pedidos bajo demanda.
+              </p>
+            </div>
+          </div>
+
           <div *ngIf="errorCreacion" class="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
             {{ errorCreacion }}
           </div>
@@ -122,65 +146,72 @@ import { Observable } from 'rxjs';
       </div>
     </div>
   `,
-   styles: []
+  styles: []
 })
 export class WarehousesComponent implements OnInit {
-   warehouses$!: Observable<any[]>;
-   mostrarFormulario = false;
-   isCreating = false;
-   errorCreacion: string | null = null;
-   warehouseForm: FormGroup;
+  warehouses$!: Observable<any[]>;
+  mostrarFormulario = false;
+  isCreating = false;
+  errorCreacion: string | null = null;
+  warehouseForm: FormGroup;
 
-   constructor(
-      private warehousesService: WarehousesService,
-      private fb: FormBuilder
-   ) {
-      this.warehouseForm = this.fb.group({
-         nombre: ['', Validators.required],
-         codigo: ['', Validators.required],
-         direccion: ['']
-      });
-   }
+  constructor(
+    private warehousesService: WarehousesService,
+    private fb: FormBuilder,
+    private authService: AuthService
+  ) {
+    this.warehouseForm = this.fb.group({
+      nombre: ['', Validators.required],
+      codigo: ['', Validators.required],
+      direccion: [''],
+      maneja_inventario: [true]
+    });
+  }
 
-   ngOnInit() {
-      this.loadWarehouses();
-   }
+  get isAdmin(): boolean {
+    return this.authService.currentUserValue?.role === 'ADMIN';
+  }
 
-   loadWarehouses() {
-      this.warehouses$ = this.warehousesService.getWarehouses();
-   }
+  ngOnInit() {
+    this.loadWarehouses();
+  }
 
-   abrirFormulario() {
-      this.warehouseForm.reset();
-      this.errorCreacion = null;
-      this.mostrarFormulario = true;
-   }
+  loadWarehouses() {
+    this.warehouses$ = this.warehousesService.getWarehouses();
+  }
 
-   cerrarFormulario() {
-      this.mostrarFormulario = false;
-   }
+  abrirFormulario() {
+    this.warehouseForm.reset({ maneja_inventario: true });
+    this.errorCreacion = null;
+    this.mostrarFormulario = true;
+  }
 
-   async crearBodega() {
-      if (this.warehouseForm.invalid) return;
-      this.isCreating = true;
-      this.errorCreacion = null;
+  cerrarFormulario() {
+    this.mostrarFormulario = false;
+  }
 
-      const { nombre, codigo, direccion } = this.warehouseForm.value;
+  async crearBodega() {
+    if (this.warehouseForm.invalid) return;
+    this.isCreating = true;
+    this.errorCreacion = null;
 
-      const { error } = await this.warehousesService.createWarehouse(
-         nombre.trim(),
-         codigo.trim().toUpperCase(),
-         direccion?.trim() || null
-      );
+    const { nombre, codigo, direccion, maneja_inventario } = this.warehouseForm.value;
 
-      if (error) {
-         this.errorCreacion = error.message;
-         this.isCreating = false;
-         return;
-      }
+    const { error } = await this.warehousesService.createWarehouse(
+      nombre.trim(),
+      codigo.trim().toUpperCase(),
+      direccion?.trim() || null,
+      maneja_inventario ?? true
+    );
 
+    if (error) {
+      this.errorCreacion = error.message;
       this.isCreating = false;
-      this.cerrarFormulario();
-      this.loadWarehouses();
-   }
+      return;
+    }
+
+    this.isCreating = false;
+    this.cerrarFormulario();
+    this.loadWarehouses();
+  }
 }

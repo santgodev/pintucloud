@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, from, map } from 'rxjs';
 import { SupabaseService } from '../../../core/services/supabase.service';
 
-export type SaleStatus = 'BORRADOR' | 'CONFIRMADA' | 'ANULADA';
+export type SaleStatus = 'BORRADOR' | 'CONFIRMADA' | 'AUTORIZADO' | 'ANULADA';
 
 export interface Sale {
     id: string;
@@ -16,6 +16,7 @@ export interface Sale {
     condicion_pago: 'CONTADO' | 'CREDITO';
     dias_credito: number | null;
     fecha_vencimiento: string | null;
+    fecha_autorizacion: string | null;
     total: number;
     created_at: string;
     clientName?: string; // Virtual para UI
@@ -86,6 +87,7 @@ export class SalesService {
                 estado,
                 bodega_id,
                 usuario_id,
+                bodegas(nombre),
                 clientes(razon_social, codigo),
                 usuarios(nombre_completo, rol)
             `, { count: 'exact' });
@@ -108,10 +110,11 @@ export class SalesService {
                         estado,
                         bodega_id,
                         usuario_id,
+                        bodegas(nombre),
                         clientes!inner(razon_social, codigo),
                         usuarios(nombre_completo, rol)
                     `, { count: 'exact' })
-                    .ilike('clientes.razon_social', `%${value}%`);
+                    .ilike('clientes.razon_social', `%${value}%`) as any;
             }
         }
 
@@ -157,7 +160,8 @@ export class SalesService {
             data: (data || []).map((item: any) => ({
                 ...item,
                 clientName: item.clientes?.razon_social || 'Cliente Desconocido',
-                vendedorName: item.usuarios?.nombre_completo || 'Sistema'
+                vendedorName: item.usuarios?.nombre_completo || 'Sistema',
+                bodegaName: item.bodegas?.nombre || '—'
             })),
             total: count ?? 0
         };
@@ -258,15 +262,45 @@ export class SalesService {
         if (error) throw error;
     }
 
-    /** 4. Obtener Venta Completa (para el recibo) */
+    /** 4. Autorizar Venta (Cambio de estado) */
+    async authorizeSale(ventaId: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('ventas')
+            .update({ 
+                estado: 'AUTORIZADO',
+                fecha_autorizacion: new Date().toISOString()
+            })
+            .eq('id', ventaId);
+
+        if (error) throw error;
+    }
+
+  /** 5. Obtener Venta Completa (para el recibo) */
     async getById(id: string): Promise<Sale> {
         const { data, error } = await this.supabase
             .from('ventas')
             .select(`
-                *,
+                id,
+                distribuidor_id,
+                cliente_id,
+                usuario_id,
+                bodega_id,
+                fecha,
+                numero_factura,
+                estado,
+                condicion_pago,
+                dias_credito,
+                fecha_vencimiento,
+                fecha_autorizacion,
+                total,
+                created_at,
+                tipo_documento,
+                descuento_porcentaje,
+                descuento_valor,
                 clientes (razon_social, telefono, direccion, ciudad, email, codigo),
                 usuarios (nombre_completo),
                 bodegas (nombre, codigo, direccion),
+                cuentas_por_cobrar (fecha_vencimiento),
                 detalle_ventas (
                     *,
                     productos (nombre, sku)
@@ -279,6 +313,14 @@ export class SalesService {
         const raw = data as any;
         raw.clientName = raw.clientes?.razon_social;
         raw.vendedorName = raw.usuarios?.nombre_completo;
+        
+        // Si el campo directo de ventas viene nulo (viejas ventas?), intentar sacarlo de cartera
+        if (!raw.fecha_vencimiento && raw.cuentas_por_cobrar) {
+            // Manejar si viene como array o objeto dependiendo del tipo de relación en Supabase
+            const cxc = Array.isArray(raw.cuentas_por_cobrar) ? raw.cuentas_por_cobrar[0] : raw.cuentas_por_cobrar;
+            raw.fecha_vencimiento = cxc?.fecha_vencimiento;
+        }
+        
         return raw;
     }
 

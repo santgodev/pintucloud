@@ -1,7 +1,7 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
 import { SalesService, Sale } from './services/sales.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -54,8 +54,8 @@ import { SupabaseService } from '../../core/services/supabase.service';
              </select>
           </div>
 
-          <!-- Filtro Bodega (Si es Admin) -->
-          <div *ngIf="isAdmin">
+          <!-- Filtro Bodega (Si hay varias) -->
+          <div *ngIf="bodegas.length > 1">
              <select [(ngModel)]="filters.bodegaId" (change)="onFilterChange()" class="input-premium w-full">
                 <option value="">Todas las bodegas</option>
                 <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
@@ -95,6 +95,18 @@ import { SupabaseService } from '../../core/services/supabase.service';
         </div>
        </div>
 
+
+        <!-- Resumen de ventas filtradas -->
+        <div class="flex flex-wrap gap-6 mb-4 px-1 text-sm text-slate-700">
+          <div class="flex items-center gap-1.5">
+            <span class="font-semibold text-slate-500 uppercase text-[11px] tracking-wide">Ventas encontradas:</span>
+            <span class="font-bold text-slate-900">{{ totalRecords }}</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-semibold text-slate-500 uppercase text-[11px] tracking-wide">Total vendido:</span>
+            <span class="font-bold text-indigo-700">{{ totalVentasFiltradas | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+        </div>
         <!-- Tabla de Resultados -->
        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
            <table class="w-full text-left border-collapse">
@@ -109,7 +121,8 @@ import { SupabaseService } from '../../core/services/supabase.service';
                     <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('clientName')">
                        <div class="flex items-center gap-1">Cliente <span *ngIf="sortField === 'clientName'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'clientName'" class="text-slate-300 opacity-50">↕</span></div>
                     </th>
-                    <th class="p-4 border-b border-slate-200">Asesor</th>
+                    <th class="p-4 border-b border-slate-200">Bodega</th>
+                     <th class="p-4 border-b border-slate-200">Asesor</th>
                     <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('total')">
                        <div class="flex items-center gap-1">Total <span *ngIf="sortField === 'total'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'total'" class="text-slate-300 opacity-50">↕</span></div>
                     </th>
@@ -126,22 +139,25 @@ import { SupabaseService } from '../../core/services/supabase.service';
                         {{ formatFactura(sale.numero_factura) }}
                     </td>
                     <td class="p-4 text-sm text-slate-800">
-                        {{ sale.fecha | date:'dd-MMM-yyyy' | lowercase }}
+                        {{ sale.fecha | date:'dd/MM/yyyy' }}
                     </td>
                     <td class="p-4">
                         <div class="text-sm font-medium text-slate-900">{{ sale.clientName }}</div>
                     </td>
-                    <td class="p-4 text-sm text-slate-600">
-                        {{ sale.vendedorName }}
-                    </td>
+                     <td class="p-4 text-sm text-slate-500">{{ sale.bodegaName }}</td>
+                     <td class="p-4 text-sm text-slate-600">
+                         {{ sale.vendedorName }}
+                     </td>
                     <td class="p-4 font-bold text-slate-900">
                         \${{ sale.total | number: '1.0-0' }}
                     </td>
                     <td class="p-4 text-center">
                         <span class="badge-premium" 
+                            [class.authorized]="sale.estado === 'AUTORIZADO'"
                             [class.success]="sale.estado === 'CONFIRMADA'"
                             [class.warning]="sale.estado === 'BORRADOR'"
                             [class.danger]="sale.estado === 'ANULADA'">
+                            <span *ngIf="sale.estado === 'AUTORIZADO'">★ </span>
                             <span *ngIf="sale.estado === 'CONFIRMADA'">✔ </span>
                             <span *ngIf="sale.estado === 'BORRADOR'">⏳ </span>
                             <span *ngIf="sale.estado === 'ANULADA'">✖ </span>
@@ -151,7 +167,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
                     <td class="p-4 text-right">
                         <div class="flex justify-end gap-2">
                             <!-- EDITAR -->
-                             <button *ngIf="sale.estado !== 'ANULADA'" 
+                             <button *ngIf="sale.estado !== 'ANULADA' && sale.estado !== 'AUTORIZADO' && isAdmin" 
                                      (click)="editarVenta(sale)" 
                                     class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" 
                                      title="Editar">
@@ -161,6 +177,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
                                 </svg>
                             </button>
                             
+
                             <!-- VER (Siempre visible) -->
                             <button (click)="verDetalle(sale.id)" 
                                     class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all" 
@@ -231,8 +248,9 @@ import { SupabaseService } from '../../core/services/supabase.service';
     .badge-premium { 
         @apply px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm;
     }
-    .success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .authorized { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .success { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .warning { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
     .danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
     
     .btn-nav { 
@@ -246,6 +264,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
 export class SalesComponent implements OnInit {
    sales: any[] = [];
    totalRecords = 0;
+   totalVentasFiltradas: number = 0;
    loading = false;
    page = 0;
    pageSize = 10;
@@ -278,7 +297,8 @@ export class SalesComponent implements OnInit {
    constructor(
       private salesService: SalesService,
       private supabase: SupabaseService,
-      private router: Router
+      private router: Router,
+      private route: ActivatedRoute
    ) { }
 
    async ngOnInit() {
@@ -296,6 +316,23 @@ export class SalesComponent implements OnInit {
             this.page = 0;
             this.loadSales();
          });
+
+      // Leer parámetros de consulta para filtros automáticos
+      this.route.queryParams.subscribe(params => {
+         if (params['today']) {
+            const today = new Date();
+            const fechaLocal =
+               today.getFullYear() + '-' +
+               String(today.getMonth() + 1).padStart(2, '0') + '-' +
+               String(today.getDate()).padStart(2, '0');
+
+            this.filters.fechaDesde = fechaLocal;
+            this.filters.fechaHasta = fechaLocal;
+            this.fechaInicio = fechaLocal;
+            this.fechaFin = fechaLocal;
+            this.loadSales();
+         }
+      });
 
       await this.loadInitialData();
       await this.loadSales();
@@ -335,6 +372,23 @@ export class SalesComponent implements OnInit {
          });
          this.sales = result.data as any;
          this.totalRecords = result.total;
+
+         // Obtener el total global filtrado desde la base de datos
+         const { data: totalGlobal, error: errorTotal } = await this.supabase.rpc('ventas_total_filtrado', {
+            p_estado: this.filters.estado || null,
+            p_fecha_desde: this.filters.fechaDesde || null,
+            p_fecha_hasta: this.filters.fechaHasta || null
+         });
+
+         if (errorTotal) {
+            console.error('Error al obtener total filtrado:', errorTotal);
+            // Fallback al cálculo local si falla el RPC (aunque solo sume la página actual)
+            this.totalVentasFiltradas = result.data.reduce(
+               (sum: number, sale: any) => sum + Number(sale.total || 0), 0
+            );
+         } else {
+            this.totalVentasFiltradas = totalGlobal || 0;
+         }
       } catch (err) {
          console.error('Error loading sales', err);
       } finally {
@@ -414,7 +468,8 @@ export class SalesComponent implements OnInit {
       this.loadSales();
    }
 
-   // Acciones
+
+    // Acciones
    async editarVenta(sale: any) {
       if (sale.estado === 'BORRADOR') {
          this.router.navigate(['/sales', sale.id, 'edit']);

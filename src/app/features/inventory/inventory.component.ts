@@ -2,17 +2,20 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../shared/shared.module';
 import { InventoryService, InventoryItem } from './services/inventory.service';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { map, take } from 'rxjs/operators';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { ProductModalComponent } from './components/product-modal/product-modal.component';
+import { AdjustStockModalComponent } from './components/adjust-stock-modal/adjust-stock-modal.component';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, SharedModule, ProductModalComponent, FormsModule],
+  imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, FormsModule],
   template: `
     <div class="mb-8 p-4 text-left">
       <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
@@ -20,7 +23,7 @@ import { FormsModule } from '@angular/forms';
           <h1 class="text-3xl font-bold text-slate-900 tracking-tight text-left">Inventario Global</h1>
           <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3" *ngIf="isAdmin">
           <button class="btn btn-outline flex items-center gap-2" (click)="exportInventory()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Exportar
@@ -94,7 +97,7 @@ import { FormsModule } from '@angular/forms';
                 <th class="p-4 font-semibold text-slate-600 text-sm">Precio</th>
                 <th class="p-4 font-semibold text-slate-600 text-sm">Stock</th>
                 <th class="p-4 font-semibold text-slate-600 text-sm">Estado</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
+                <th *ngIf="isAdmin" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 italic-none">
@@ -132,7 +135,7 @@ import { FormsModule } from '@angular/forms';
                     {{ item.status }}
                   </span>
                 </td>
-                <td class="p-4">
+                <td class="p-4" *ngIf="isAdmin">
                   <div class="flex items-center justify-center gap-3">
                     <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="adjustStock(item)" title="Ajustar inventario">
                       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 20V10"/> <path d="M18 20V4"/> <path d="M6 20v-4"/> </svg>
@@ -144,7 +147,7 @@ import { FormsModule } from '@angular/forms';
                 </td>
               </tr>
               <tr *ngIf="(inventory$ | async)?.length === 0">
-                <td colspan="8" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
+                <td [attr.colspan]="isAdmin ? 8 : 7" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
                   No se encontraron productos con los filtros seleccionados.
                 </td>
               </tr>
@@ -155,6 +158,13 @@ import { FormsModule } from '@angular/forms';
     </div>
 
     <app-product-modal *ngIf="showProductModal" [product]="selectedProduct" (onClose)="closeModal()" (saved)="refreshInventory()"></app-product-modal>
+    
+    <app-adjust-stock-modal 
+       *ngIf="showAdjustModal && selectedAdjustItem" 
+       [item]="selectedAdjustItem" 
+       (onClose)="closeAdjustModal()" 
+       (confirm)="onConfirmAdjust($event)">
+    </app-adjust-stock-modal>
   `,
   styles: [`
     .italic-none tr { font-style: normal !important; }
@@ -167,21 +177,48 @@ export class InventoryComponent implements OnInit {
 
   lowStockCount$!: Observable<number>;
   showLowStockOnly = false;
+
   showProductModal = false;
   selectedProduct: InventoryItem | null = null;
+
+  showAdjustModal = false;
+  selectedAdjustItem: InventoryItem | null = null;
+
   bodegas: any[] = [];
   selectedBodega: string = '';
   categorias: string[] = [];
   selectedCategory: string = '';
   selectedStatus: string = '';
   searchTerm: string = '';
+  filters = {
+    lowStock: false
+  };
 
-  constructor(private inventoryService: InventoryService) { }
+  constructor(
+    private inventoryService: InventoryService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService
+  ) { }
+
+  get isAdmin(): boolean {
+    return this.authService.currentUserValue?.role === 'ADMIN';
+  }
 
   async ngOnInit() {
     this.lowStockCount$ = this.inventory$.pipe(
       map(items => items.filter(item => item.stock <= (item.stockMinimo || 0)).length)
     );
+
+    // Leer parámetros para filtros automáticos
+    this.route.queryParams.subscribe(params => {
+      if (params['lowStock']) {
+        this.filters.lowStock = true;
+        this.showLowStockOnly = true;
+        this.loadInventory();
+      }
+    });
+
     await this.loadBodegas();
     await this.loadCategorias();
     this.loadInventory();
@@ -196,7 +233,10 @@ export class InventoryComponent implements OnInit {
   }
 
   async loadInventory() {
-    const inv$ = await this.inventoryService.getInventory(this.selectedBodega || undefined);
+    const inv$ = await this.inventoryService.getInventory(
+      this.selectedBodega || undefined,
+      this.filters.lowStock
+    );
     inv$.pipe(take(1)).subscribe(items => {
       this._allInventory = items;
       this.applyFilters();
@@ -219,7 +259,7 @@ export class InventoryComponent implements OnInit {
       );
     }
 
-    if (this.showLowStockOnly) {
+    if (this.showLowStockOnly || this.filters.lowStock) {
       filtered = filtered.filter(
         item => item.stock <= (item.stockMinimo ?? 0)
       );
@@ -240,11 +280,13 @@ export class InventoryComponent implements OnInit {
 
   showLowStock() {
     this.showLowStockOnly = true;
+    this.filters.lowStock = true;
     this.applyFilters();
   }
 
   clearLowStockFilter() {
     this.showLowStockOnly = false;
+    this.filters.lowStock = false;
     this.applyFilters();
   }
 
@@ -254,30 +296,30 @@ export class InventoryComponent implements OnInit {
   }
 
   adjustStock(item: InventoryItem) {
-    const nuevaCantidad = prompt(
-      `Stock actual: ${item.stock}\n\nIngrese el stock contado físicamente:`
-    );
+    this.selectedAdjustItem = item;
+    this.showAdjustModal = true;
+  }
 
-    if (nuevaCantidad === null) return;
+  closeAdjustModal() {
+    this.showAdjustModal = false;
+    this.selectedAdjustItem = null;
+  }
 
-    const cantidad = Number(nuevaCantidad);
-
-    if (isNaN(cantidad) || cantidad < 0) {
-      alert('Cantidad inválida');
-      return;
-    }
+  onConfirmAdjust(payload: { cantidad: number, observacion: string }) {
+    if (!this.selectedAdjustItem) return;
 
     this.inventoryService.adjustInventory(
-      item.productId,
+      this.selectedAdjustItem.productId,
       // @ts-ignore
-      item.bodegaId || this.bodegas.find(b => b.nombre === item.bodegaName)?.id, // Quick patch to send the ID even if the interface misses it
-      cantidad,
-      'Ajuste manual de inventario'
+      this.selectedAdjustItem.bodegaId || this.bodegas.find(b => b.nombre === this.selectedAdjustItem?.bodegaName)?.id,
+      payload.cantidad,
+      payload.observacion
     ).then(() => {
       this.refreshInventory();
+      this.closeAdjustModal();
     }).catch((err: any) => {
       console.error(err);
-      alert('Error ajustando inventario');
+      alert('Error ajustando inventario: ' + (err.message || err));
     });
   }
 

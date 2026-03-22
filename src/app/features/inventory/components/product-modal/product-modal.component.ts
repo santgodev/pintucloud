@@ -36,12 +36,20 @@ import { InventoryService } from '../../services/inventory.service';
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                        <label class="block text-sm font-medium text-main mb-1">SKU (Referencia)</label>
-                       <input formControlName="sku" type="text" class="input-premium w-full" placeholder="Ej. ROD-001" [readonly]="product">
+                       <input formControlName="sku" type="text" class="input-premium w-full" [class.bg-slate-100]="product" [class.cursor-not-allowed]="product" placeholder="Ej. ROD-001" [readonly]="product">
                     </div>
                      <div>
                        <label class="block text-sm font-medium text-main mb-1">Nombre Comercial</label>
                        <input formControlName="name" type="text" class="input-premium w-full" placeholder="Ej. Rodillo Profesional">
                     </div>
+                </div>
+
+                 <div>
+                   <label class="block text-sm font-medium text-main mb-1">Categoría de Catálogo</label>
+                   <select formControlName="category" class="input-premium w-full">
+                      <option value="general" *ngIf="categorias.length === 0">General</option>
+                      <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
+                   </select>
                 </div>
 
                 <div>
@@ -54,31 +62,28 @@ import { InventoryService } from '../../services/inventory.service';
                          <label class="block text-sm font-medium text-main mb-1">Precio de Venta</label>
                          <div class="relative">
                             <span class="absolute left-3 top-2 text-muted">$</span>
-                            <input formControlName="price" type="number" class="input-premium w-full pl-6" placeholder="0">
+                            <input formControlName="price" type="number" class="input-premium w-full pl-6" placeholder="0" min="0">
                          </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-main mb-1">Stock mínimo</label>
-                        <input formControlName="stock_minimo" type="number" class="input-premium w-full" placeholder="Cantidad mínima para alerta de inventario">
+                        <input formControlName="stock_minimo" type="number" class="input-premium w-full" placeholder="0" min="0">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4" *ngIf="!product">
                     <div>
-                        <label class="block text-sm font-medium text-main mb-1">{{ product ? 'Stock Actual' : 'Stock a Ingresar' }}</label>
-                        <input formControlName="stock" type="number" class="input-premium w-full" placeholder="0">
+                        <label class="block text-sm font-medium text-main mb-1">Stock a Ingresar</label>
+                        <input formControlName="stock" type="number" class="input-premium w-full" placeholder="0" min="0">
                     </div>
                 </div>
-                
-                 <div>
-                   <label class="block text-sm font-medium text-main mb-1">Categoría de Catálogo</label>
-                   <select formControlName="category" class="input-premium w-full">
-                      <option value="general">General</option>
-                      <option value="Rodillos">Rodillos</option>
-                      <option value="Brochas">Brochas</option>
-                      <option value="Herramientas">Herramientas</option>
-                      <option value="Pinturas">Pinturas</option>
-                   </select>
+
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center" *ngIf="product">
+                    <div>
+                        <span class="block text-sm font-bold text-slate-700">Stock Actual</span>
+                        <span class="block text-xs text-slate-500">Utilice los ajustes de inventario para modificar</span>
+                    </div>
+                    <div class="text-xl font-bold text-slate-900">{{ product.stock }} unidades</div>
                 </div>
                 
                 <div class="pt-2">
@@ -137,6 +142,7 @@ export class ProductModalComponent implements OnInit {
    imagePreview: string | null = null;
 
    bodegas: any[] = [];
+   categorias: string[] = [];
 
    constructor(private fb: FormBuilder, private inventoryService: InventoryService) {
       this.productForm = this.fb.group({
@@ -154,6 +160,7 @@ export class ProductModalComponent implements OnInit {
 
    async ngOnInit() {
       this.loadBodegas();
+      this.loadCategorias();
 
       if (this.product) {
          // Edit Mode
@@ -177,6 +184,10 @@ export class ProductModalComponent implements OnInit {
       if (!this.product && this.bodegas.length > 0) {
          this.productForm.patchValue({ bodegaId: this.bodegas[0].id });
       }
+   }
+
+   async loadCategorias() {
+      this.categorias = await this.inventoryService.getCategories();
    }
 
    onFileSelected(event: any) {

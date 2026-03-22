@@ -8,6 +8,7 @@ export interface Warehouse {
     codigo: string;
     direccion: string | null;
     activo: boolean;
+    maneja_inventario: boolean;
     distribuidor_id: string;
     created_at: string;
     productos_distintos?: number;
@@ -20,11 +21,12 @@ export class WarehousesService {
 
     constructor(private supabase: SupabaseService) { }
 
-    createWarehouse(nombre: string, codigo: string, direccion: string) {
+    createWarehouse(nombre: string, codigo: string, direccion: string | null, manejaInventario: boolean) {
         return this.supabase.rpc('crear_bodega', {
             p_nombre: nombre,
             p_codigo: codigo,
-            p_direccion: direccion
+            p_direccion: direccion,
+            p_maneja_inventario: manejaInventario
         });
     }
 
@@ -55,6 +57,7 @@ export class WarehousesService {
                         codigo: b.codigo,
                         direccion: b.direccion ?? null,
                         activo: b.activo ?? true,
+                        maneja_inventario: b.maneja_inventario ?? true,
                         distribuidor_id: b.distribuidor_id,
                         created_at: b.created_at,
                         productos_distintos,

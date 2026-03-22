@@ -23,10 +23,10 @@ import { ClientsService, Client } from '../../services/clients.service';
 
                 <!-- Código Cliente -->
                 <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Código Cliente *</label>
+                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Código Cliente</label>
                    <input formControlName="codigo" type="text" class="input-premium w-full" placeholder="Ej. CLI-001"
                           (input)="clientForm.get('codigo')?.setValue($any($event.target).value.toUpperCase(), { emitEvent: false })">
-                   <p *ngIf="f['codigo'].invalid && f['codigo'].touched" class="text-red-500 text-xs mt-1">El código es obligatorio.</p>
+                   
                 </div>
 
                 <!-- Razón Social -->
@@ -43,6 +43,15 @@ import { ClientsService, Client } from '../../services/clients.service';
                    <p *ngIf="f['ciudad'].invalid && f['ciudad'].touched" class="text-red-500 text-xs mt-1">La ciudad es obligatoria.</p>
                 </div>
 
+                <!-- Sector -->
+                <div>
+                  <label class="block text-sm font-bold text-slate-700 mb-1.5">Sector *</label>
+                  <input formControlName="sector" type="text" class="input-premium w-full" placeholder="Ej. Construcción">
+                  <p *ngIf="f['sector'].invalid && f['sector'].touched" class="text-red-500 text-xs mt-1">
+                    El sector es obligatorio.
+                  </p>
+                </div>
+
                 <!-- Dirección -->
                 <div>
                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Dirección *</label>
@@ -57,12 +66,13 @@ import { ClientsService, Client } from '../../services/clients.service';
                    <p *ngIf="f['telefono'].invalid && f['telefono'].touched" class="text-red-500 text-xs mt-1">El teléfono es obligatorio.</p>
                 </div>
 
-                <!-- Email -->
+                <!-- NIT -->
                 <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Email <span class="text-slate-400 font-normal">(opcional)</span></label>
-                   <input formControlName="email" type="email" class="input-premium w-full" placeholder="contacto@cliente.com">
-                   <p *ngIf="f['email'].invalid && f['email'].touched" class="text-red-500 text-xs mt-1">Ingresa un email válido.</p>
+                  <label class="block text-sm font-bold text-slate-700 mb-1.5">NIT <span class="text-slate-400 font-normal">(opcional)</span></label>
+                  <input formControlName="nit" type="text" class="input-premium w-full" placeholder="Ej. 900123456">
                 </div>
+
+
 
              </div>
 
@@ -94,12 +104,13 @@ export class ClientModalComponent {
 
    constructor(private fb: FormBuilder, private clientsService: ClientsService) {
       this.clientForm = this.fb.group({
-         codigo: ['', Validators.required],
+         codigo: [''],
          razon_social: ['', Validators.required],
          ciudad: ['', Validators.required],
+         sector: ['', Validators.required],
          direccion: ['', Validators.required],
          telefono: ['', Validators.required],
-         email: ['', Validators.email]
+         nit: ['']
       });
    }
 
@@ -111,9 +122,10 @@ export class ClientModalComponent {
             codigo: this.clientToEdit.codigo,
             razon_social: this.clientToEdit.razon_social,
             ciudad: this.clientToEdit.ciudad,
+            sector: this.clientToEdit.sector,
             direccion: this.clientToEdit.address,
             telefono: this.clientToEdit.phone,
-            email: this.clientToEdit.email
+            nit: this.clientToEdit.nit
          });
          // Disable code modification on edit if necessary, else leave enabled
       }
@@ -126,12 +138,13 @@ export class ClientModalComponent {
 
       const val = this.clientForm.value;
       const clientData = {
-         codigo: val.codigo.trim().toUpperCase(),
+         codigo: val.codigo?.trim().toUpperCase() || undefined,
          razon_social: val.razon_social.trim(),
          ciudad: val.ciudad.trim(),
+         sector: val.sector.trim(),
          direccion: val.direccion.trim(),
          telefono: val.telefono.trim(),
-         email: val.email?.trim() || undefined
+         nit: val.nit?.trim() || undefined
       };
 
       const operation = this.clientToEdit

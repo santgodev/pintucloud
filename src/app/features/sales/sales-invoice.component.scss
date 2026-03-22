@@ -67,6 +67,22 @@
   }
 }
 
+.btn-success {
+  padding: 0.45rem 1rem;
+  border: 1px solid #059669;
+  border-radius: 6px;
+  background: #10b981;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #059669;
+  }
+}
+
 .btn-anular {
   padding: 0.45rem 1rem;
   border: 1px solid #fca5a5;
@@ -124,45 +140,34 @@
    HEADER (Logo | QR | Title)
 ===================================== */
 .inv-header {
-  display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 0;
-  border-bottom: 1px solid #9ca3af;
-  padding: 22px 16px 14px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid #9ca3af;
+  padding: 22px 24px 14px;
 }
 
 .emisor {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  width: 40%;
 
   .logo-box {
     width: auto;
     height: auto;
-    max-width: 220px;
     background: transparent;
     border-radius: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: flex-start;
+    gap: 0;
     flex-shrink: 0;
+    margin-left: 8px;
   }
+}
 
-  .emisor-data {
-    display: flex;
-    flex-direction: column;
-    font-size: 11px;
-    line-height: 1.45;
-    color: #374151;
-
-    strong {
-      font-size: 13px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 2px;
-    }
-  }
+.header-spacer {
+  width: 30%;
 }
 
 .qr-placeholder {
@@ -172,9 +177,9 @@
 }
 
 .inv-title {
+  width: 30%;
   text-align: right;
-  padding-left: 12px;
-  border-left: 1px solid #e5e7eb;
+  margin-right: 8px;
 
   .inv-type {
     font-size: 13px;

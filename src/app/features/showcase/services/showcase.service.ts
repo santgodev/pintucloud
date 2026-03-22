@@ -6,11 +6,14 @@ export interface Product {
     id: string;
     name: string;
     category: string;
+    sku?: string;
     price: number;
     description: string;
     imageUrl: string;
     features: string[];
     isNew?: boolean;
+    isFeatured?: boolean;
+    stock: number;
 }
 
 export interface Category {
@@ -38,7 +41,14 @@ export class ShowcaseService {
     }
 
     getProducts(categoryId?: string): Observable<Product[]> {
-        let query = this.supabase.from('productos').select('*');
+        let query = this.supabase.from('productos').select(`
+            *,
+            inventario_bodega (
+                cantidad
+            )
+        `)
+            .order('categoria', { ascending: true })
+            .order('nombre', { ascending: true });
 
         if (categoryId && categoryId !== 'all') {
             query = query.eq('categoria', categoryId);
@@ -50,23 +60,25 @@ export class ShowcaseService {
                     console.error('Error fetching products:', error);
                     return [];
                 }
-                return (data || []).map((item: any) => ({
-                    id: item.id,
-                    name: item.nombre,
-                    category: item.categoria || 'general',
-                    price: item.precio_base,
-                    description: item.descripcion,
-                    imageUrl: item.imagen_url,
-                    features: [], // TODO: Add features column to DB if needed
-                    isNew: false
-                }));
-            })
-        );
-    }
+                return (data || []).map((item: any) => {
+                    // Sum stock from all warehouses
+                    const stock = (item.inventario_bodega || []).reduce((acc: number, inv: any) => acc + (inv.cantidad || 0), 0);
 
-    getFeaturedProducts(): Observable<Product[]> {
-        return this.getProducts().pipe(
-            map(products => products.slice(0, 3))
+                    return {
+                        id: item.id,
+                        name: item.nombre,
+                        category: item.categoria || 'general',
+                        sku: item.sku,
+                        price: item.precio_base,
+                        description: item.descripcion,
+                        imageUrl: item.imagen_url,
+                        features: [], // TODO: Add features column to DB if needed
+                        isNew: false,
+                        isFeatured: item.destacado || false,
+                        stock: stock
+                    };
+                });
+            })
         );
     }
 

@@ -22,6 +22,7 @@
                     class="w-full h-10 pl-10 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm"
                     [formControl]="searchControl" placeholder="Buscar por código, cliente, teléfono o ciudad..." />
             </div>
+
         </div>
 
         <!-- Buttons Group -->
@@ -102,22 +103,41 @@
                         </svg>
                     </div>
                 </th>
-                <th class="py-4 px-4 border-b border-slate-200">Teléfono</th>
-                <th class="py-4 px-4 border-b border-slate-200">Dirección</th>
                 <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
-                    (click)="sortBy('ultima_compra')">
-                    <div class="flex items-center gap-1">Última compra
-                        <svg *ngIf="sortField === 'ultima_compra' && sortDirection === 'asc'" class="text-indigo-600"
+                    (click)="sortBy('sector')">
+                    <div class="flex items-center gap-1">Sector
+                        <svg *ngIf="sortField === 'sector' && sortDirection === 'asc'" class="text-indigo-600"
                             width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="M12 19V5M5 12l7-7 7 7" />
                         </svg>
-                        <svg *ngIf="sortField === 'ultima_compra' && sortDirection === 'desc'" class="text-indigo-600"
+                        <svg *ngIf="sortField === 'sector' && sortDirection === 'desc'" class="text-indigo-600"
                             width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="M12 5v14M19 12l-7 7-7-7" />
                         </svg>
-                        <svg *ngIf="sortField !== 'ultima_compra'" class="text-slate-400 opacity-50" width="16"
+                        <svg *ngIf="sortField !== 'sector'" class="text-slate-400 opacity-50" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+                        </svg>
+                    </div>
+                </th>
+                <th class="py-4 px-4 border-b border-slate-200">Teléfono</th>
+                <th class="py-4 px-4 border-b border-slate-200">Dirección</th>
+                <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors text-right text-[13px] tracking-wider font-bold"
+                    (click)="sortBy('cartera_pendiente')">
+                    <div class="flex items-center justify-end gap-1">Cartera pendiente
+                        <svg *ngIf="sortField === 'cartera_pendiente' && sortDirection === 'asc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === 'cartera_pendiente' && sortDirection === 'desc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                        </svg>
+                        <svg *ngIf="sortField !== 'cartera_pendiente'" class="text-slate-400 opacity-50" width="16"
                             height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
                         </svg>
@@ -141,17 +161,28 @@
                     {{ client.ciudad }}
                 </td>
                 <td class="p-4 text-sm text-slate-600">
+                    {{ client.sector || '—' }}
+                </td>
+                <td class="p-4 text-sm text-slate-600">
                     {{ client.phone || '—' }}
                 </td>
                 <td class="p-4 text-sm text-slate-500 truncate max-w-xs">
                     {{ client.address || '—' }}
                 </td>
-                <td class="p-4 text-sm text-slate-600">
-                    {{ client.lastBuy }}
+                <td class="p-4 text-sm text-right">
+                    <div class="flex flex-col items-end">
+                        <span class="font-semibold text-slate-900">
+                            {{ formatCurrency(client.cartera_pendiente) }}
+                        </span>
+                        <span class="text-xs font-semibold mt-0.5"
+                            [ngClass]="client.cartera_pendiente > 0 ? 'text-red-500' : 'text-green-600'">
+                            {{ client.cartera_pendiente > 0 ? 'Debe' : 'Al día' }}
+                        </span>
+                    </div>
                 </td>
                 <td class="p-4 text-right">
                     <div class="flex justify-end gap-2">
-                        <button (click)="editarCliente(client)"
+                        <button *ngIf="isAdmin" (click)="editarCliente(client)"
                             class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all"
                             title="Editar">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -173,7 +204,7 @@
                 </td>
             </tr>
             <tr *ngIf="!loading && clients.length === 0">
-                <td colspan="7" class="text-center p-12 text-slate-500 italic bg-slate-50/50">
+                <td colspan="8" class="text-center p-12 text-slate-500 italic bg-slate-50/50">
                     No se encontraron clientes con los filtros seleccionados.
                 </td>
             </tr>
