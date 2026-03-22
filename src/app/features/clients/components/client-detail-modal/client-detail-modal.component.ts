@@ -1,4 +1,5 @@
 import { Component, Output, EventEmitter, Input } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Client } from '../../services/clients.service';
 
@@ -61,11 +62,11 @@ import { Client } from '../../services/clients.service';
              </div>
              
              <div class="pt-4 mt-2 grid grid-cols-2 gap-3">
-                 <button class="btn btn-outline flex items-center justify-center gap-2">
+                 <button (click)="contactarCliente()" class="btn btn-outline flex items-center justify-center gap-2">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                     Contactar
                  </button>
-                 <button class="btn btn-primary flex items-center justify-center gap-2">
+                 <button (click)="editarCliente()" class="btn btn-primary flex items-center justify-center gap-2">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     Editar
                  </button>
@@ -78,4 +79,26 @@ import { Client } from '../../services/clients.service';
 export class ClientDetailModalComponent {
    @Input() client: Client | null = null;
    @Output() onClose = new EventEmitter<void>();
+   @Output() editClient = new EventEmitter<Client>();
+
+   constructor() { }
+
+   editarCliente() {
+      if (!this.client) return;
+      this.editClient.emit(this.client);
+   }
+
+   contactarCliente() {
+      if (!this.client) return;
+
+      if (this.client.phone) {
+         // Clean phone number for WhatsApp link
+         const phoneFormatted = this.client.phone.replace(/[^0-9]/g, '');
+         window.open(`https://wa.me/${phoneFormatted}`, '_blank');
+      } else if (this.client.email) {
+         window.open(`mailto:${this.client.email}`, '_self');
+      } else {
+         alert('El cliente no tiene datos de contacto');
+      }
+   }
 }

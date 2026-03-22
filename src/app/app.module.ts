@@ -3,7 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
 
-import { registerLocaleData } from '@angular/common';
+import { registerLocaleData, DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import localeEsCo from '@angular/common/locales/es-CO';
 import { LOCALE_ID } from '@angular/core';
 
@@ -27,7 +27,8 @@ registerLocaleData(localeEsCo);
     SharedModule
   ],
   providers: [
-    { provide: LOCALE_ID, useValue: 'es-CO' }
+    { provide: LOCALE_ID, useValue: 'es-CO' },
+    { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: 'America/Bogota' } }
   ],
   bootstrap: [AppComponent]
 })

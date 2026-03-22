@@ -1,0 +1,253 @@
+<div class="flex flex-col md:flex-row justify-between mb-6 gap-4 animate-in fade-in duration-500">
+    <div>
+        <h1 class="text-2xl font-bold text-slate-900">Clientes</h1>
+        <p class="text-sm text-slate-500">Administra los clientes del sistema.</p>
+    </div>
+</div>
+
+
+<!-- Top Filters Bar -->
+<div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+    <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+
+        <!-- Search Field -->
+        <div class="relative lg:col-span-3 xl:col-span-3">
+            <div class="relative w-full">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none"
+                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-4.35-4.35m2.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text"
+                    class="w-full h-10 pl-10 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm"
+                    [formControl]="searchControl" placeholder="Buscar por código, cliente, teléfono o ciudad..." />
+            </div>
+
+        </div>
+
+        <!-- Buttons Group -->
+        <div class="flex items-center lg:col-span-3 xl:col-span-3 justify-end gap-3">
+            <button
+                class="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-xl shadow-sm hover:bg-indigo-700 flex items-center justify-center transition-all whitespace-nowrap"
+                (click)="openModal()">
+                <svg class="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Nuevo Cliente
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <table class="w-full text-left border-collapse">
+        <thead>
+            <tr class="bg-slate-50 text-slate-700 uppercase text-[13px] tracking-wider font-bold">
+                <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
+                    (click)="sortBy('codigo')">
+                    <div class="flex items-center gap-1">Código
+                        <svg *ngIf="sortField === 'codigo' && sortDirection === 'asc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === 'codigo' && sortDirection === 'desc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                        </svg>
+                        <svg *ngIf="sortField !== 'codigo'" class="text-slate-400 opacity-50" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+                        </svg>
+                    </div>
+                </th>
+                <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
+                    (click)="sortBy('razon_social')">
+                    <div class="flex items-center gap-1">Cliente
+                        <svg *ngIf="sortField === 'razon_social' && sortDirection === 'asc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === 'razon_social' && sortDirection === 'desc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                        </svg>
+                        <svg *ngIf="sortField !== 'razon_social'" class="text-slate-400 opacity-50" width="16"
+                            height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+                        </svg>
+                    </div>
+                </th>
+                <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
+                    (click)="sortBy('ciudad')">
+                    <div class="flex items-center gap-1">Ciudad
+                        <svg *ngIf="sortField === 'ciudad' && sortDirection === 'asc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === 'ciudad' && sortDirection === 'desc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                        </svg>
+                        <svg *ngIf="sortField !== 'ciudad'" class="text-slate-400 opacity-50" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+                        </svg>
+                    </div>
+                </th>
+                <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors"
+                    (click)="sortBy('sector')">
+                    <div class="flex items-center gap-1">Sector
+                        <svg *ngIf="sortField === 'sector' && sortDirection === 'asc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === 'sector' && sortDirection === 'desc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                        </svg>
+                        <svg *ngIf="sortField !== 'sector'" class="text-slate-400 opacity-50" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+                        </svg>
+                    </div>
+                </th>
+                <th class="py-4 px-4 border-b border-slate-200">Teléfono</th>
+                <th class="py-4 px-4 border-b border-slate-200">Dirección</th>
+                <th class="py-4 px-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors text-right text-[13px] tracking-wider font-bold"
+                    (click)="sortBy('cartera_pendiente')">
+                    <div class="flex items-center justify-end gap-1">Cartera pendiente
+                        <svg *ngIf="sortField === 'cartera_pendiente' && sortDirection === 'asc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                        </svg>
+                        <svg *ngIf="sortField === 'cartera_pendiente' && sortDirection === 'desc'" class="text-indigo-600"
+                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 5v14M19 12l-7 7-7-7" />
+                        </svg>
+                        <svg *ngIf="sortField !== 'cartera_pendiente'" class="text-slate-400 opacity-50" width="16"
+                            height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />
+                        </svg>
+                    </div>
+                </th>
+                <th class="py-4 px-4 border-b border-slate-200 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="relative">
+            <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
+
+            <tr *ngFor="let client of clients"
+                class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
+                <td class="client-code font-mono text-sm">
+                    {{ client.codigo }}
+                </td>
+                <td class="client-name text-sm">
+                    {{ client.razon_social }}
+                </td>
+                <td class="p-4 text-sm text-slate-600">
+                    {{ client.ciudad }}
+                </td>
+                <td class="p-4 text-sm text-slate-600">
+                    {{ client.sector || '—' }}
+                </td>
+                <td class="p-4 text-sm text-slate-600">
+                    {{ client.phone || '—' }}
+                </td>
+                <td class="p-4 text-sm text-slate-500 truncate max-w-xs">
+                    {{ client.address || '—' }}
+                </td>
+                <td class="p-4 text-sm text-right">
+                    <div class="flex flex-col items-end">
+                        <span class="font-semibold text-slate-900">
+                            {{ formatCurrency(client.cartera_pendiente) }}
+                        </span>
+                        <span class="text-xs font-semibold mt-0.5"
+                            [ngClass]="client.cartera_pendiente > 0 ? 'text-red-500' : 'text-green-600'">
+                            {{ client.cartera_pendiente > 0 ? 'Debe' : 'Al día' }}
+                        </span>
+                    </div>
+                </td>
+                <td class="p-4 text-right">
+                    <div class="flex justify-end gap-2">
+                        <button *ngIf="isAdmin" (click)="editarCliente(client)"
+                            class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all"
+                            title="Editar">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button (click)="openDetail(client)"
+                            class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                            title="Ver Detalle">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            <tr *ngIf="!loading && clients.length === 0">
+                <td colspan="8" class="text-center p-12 text-slate-500 italic bg-slate-50/50">
+                    No se encontraron clientes con los filtros seleccionados.
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Footer con Paginación -->
+    <div
+        class="bg-slate-50/80 p-4 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="text-[12px] text-slate-500">
+            Mostrando <span class="font-bold text-slate-900">{{ totalRecords > 0 ? (page * pageSize) + 1 : 0 }}</span>
+            al
+            <span class="font-bold text-slate-900">{{ Math.min((page + 1) * pageSize, totalRecords) }}</span>
+            de <span class="font-bold text-slate-900">{{ totalRecords }}</span> clientes
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button (click)="previousPage()" [disabled]="page === 0 || loading" class="btn-nav">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6" />
+                </svg>Anterior
+            </button>
+
+            <div class="flex gap-1 items-center">
+                <span
+                    class="min-w-[32px] h-8 flex items-center justify-center bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-sm">{{
+                    page + 1 }}</span>
+                <span class="text-slate-500 text-[11px] font-medium px-2 uppercase tracking-tighter">de {{ totalPages ||
+                    1 }}</span>
+            </div>
+
+            <button (click)="nextPage()" [disabled]="(page + 1) * pageSize >= totalRecords || loading" class="btn-nav">
+                Siguiente<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M9 18l6-6-6-6" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<app-client-modal *ngIf="showClientModal" [clientToEdit]="clientToEdit"
+    (onClose)="showClientModal = false; clientToEdit = null" (saved)="refreshClients()"></app-client-modal>
+<app-client-detail-modal *ngIf="selectedClient" [client]="selectedClient" (onClose)="selectedClient = null"
+    (editClient)="openEditModal($event)"></app-client-detail-modal>

@@ -11,7 +11,7 @@
                 Volver al listado
             </button>
             <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Detalle de Compra</h1>
-            <p class="text-slate-500 mt-1 text-sm">Vista de solo lectura — compra confirmada.</p>
+            <p *ngIf="subtitle()" class="text-slate-500 mt-1 text-sm">{{ subtitle() }}</p>
         </div>
 
         <!-- Mensajes visuales -->
@@ -111,10 +111,10 @@
                 </div>
 
                 <!-- Fila 2 -->
-                <!-- Fecha creación -->
+                <!-- Fecha de compra -->
                 <div>
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha creación</p>
-                    <p class="font-semibold text-slate-800 text-sm">{{ formattedFechaCreacion() }}</p>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Fecha de compra</p>
+                    <p class="font-semibold text-slate-800 text-sm">{{ formattedFechaCompra() }}</p>
                 </div>
 
                 <!-- Condición de pago -->

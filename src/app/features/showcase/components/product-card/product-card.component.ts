@@ -1,238 +1,167 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Product, ShowcaseService } from '../../services/showcase.service';
+import { Product } from '../../services/showcase.service';
 
 @Component({
   selector: 'app-product-card',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <article class="mobile-catalog-card" (click)="toggleActive()" [class.active]="isActive" [class.zoom-out]="product.category === 'brochas'">
-      <div class="image-frame">
-        <span class="badge-new" *ngIf="product.isNew">NUEVO</span>
-        <img [src]="product.imageUrl" [alt]="product.name" class="product-image">
-        
-        <!-- Interaction Overlay -->
-        <div class="interaction-overlay" *ngIf="isActive">
-          <div class="action-buttons">
-            <button class="action-btn primary" (click)="onAddQuantity($event)">
-              <span class="icon">+</span>
-              <span>Añadir Cantidad</span>
-            </button>
-            <button class="action-btn secondary" (click)="onCheckInventory($event)" [disabled]="isLoadingStock">
-              <span class="icon" *ngIf="!isLoadingStock">?</span>
-              <span class="icon animate-spin" *ngIf="isLoadingStock">⟳</span>
-              <span *ngIf="stock === null">Consultar Inventario</span>
-              <span *ngIf="stock !== null">Stock: {{ stock }}</span>
-            </button>
-          </div>
+    <article class="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border border-slate-100 cursor-pointer"
+             (click)="onView.emit(product)">
+      
+      <!-- Image Container -->
+      <div class="relative aspect-[4/5] overflow-hidden bg-slate-50">
+        <!-- New Badge -->
+        <span *ngIf="product.isNew" 
+              class="absolute top-4 left-4 z-10 px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-lg">
+          Nuevo
+        </span>
+
+        <!-- Product Image -->
+        <img *ngIf="product.imageUrl && !imageError()"
+             [src]="product.imageUrl" 
+             [alt]="product.name"
+             (error)="imageError.set(true)"
+             class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110">
+
+        <!-- Image Fallback / No Image -->
+        <div *ngIf="!product.imageUrl || imageError()" 
+             class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-200">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span class="text-[10px] font-bold uppercase tracking-widest mt-2 text-slate-300">Sin imagen</span>
+        </div>
+
+        <!-- Hover Overlay -->
+        <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 backdrop-blur-[2px]">
+          <button (click)="onView.emit(product); $event.stopPropagation()"
+                  class="w-[140px] py-2.5 bg-white text-slate-900 text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-full shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 hover:bg-indigo-600 hover:text-white flex items-center justify-center gap-2">
+            <span>🔍</span> Ver imagen
+          </button>
+          <button (click)="shareProduct(product); $event.stopPropagation()"
+                  class="w-[140px] py-2.5 bg-slate-50/90 text-slate-700 text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-full shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 hover:bg-indigo-600 hover:text-white flex items-center justify-center gap-2">
+            <span>📤</span> Compartir
+          </button>
         </div>
       </div>
 
-      <div class="minimal-info">
-        <h3 class="product-name">{{ product.name }}</h3>
-        <span class="price">$ {{ product.price | number:'1.0-0' }}</span>
+      <!-- Content -->
+      <div class="p-5">
+        <div class="mb-4">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block group-hover:text-indigo-500 transition-colors">
+            {{ product.category }}
+          </span>
+          <h3 class="text-sm font-extrabold text-slate-900 leading-tight uppercase line-clamp-2 h-10">
+            {{ product.name }}
+          </h3>
+          <p class="text-[10px] text-slate-400 font-mono mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            SKU: {{ product.sku || 'N/A' }}
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-slate-50">
+          <div class="flex flex-col">
+            <span class="text-lg font-black text-slate-900 leading-tight">
+              $ {{ product.price | number:'1.0-0' }}
+            </span>
+            <!-- Stock Status -->
+            <div class="flex items-center gap-1.5 mt-1">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                      [ngClass]="{
+                        'bg-emerald-400': product.stock > 10,
+                        'bg-amber-400': product.stock > 0 && product.stock <= 10,
+                        'bg-rose-400': product.stock === 0
+                      }"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2"
+                      [ngClass]="{
+                        'bg-emerald-500': product.stock > 10,
+                        'bg-amber-500': product.stock > 0 && product.stock <= 10,
+                        'bg-rose-500': product.stock === 0
+                      }"></span>
+              </span>
+              <span class="text-[10px] font-bold uppercase tracking-wider"
+                    [ngClass]="{
+                      'text-emerald-600': product.stock > 10,
+                      'text-amber-600': product.stock > 0 && product.stock <= 10,
+                      'text-rose-600': product.stock === 0
+                    }">
+                {{ getStockStatusLabel(product.stock) }}
+              </span>
+            </div>
+          </div>
+          <div class="p-2.5 bg-slate-50 text-slate-400 rounded-xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all transform group-hover:rotate-12">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M15 3h6v6"></path>
+              <path d="M10 14 21 3"></path>
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            </svg>
+          </div>
+        </div>
       </div>
     </article>
   `,
   styles: [`
-    :host {
-      display: block;
-      height: 100%;
-    }
-
-    .mobile-catalog-card {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      cursor: pointer;
-      position: relative;
-    }
-
-    /* IMAGE FRAME */
-    .image-frame {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 3/4;
-      overflow: hidden;
-      background-color: var(--color-bg-surface);
-      border-radius: var(--radius-sm);
-    }
-
-    .product-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transform: scale(1.03) translateZ(0); /* Normalized zoom for all rollers/others */
-      transition: transform 0.4s ease;
-      will-change: transform;
-    }
-
-    .mobile-catalog-card.zoom-out .product-image {
-        /* Brushes specific zoom */
-        transform: scale(1.01) translateZ(0); 
-    }
-
-    .mobile-catalog-card:hover .product-image {
-        transform: scale(1.08);
-    }
-    
-    .mobile-catalog-card.zoom-out:hover .product-image {
-        transform: scale(1.05); 
-    }
-
-    .badge-new {
-      position: absolute;
-      top: 0.5rem;
-      left: 0.5rem;
-      background: var(--color-accent);
-      color: white;
-      font-size: 0.6rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      padding: 0.2rem 0.5rem;
-      z-index: 2;
-      border-radius: 2px;
-    }
-
-    /* INTERACTION OVERLAY */
-    .interaction-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(18, 18, 18, 0.85); /* Dark matte overlay */
-      backdrop-filter: blur(4px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      width: 80%;
-    }
-
-    .action-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem;
-      border: none;
-      font-weight: 600;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      cursor: pointer;
-      transition: all 0.2s;
-      border-radius: var(--radius-sm);
-      width: 100%;
-
-      .icon {
-        font-size: 1.1rem;
-        line-height: 1;
-      }
-      
-      &.animate-spin {
-         animation: spin 1s linear infinite;
-      }
-    }
-
-    .action-btn.primary {
-      background-color: var(--color-accent);
-      color: white;
-      box-shadow: 0 4px 12px rgba(212, 77, 40, 0.3);
-
-      &:active {
-        transform: scale(0.96);
-      }
-    }
-
-    .action-btn.secondary {
-      background-color: transparent;
-      border: 1px solid rgba(255,255,255,0.3);
-      color: white;
-
-      &:active {
-        background-color: rgba(255,255,255,0.1);
-      }
-    }
-
-    /* MINIMAL INFO */
-    .minimal-info {
-      padding-top: 0.75rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .product-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--color-text-main);
-      margin: 0;
-      line-height: 1.2;
-      letter-spacing: 0.01em;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .price {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--color-accent);
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
+    :host { display: block; height: 100%; }
   `]
 })
 export class ProductCardComponent {
-  @Input() product!: Product;
-  isActive: boolean = false;
-  stock: number | null = null;
-  isLoadingStock = false;
+  @Input({ required: true }) product!: Product;
+  @Output() onView = new EventEmitter<Product>();
 
-  constructor(private showcaseService: ShowcaseService) { }
+  readonly imageError = signal(false);
 
-  toggleActive() {
-    this.isActive = !this.isActive;
-    // Reset stock view on toggle if desired, or keep it
+  getStockStatusLabel(stock: number): string {
+    if (stock === 0) return 'Agotado';
+    if (stock <= 10) return 'Bajo stock';
+    return 'Disponible';
   }
 
-  onAddQuantity(event: Event) {
-    event.stopPropagation();
-    console.log('Add quantity for', this.product.name);
-  }
+  async shareProduct(product: Product) {
+    const url = `${window.location.origin}/showcase?q=${product.sku || product.name}`;
+    const shareText = `Mira este producto de Pintucloud: ${product.name}`;
 
-  onCheckInventory(event: Event) {
-    event.stopPropagation();
+    try {
+      // 1. Try to fetch the image and convert to File for rich sharing
+      if (product.imageUrl && !this.imageError() && navigator.share && typeof File !== 'undefined') {
+        try {
+          const response = await fetch(product.imageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], 'producto.jpg', { type: blob.type });
 
-    if (this.stock !== null) return; // Already loaded
-
-    this.isLoadingStock = true;
-    this.showcaseService.getStock(this.product.id).subscribe({
-      next: (qty) => {
-        this.stock = qty;
-        this.isLoadingStock = false;
-      },
-      error: (err) => {
-        console.error(err);
-        this.isLoadingStock = false;
-        this.stock = 0; // Default to 0 on error
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: product.name,
+              text: shareText,
+              url: url,
+              files: [file]
+            });
+            return; // Success
+          }
+        } catch (e) {
+          console.warn('Could not fetch image for sharing:', e);
+          // Fallback to text share below
+        }
       }
-    });
+
+      // 2. Fallback to native text share if file share fails or isn't supported
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: shareText,
+          url: url
+        });
+      } else {
+        // 3. Last fallback: Clipboard
+        await navigator.clipboard.writeText(url);
+        alert("¡Enlace copiado al portapapeles! Ya puedes compartirlo.");
+      }
+    } catch (error) {
+      console.error('Error sharing product:', error);
+    }
   }
 }

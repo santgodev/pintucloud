@@ -7,13 +7,15 @@ export interface InventoryItem {
     productId: string;
     productName: string;
     sku: string;
+    bodegaId: string;
     bodegaName: string;
     stock: number;
     price: number;
     imageUrl: string;
     description?: string;
     category?: string;
-    status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+    stockMinimo?: number;
+    status: 'En Stock' | 'Bajo Stock' | 'Agotado';
 }
 
 @Injectable({
@@ -31,8 +33,23 @@ export class InventoryService {
         return data || [];
     }
 
-    async getInventory(bodegaId?: string): Promise<Observable<InventoryItem[]>> {
-        // 1. Perfil de usuario
+    async getCategories(): Promise<string[]> {
+        const { data, error } = await this.supabase
+            .from('productos')
+            .select('categoria')
+            .order('categoria');
+
+        if (error) {
+            console.error('Error fetching categories:', error);
+            return [];
+        }
+
+        const categories = data.map((item: any) => item.categoria).filter((c: any) => c);
+        return [...new Set(categories)] as string[];
+    }
+
+    async getInventory(bodegaId?: string, lowStock?: boolean): Promise<Observable<InventoryItem[]>> {
+        // 1. Get User Profile for Context
         const user = await this.supabase.auth.getUser();
         if (!user.data.user) return new Observable(obs => obs.next([]));
 
@@ -79,7 +96,7 @@ export class InventoryService {
         const [prodResult, bodResult] = await Promise.all([
             this.supabase
                 .from('productos')
-                .select('id, nombre, sku, imagen_url, precio_base, categoria, descripcion')
+                .select('id, nombre, sku, imagen_url, precio_base, stock_minimo, categoria, descripcion')
                 .in('id', productoIds),
             this.supabase
                 .from('bodegas')
@@ -87,55 +104,42 @@ export class InventoryService {
                 .in('id', bodegaIds)
         ]);
 
-        // 🔍 DIAGNÓSTICO DETALLADO
-        console.group('🔍 [Inventory] Diagnóstico de Supabase');
-        console.log('📦 inventario_bodega rows:', invData.length);
-        console.log('🔑 producto_ids a buscar:', productoIds.length, productoIds.slice(0, 3));
-
         if (prodResult.error) {
-            console.error('❌ ERROR en tabla productos:');
-            console.error('   Código:', prodResult.error.code);
-            console.error('   Mensaje:', prodResult.error.message);
-            console.error('   Detalle:', prodResult.error.details);
-            console.error('   Hint:', prodResult.error.hint);
-            if (prodResult.error.code === '42501') {
-                console.error('   ⚠️ CAUSA: RLS (Row Level Security) bloqueando SELECT en productos');
-            }
+            console.error('[Inventory] Error en tabla productos:', prodResult.error.code, prodResult.error.message);
         } else {
-            console.log('✅ productos encontrados:', prodResult.data?.length ?? 0);
-            if (prodResult.data?.length === 0) {
-                console.warn('⚠️ La query NO da error pero devuelve 0 filas — posible RLS silencioso');
-            }
+            console.log('[Inventory] Productos encontrados:', prodResult.data?.length ?? 0);
         }
 
         if (bodResult.error) {
-            console.error('❌ ERROR en tabla bodegas:', bodResult.error.code, bodResult.error.message);
+            console.error('[Inventory] Error en tabla bodegas:', bodResult.error.code, bodResult.error.message);
         } else {
-            console.log('✅ bodegas encontradas:', bodResult.data?.length ?? 0);
+            console.log('[Inventory] Bodegas encontradas:', bodResult.data?.length ?? 0);
         }
-        console.groupEnd();
 
         // 6. Mapas para lookup O(1)
         const prodMap = new Map<string, any>((prodResult.data || []).map((p: any) => [p.id, p]));
         const bodMap = new Map<string, any>((bodResult.data || []).map((b: any) => [b.id, b]));
 
         // 7. Merge manual
-        const items: InventoryItem[] = invData.map((item: any) => {
+        let items: InventoryItem[] = invData.map((item: any) => {
             const prod = prodMap.get(item.producto_id);
             const bod = bodMap.get(item.bodega_id);
             const qty = Number(item.cantidad);
+            const minStock = Number(prod?.stock_minimo || 0);
 
-            let status: InventoryItem['status'] = 'In Stock';
-            if (qty === 0) status = 'Out of Stock';
-            else if (qty < 50) status = 'Low Stock';
+            let status: InventoryItem['status'] = 'En Stock';
+            if (qty === 0) status = 'Agotado';
+            else if (qty <= minStock) status = 'Bajo Stock';
 
             return {
                 id: item.id,
                 productId: item.producto_id,
                 productName: prod?.nombre ?? '(sin nombre)',
                 sku: prod?.sku ?? '',
+                bodegaId: item.bodega_id,
                 bodegaName: bod?.nombre ?? '',
                 stock: qty,
+                stockMinimo: minStock,
                 price: Number(prod?.precio_base ?? 0),
                 imageUrl: prod?.imagen_url ?? '',
                 description: prod?.descripcion ?? '',
@@ -143,6 +147,11 @@ export class InventoryService {
                 status
             } as InventoryItem;
         });
+
+        // 8. Apply lowStock filter if requested
+        if (lowStock) {
+            items = items.filter(item => item.stock <= (item.stockMinimo || 0));
+        }
 
         return new Observable(obs => { obs.next(items); obs.complete(); });
     }
@@ -152,6 +161,7 @@ export class InventoryService {
         sku: string;
         price: number;
         category: string;
+        stock_minimo?: number;
         description?: string;
         imageUrl?: string;
     }, initialStock: number, targetBodegaId?: string): Promise<string> {
@@ -187,6 +197,7 @@ export class InventoryService {
                 nombre: product.name,
                 descripcion: product.description || '',
                 precio_base: product.price,
+                stock_minimo: product.stock_minimo || 0,
                 imagen_url: product.imageUrl,
                 categoria: product.category,
                 distribuidor_id: userData.distribuidor_id
@@ -196,11 +207,17 @@ export class InventoryService {
 
         if (prodError) throw prodError;
 
-        const { error: invError } = await this.supabase
-            .from('inventario_bodega')
-            .insert({ bodega_id: bodegaId, producto_id: prodData.id, cantidad: initialStock });
+        if (initialStock && initialStock > 0) {
+            const { error: invError } = await this.supabase.rpc('registrar_movimiento', {
+                p_producto_id: prodData.id,
+                p_bodega_id: bodegaId,
+                p_tipo_movimiento: 'INICIAL',
+                p_cantidad: initialStock,
+                p_referencia_id: null
+            });
 
-        if (invError) console.error('Error creating inventory:', invError);
+            if (invError) throw invError;
+        }
 
         return prodData.id;
     }
@@ -229,6 +246,7 @@ export class InventoryService {
             .update({
                 nombre: productData.name,
                 precio_base: productData.price,
+                stock_minimo: productData.stock_minimo || 0,
                 descripcion: productData.description,
                 imagen_url: finalImageUrl,
                 categoria: productData.category
@@ -243,6 +261,27 @@ export class InventoryService {
                 .update({ cantidad: productData.stock })
                 .eq('id', productData.inventoryId);
             if (invError) throw invError;
+        }
+    }
+
+    async adjustInventory(
+        productoId: string,
+        bodegaId: string,
+        diferencia: number,
+        motivo: string
+    ) {
+        const { error } = await this.supabase.rpc('registrar_movimiento', {
+            p_producto_id: productoId,
+            p_bodega_id: bodegaId,
+            p_tipo_movimiento: 'AJUSTE',
+            p_cantidad: diferencia,
+            p_referencia_id: null,
+            p_observacion: motivo
+        });
+
+        if (error) {
+            console.error('Error ajustando inventario:', error);
+            throw error;
         }
     }
 }

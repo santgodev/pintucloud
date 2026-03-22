@@ -1,7 +1,7 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { ClientsService } from '../../services/clients.service';
+import { ClientsService, Client } from '../../services/clients.service';
 
 @Component({
    selector: 'app-client-modal',
@@ -12,7 +12,7 @@ import { ClientsService } from '../../services/clients.service';
        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
           
           <div class="p-5 border-b border-slate-200 flex justify-between items-center">
-             <h2 class="text-xl font-bold text-main">Nuevo Cliente</h2>
+             <h2 class="text-xl font-bold text-main">{{ clientToEdit ? 'Editar Cliente' : 'Nuevo Cliente' }}</h2>
              <button (click)="onClose.emit()" class="text-muted hover:text-main border-none bg-transparent cursor-pointer">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
              </button>
@@ -23,10 +23,10 @@ import { ClientsService } from '../../services/clients.service';
 
                 <!-- Código Cliente -->
                 <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Código Cliente *</label>
+                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Código Cliente</label>
                    <input formControlName="codigo" type="text" class="input-premium w-full" placeholder="Ej. CLI-001"
                           (input)="clientForm.get('codigo')?.setValue($any($event.target).value.toUpperCase(), { emitEvent: false })">
-                   <p *ngIf="f['codigo'].invalid && f['codigo'].touched" class="text-red-500 text-xs mt-1">El código es obligatorio.</p>
+                   
                 </div>
 
                 <!-- Razón Social -->
@@ -43,6 +43,15 @@ import { ClientsService } from '../../services/clients.service';
                    <p *ngIf="f['ciudad'].invalid && f['ciudad'].touched" class="text-red-500 text-xs mt-1">La ciudad es obligatoria.</p>
                 </div>
 
+                <!-- Sector -->
+                <div>
+                  <label class="block text-sm font-bold text-slate-700 mb-1.5">Sector *</label>
+                  <input formControlName="sector" type="text" class="input-premium w-full" placeholder="Ej. Construcción">
+                  <p *ngIf="f['sector'].invalid && f['sector'].touched" class="text-red-500 text-xs mt-1">
+                    El sector es obligatorio.
+                  </p>
+                </div>
+
                 <!-- Dirección -->
                 <div>
                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Dirección *</label>
@@ -57,12 +66,13 @@ import { ClientsService } from '../../services/clients.service';
                    <p *ngIf="f['telefono'].invalid && f['telefono'].touched" class="text-red-500 text-xs mt-1">El teléfono es obligatorio.</p>
                 </div>
 
-                <!-- Email -->
+                <!-- NIT -->
                 <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Email <span class="text-slate-400 font-normal">(opcional)</span></label>
-                   <input formControlName="email" type="email" class="input-premium w-full" placeholder="contacto@cliente.com">
-                   <p *ngIf="f['email'].invalid && f['email'].touched" class="text-red-500 text-xs mt-1">Ingresa un email válido.</p>
+                  <label class="block text-sm font-bold text-slate-700 mb-1.5">NIT <span class="text-slate-400 font-normal">(opcional)</span></label>
+                  <input formControlName="nit" type="text" class="input-premium w-full" placeholder="Ej. 900123456">
                 </div>
+
+
 
              </div>
 
@@ -86,6 +96,7 @@ import { ClientsService } from '../../services/clients.service';
 export class ClientModalComponent {
    @Output() onClose = new EventEmitter<void>();
    @Output() saved = new EventEmitter<void>();
+   @Input() clientToEdit: Client | null = null;
 
    clientForm: FormGroup;
    isLoading = false;
@@ -93,16 +104,32 @@ export class ClientModalComponent {
 
    constructor(private fb: FormBuilder, private clientsService: ClientsService) {
       this.clientForm = this.fb.group({
-         codigo: ['', Validators.required],
+         codigo: [''],
          razon_social: ['', Validators.required],
          ciudad: ['', Validators.required],
+         sector: ['', Validators.required],
          direccion: ['', Validators.required],
          telefono: ['', Validators.required],
-         email: ['', Validators.email]
+         nit: ['']
       });
    }
 
    get f() { return this.clientForm.controls; }
+
+   ngOnChanges(changes: SimpleChanges) {
+      if (changes['clientToEdit'] && this.clientToEdit) {
+         this.clientForm.patchValue({
+            codigo: this.clientToEdit.codigo,
+            razon_social: this.clientToEdit.razon_social,
+            ciudad: this.clientToEdit.ciudad,
+            sector: this.clientToEdit.sector,
+            direccion: this.clientToEdit.address,
+            telefono: this.clientToEdit.phone,
+            nit: this.clientToEdit.nit
+         });
+         // Disable code modification on edit if necessary, else leave enabled
+      }
+   }
 
    onSubmit() {
       if (this.clientForm.invalid) return;
@@ -110,15 +137,21 @@ export class ClientModalComponent {
       this.errorMsg = null;
 
       const val = this.clientForm.value;
-
-      this.clientsService.createClient({
-         codigo: val.codigo.trim().toUpperCase(),
+      const clientData = {
+         codigo: val.codigo?.trim().toUpperCase() || undefined,
          razon_social: val.razon_social.trim(),
          ciudad: val.ciudad.trim(),
+         sector: val.sector.trim(),
          direccion: val.direccion.trim(),
          telefono: val.telefono.trim(),
-         email: val.email?.trim() || undefined
-      }).then(() => {
+         nit: val.nit?.trim() || undefined
+      };
+
+      const operation = this.clientToEdit
+         ? this.clientsService.updateClient(this.clientToEdit.id, clientData)
+         : this.clientsService.createClient(clientData);
+
+      operation.then(() => {
          this.isLoading = false;
          this.saved.emit();
          this.onClose.emit();
@@ -126,7 +159,7 @@ export class ClientModalComponent {
          if (err?.code === '23505') {
             this.errorMsg = 'Ya existe un cliente con este código.';
          } else {
-            this.errorMsg = 'Error al crear cliente.';
+            this.errorMsg = this.clientToEdit ? 'Error al actualizar cliente.' : 'Error al crear cliente.';
          }
          this.isLoading = false;
       });

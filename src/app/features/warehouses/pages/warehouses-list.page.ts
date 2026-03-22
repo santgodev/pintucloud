@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WarehousesService, Warehouse } from '../services/warehouses.service';
 import { WarehouseCardComponent } from '../components/warehouse-card.component';
+import { UiService } from '../../../core/services/ui.service';
 
 @Component({
   selector: 'app-warehouses-list',
@@ -71,7 +72,10 @@ export class WarehousesListPage implements OnInit {
   loading = true;
   errorMessage: string | null = null;
 
-  constructor(private warehousesService: WarehousesService) { }
+  constructor(
+    private warehousesService: WarehousesService,
+    private uiService: UiService
+  ) { }
 
   ngOnInit(): void {
     this.loadWarehouses();
@@ -79,16 +83,19 @@ export class WarehousesListPage implements OnInit {
 
   loadWarehouses(): void {
     this.loading = true;
+    this.uiService.setLoading(true);
     this.errorMessage = null;
 
     this.warehousesService.getWarehouses().subscribe({
       next: (data) => {
         this.warehouses = data;
         this.loading = false;
+        this.uiService.setLoading(false);
       },
       error: (err) => {
         this.errorMessage = `Error al cargar bodegas: ${err.message}`;
         this.loading = false;
+        this.uiService.setLoading(false);
       },
     });
   }

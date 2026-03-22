@@ -10,13 +10,28 @@
         </svg>
         Volver a Compras
       </button>
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Nueva Compra</h1>
-      <p class="text-slate-500 mt-1 text-sm">Crea una compra en borrador y luego agrégale los productos.</p>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        {{ compraId() ? 'Editar Compra' : 'Nueva Compra' }}
+      </h1>
+      <p class="text-slate-500 mt-1 text-sm">
+        {{ compraId() ? 'Modifica los datos administrativos de la compra.' : 'Crea una compra en borrador y luego
+        agrégale los productos.' }}
+      </p>
     </div>
 
-    <div *ngIf="compraId()"
-      class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold uppercase px-3 py-1.5 rounded-full shrink-0">
-      <span class="w-2 h-2 rounded-full bg-amber-400"></span> BORRADOR
+    <div *ngIf="compraEstado()" class="flex flex-col items-end gap-2">
+      <div [ngClass]="{
+          'bg-amber-50 border-amber-200 text-amber-700': compraEstado() === 'BORRADOR',
+          'bg-emerald-50 border-emerald-200 text-emerald-700': compraEstado() === 'CONFIRMADA',
+          'bg-rose-50 border-rose-200 text-rose-700': compraEstado() === 'ANULADA'
+        }" class="flex items-center gap-2 border text-xs font-bold uppercase px-3 py-1.5 rounded-full shrink-0">
+        <span class="w-2 h-2 rounded-full" [ngClass]="{
+            'bg-amber-400': compraEstado() === 'BORRADOR',
+            'bg-emerald-400': compraEstado() === 'CONFIRMADA',
+            'bg-rose-400': compraEstado() === 'ANULADA'
+          }"></span>
+        {{ compraEstado() }}
+      </div>
     </div>
   </div>
 
@@ -98,6 +113,17 @@
         </p>
       </div>
 
+      <!-- Fecha de compra -->
+      <div>
+        <label for="fecha" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Fecha de compra <span class="text-red-500">*</span>
+        </label>
+        <input id="fecha" type="date" formControlName="fecha"
+          class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+          [class.border-red-400]="isFieldInvalid(compraForm, 'fecha')"
+          [class.border-slate-200]="!isFieldInvalid(compraForm, 'fecha')">
+      </div>
+
       <!-- Número de factura -->
       <div>
         <label for="numero_factura" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">N°
@@ -127,9 +153,8 @@
           class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
           [class.border-red-400]="isFieldInvalid(compraForm, 'dias_credito')"
           [class.border-slate-200]="!isFieldInvalid(compraForm, 'dias_credito')">
+          <option [value]="15">15 días</option>
           <option [value]="30">30 días</option>
-          <option [value]="60">60 días</option>
-          <option [value]="90">90 días</option>
         </select>
         <p *ngIf="isFieldInvalid(compraForm, 'dias_credito')" class="text-red-500 text-xs mt-1">Selecciona el plazo</p>
       </div>
@@ -227,7 +252,7 @@
   <ng-container *ngIf="currentStep() === 2 && !confirmed()">
 
     <!-- Botón volver al Paso 1 -->
-    <div *ngIf="compraEstado() === 'BORRADOR'" class="mb-4">
+    <div *ngIf="!isAnulada()" class="mb-4">
       <button type="button" (click)="goToStep1()"
         class="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 text-sm font-semibold transition-colors">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -237,8 +262,9 @@
       </button>
     </div>
 
-    <!-- Formulario agregar producto -->
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 md:p-7 mb-4">
+    <!-- Formulario agregar producto (Solo si BORRADOR) -->
+    <div *ngIf="compraEstado() === 'BORRADOR'"
+      class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 md:p-7 mb-4">
       <h2 class="text-base font-bold text-slate-800 mb-6 flex items-center gap-2.5">
         <span
           class="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">2</span>
@@ -269,18 +295,19 @@
             class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
         </div>
 
-        <!-- Precio unitario (readonly — autocompleted) -->
+        <!-- Precio de compra -->
         <div class="sm:col-span-2">
           <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-            Precio de compra
-            <span class="normal-case font-normal text-slate-400 ml-1">(precio base)</span>
+            Precio de compra <span class="text-red-500">*</span>
           </label>
           <div class="relative">
             <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-            <input type="number" formControlName="precio_unitario" id="input-precio" readonly
-              class="w-full border border-slate-200 bg-slate-100 rounded-xl pl-7 pr-3.5 py-2.5 text-sm text-slate-700 cursor-not-allowed focus:outline-none">
+            <input type="number" formControlName="precio_unitario" id="input-precio" placeholder="0"
+              class="w-full border border-slate-200 bg-slate-50 rounded-xl pl-7 pr-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">Se autocompleta al seleccionar el producto</p>
+          <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+            Valor sugerido según catálogo. Puede ajustarlo según la factura del proveedor.
+          </p>
         </div>
 
         <!-- Subtotal preview -->
@@ -365,7 +392,7 @@
               <td class="px-5 py-3.5 text-right font-bold text-slate-900 tabular-nums">
                 {{ (d.cantidad * d.precio_unitario) | currency:'COP':'symbol-narrow':'1.0-0' }}
               </td>
-              <td class="px-5 py-3.5 text-right">
+              <td class="px-5 py-3.5 text-right w-10">
                 <button *ngIf="compraEstado() === 'BORRADOR'" (click)="onRemoveDetalle(d)"
                   [disabled]="removingId() === d.id"
                   class="text-slate-300 hover:text-red-500 transition-colors disabled:opacity-40">
@@ -428,10 +455,10 @@
     <!-- ── Acciones finales ── -->
     <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
 
-      <!-- Izquierda: Guardar borrador y salir + Eliminar borrador -->
+      <!-- Izquierda: Guardar y salir + Eliminar borrador -->
       <div class="flex flex-col sm:flex-row gap-3">
         <button (click)="goBack()" class="w-full sm:w-auto btn-secundario text-sm">
-          Guardar borrador y salir
+          {{ isConfirmada() ? 'Guardar cambios y salir' : 'Guardar borrador y salir' }}
         </button>
 
         <button *ngIf="compraEstado() === 'BORRADOR'" (click)="onDeleteBorrador()" [disabled]="deletingBorrador()"
@@ -451,7 +478,8 @@
       </div>
 
       <!-- Derecha: Confirmar -->
-      <button (click)="onConfirmCompra()" id="btn-confirmar-compra" [disabled]="detalle().length === 0 || confirming()"
+      <button *ngIf="compraEstado() === 'BORRADOR'" (click)="onConfirmCompra()" id="btn-confirmar-compra"
+        [disabled]="detalle().length === 0 || confirming()"
         class="w-full sm:w-auto flex items-center justify-center gap-2 btn-confirmar">
         <svg *ngIf="confirming()" class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2.5">

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { SalesComponent } from './sales.component';
+import { unsavedChangesGuard } from './guards/unsaved-changes.guard';
 
 export const SALES_ROUTES: Routes = [
     { path: '', component: SalesComponent },
@@ -14,6 +15,7 @@ export const SALES_ROUTES: Routes = [
 
     {
         path: ':id/edit',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
             import('./sales-edit.component')
                 .then(m => m.SalesEditComponent)

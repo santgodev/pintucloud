@@ -35,19 +35,25 @@ import { UiService } from '../../../core/services/ui.service';
                   Ventas
                </span>
             </a>
+            <a routerLink="/cartera" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+               <span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  Cartera
+               </span>
+            </a>
              <a routerLink="/clients" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
                <span>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                   Clientes
                </span>
             </a>
-            <a routerLink="/purchases" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+            <a *ngIf="isAdmin" routerLink="/purchases" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
                <span>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                   Compras
                </span>
             </a>
-            <a routerLink="/proveedores" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+            <a *ngIf="isAdmin" routerLink="/proveedores" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
                <span>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                   Proveedores
@@ -93,14 +99,12 @@ import { UiService } from '../../../core/services/ui.service';
                </span>
             </a>
             
-            <ng-container *ngIf="(currentUser$ | async)?.role === 'ADMIN'">
-                <a routerLink="/users" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
-                   <span>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                      Usuarios
-                   </span>
-                </a>
-            </ng-container>
+            <a *ngIf="isAdmin" routerLink="/users" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+                <span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Usuarios
+                </span>
+            </a>
           </div>
        </nav>
     </aside>
@@ -238,6 +242,11 @@ export class SidebarComponent {
 
    constructor(private authService: AuthService, public uiService: UiService) {
       this.currentUser$ = this.authService.currentUser$;
+   }
+
+   get isAdmin(): boolean {
+      // El AuthService mapea internamente 'admin_distribuidor' a 'ADMIN'
+      return this.authService.currentUserValue?.role === 'ADMIN';
    }
 
    closeOnMobile() {

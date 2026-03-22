@@ -113,7 +113,7 @@ export class PurchaseCreatePage implements OnInit {
 
   // ── Signals de estado ───────────────────────────────────────────────────────
   readonly compraId = signal<string | null>(null);
-  readonly compraEstado = signal<'BORRADOR' | 'CONFIRMADA' | null>(null);
+  readonly compraEstado = signal<'BORRADOR' | 'CONFIRMADA' | 'ANULADA' | null>(null);
   readonly detalle = signal<DetalleRow[]>([]);
   readonly confirmed = signal(false);
   readonly error = signal<string | null>(null);
@@ -128,11 +128,14 @@ export class PurchaseCreatePage implements OnInit {
   readonly updatingCabecera = signal(false);
   readonly updateSuccess = signal(false);  // toast de éxito (auto-oculta)
   readonly deletingBorrador = signal(false);
+  readonly isConfirmada = computed(() => this.compraEstado() === 'CONFIRMADA');
+  readonly isAnulada = computed(() => this.compraEstado() === 'ANULADA');
 
   // ── Signals derivados de los formularios (via toSignal) ─────────────────────
   private readonly _detalleValues: Signal<unknown>;
   private readonly _condicionPago: Signal<string>;
   private readonly _diasCredito: Signal<number>;   // reacciona al select 30/60/90
+  private readonly _fechaCompra: Signal<string>;   // reacciona al input date
 
   /** Subtotal en tiempo real (reacciona a cantidad y precio_unitario) */
   readonly subtotalPreview: Signal<number>;
@@ -170,8 +173,13 @@ export class PurchaseCreatePage implements OnInit {
     );
 
     this._diasCredito = toSignal(
-      this.compraForm.get('dias_credito')!.valueChanges.pipe(startWith(30)),
-      { initialValue: 30 }
+      this.compraForm.get('dias_credito')!.valueChanges.pipe(startWith(this.compraForm.get('dias_credito')!.value)),
+      { initialValue: this.compraForm.get('dias_credito')!.value }
+    );
+
+    this._fechaCompra = toSignal(
+      this.compraForm.get('fecha')!.valueChanges.pipe(startWith(this.compraForm.get('fecha')!.value)),
+      { initialValue: this.compraForm.get('fecha')!.value }
     );
 
     // ── Signals computados ────────────────────────────────────────────────────
@@ -186,7 +194,13 @@ export class PurchaseCreatePage implements OnInit {
     this.fechaVencimientoDisplay = computed(() => {
       if (this._condicionPago() !== 'CREDITO') return null;
       const dias = Number(this._diasCredito()) || 0;
-      const fecha = new Date();
+      const baseDateStr = this._fechaCompra();
+      if (!baseDateStr) return null;
+
+      // Parseo manual YYYY-MM-DD para evitar desfases de zona horaria
+      const [year, month, day] = baseDateStr.split('-').map(Number);
+      const fecha = new Date(year, month - 1, day);
+
       fecha.setDate(fecha.getDate() + dias);
       return fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
     });
@@ -207,10 +221,17 @@ export class PurchaseCreatePage implements OnInit {
     const form = this.fb.group({
       proveedor_id: ['', Validators.required],
       bodega_id: ['', Validators.required],
+      fecha: [
+        (() => {
+          const d = new Date();
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        })(),
+        Validators.required
+      ],
       numero_factura: [''],
       observacion: [''],
       condicion_pago: ['CONTADO', Validators.required],
-      dias_credito: [{ value: null, disabled: true }],
+      dias_credito: [{ value: 15 as number | null, disabled: true }],
     });
 
     // Habilitar/deshabilitar dias_credito según condicion_pago
@@ -218,6 +239,7 @@ export class PurchaseCreatePage implements OnInit {
       const diasCtrl = form.get('dias_credito')!;
       if (value === 'CREDITO') {
         diasCtrl.enable();
+        if (!diasCtrl.value) diasCtrl.setValue(15);
         diasCtrl.setValidators([Validators.required]);
       } else {
         diasCtrl.setValue(null);
@@ -234,7 +256,7 @@ export class PurchaseCreatePage implements OnInit {
     return this.fb.group({
       producto_id: ['', Validators.required],
       cantidad: [null, [Validators.required, Validators.min(1)]],
-      precio_unitario: [{ value: null, disabled: true }],
+      precio_unitario: [null, [Validators.required, Validators.min(0)]],
     });
   }
 
@@ -261,12 +283,34 @@ export class PurchaseCreatePage implements OnInit {
     this.error.set(null);
     try {
       const compra = await this.purchasesService.getById(id);
-      if (!compra || compra.estado !== 'BORRADOR') {
-        this.error.set('Esta compra no se puede editar (no es BORRADOR).');
+      if (!compra) {
+        this.error.set('No se encontró la compra.');
         return;
       }
+      if (compra.estado === 'ANULADA') {
+        this.error.set('No se pueden editar compras anuladas.');
+        return;
+      }
+
       this.compraId.set(id);
-      this.compraEstado.set(compra.estado);
+      this.compraEstado.set(compra.estado!);
+
+      // Llenar formulario cabecera
+      this.compraForm.patchValue({
+        proveedor_id: compra.proveedor_id,
+        bodega_id: compra.bodega_id,
+        fecha: compra.fecha,
+        numero_factura: compra.numero_factura,
+        observacion: compra.observacion,
+        condicion_pago: compra.condicion_pago,
+        dias_credito: compra.dias_credito
+      });
+
+      // Si está confirmada, bloquear campos Críticos
+      if (compra.estado === 'CONFIRMADA') {
+        this.compraForm.get('proveedor_id')?.disable();
+        this.compraForm.get('bodega_id')?.disable();
+      }
 
       const detalles = (compra as any).compras_detalle ?? [];
       this.detalle.set(
@@ -320,6 +364,7 @@ export class PurchaseCreatePage implements OnInit {
       const id = await this.purchasesService.create({
         proveedor_id: raw.proveedor_id,
         bodega_id: raw.bodega_id,
+        fecha: raw.fecha,
         numero_factura: raw.numero_factura || null,
         observacion: raw.observacion || null,
         condicion_pago: raw.condicion_pago,
@@ -335,9 +380,9 @@ export class PurchaseCreatePage implements OnInit {
     }
   }
 
-  // ── Paso 1 (edición): Actualizar cabecera de un BORRADOR existente ───────────
+  // ── Paso 1 (edición): Actualizar cabecera ───────────────────
   async updateCompraCabecera(): Promise<void> {
-    if (!this.compraId() || this.compraEstado() !== 'BORRADOR') return;
+    if (!this.compraId() || this.isAnulada()) return;
 
     this.compraForm.markAllAsTouched();
     if (this.compraForm.invalid) return;
@@ -351,6 +396,7 @@ export class PurchaseCreatePage implements OnInit {
       await this.purchasesService.updateCompra(this.compraId()!, {
         proveedor_id: raw.proveedor_id,
         bodega_id: raw.bodega_id,
+        fecha: raw.fecha,
         numero_factura: raw.numero_factura || null,
         observacion: raw.observacion || null,
         condicion_pago: raw.condicion_pago,

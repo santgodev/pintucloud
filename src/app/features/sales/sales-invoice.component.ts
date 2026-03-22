@@ -38,9 +38,14 @@ export class SalesInvoiceComponent implements OnInit {
 
     try {
       this.sale = await this.salesService.getById(id);
+      console.log('VENTA COMPLETA:', this.sale);
 
       // 🔍 DEBUG — verificar datos recibidos de BD
       console.log('[Invoice] Venta cargada:', this.sale);
+      console.log('FECHA RAW:', this.sale.fecha);
+      console.log('TIPO:', typeof this.sale.fecha);
+      console.log('CREATED_AT RAW:', this.sale.created_at);
+      console.log('AUTORIZACION RAW:', this.sale.fecha_autorizacion);
       console.log('[Invoice] Detalle ventas:', this.sale?.detalle_ventas);
 
       // Forzar detección de cambios con nueva referencia
@@ -135,6 +140,60 @@ export class SalesInvoiceComponent implements OnInit {
     } catch (error) {
       console.error('Error al anular la orden:', error);
       alert('Error al anular la orden.');
+    }
+  }
+
+  async autorizarOrden() {
+    if (!this.isAdmin || this.sale?.estado !== 'CONFIRMADA') return;
+
+    const ok = confirm('¿Desea autorizar esta orden? Esto afectará el inventario.');
+    if (!ok) return;
+
+    this.isLoading = true;
+    try {
+      await this.salesService.authorizeSale(this.sale.id);
+      // Recargar la venta para ver el nuevo estado
+      this.sale = await this.salesService.getById(this.sale.id);
+      console.log('Orden autorizada correctamente');
+    } catch (error) {
+      console.error('[Invoice] Error al autorizar orden:', error);
+      alert('Error al autorizar la orden');
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  /**
+   * Formatea una fecha ISO UTC a la zona horaria de Colombia usando Intl.DateTimeFormat
+   * Resultado esperado: 17/03/2026, 5:41 p. m.
+   */
+  formatFechaColombia(fecha: string | null | undefined): string {
+    if (!fecha) return '';
+
+    // Si viene en formato YYYY-MM-DD (DATE de PostgreSQL)
+    if (fecha.length === 10) {
+      const [year, month, day] = fecha.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    try {
+      // Si llega un string de fecha sin zona, forzarlo a UTC para que Intl lo mueva a Bogota
+      let valueToParse = fecha;
+      if (typeof fecha === 'string' && fecha.includes('T') && !fecha.endsWith('Z') && !fecha.includes('+')) {
+        valueToParse = fecha + 'Z';
+      }
+
+      const dateObj = new Date(valueToParse);
+
+      return new Intl.DateTimeFormat('es-CO', {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(dateObj);
+    } catch (e) {
+      console.error('Error formatting date for Colombia:', e);
+      return fecha;
     }
   }
 }

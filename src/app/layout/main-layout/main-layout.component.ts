@@ -20,6 +20,16 @@ import { UiService } from '../../core/services/ui.service';
             <router-outlet></router-outlet>
          </main>
       </div>
+      
+      <!-- Global Loading Spinner Overlay -->
+      <div class="global-spinner-overlay" *ngIf="uiService.isLoading$ | async">
+         <div class="spinner-container">
+            <svg class="circular-loader" viewBox="25 25 50 50">
+               <circle class="loader-path" cx="50" cy="50" r="20" fill="none" stroke-width="4" stroke-miterlimit="10"></circle>
+            </svg>
+            <span class="loading-text">Cargando base de datos...</span>
+         </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -78,6 +88,57 @@ import { UiService } from '../../core/services/ui.service';
             opacity: 1;
             pointer-events: auto;
         }
+    }
+
+    /* Spinner Animation Styles */
+    .global-spinner-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.85); /* Light glassmorphism */
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .spinner-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+    .loading-text {
+        color: var(--color-primary);
+        font-weight: 500;
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+        animation: pulseText 1.5s infinite;
+    }
+    .circular-loader {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        animation: rotate 2s linear infinite;
+        transform-origin: center center;
+    }
+    .loader-path {
+        stroke: var(--color-primary);
+        stroke-dasharray: 1, 200;
+        stroke-dashoffset: 0;
+        animation: dash 1.5s ease-in-out infinite, colorRotate 6s ease-in-out infinite;
+        stroke-linecap: round;
+    }
+    @keyframes rotate {
+        100% { transform: rotate(360deg); }
+    }
+    @keyframes dash {
+        0% { stroke-dasharray: 1, 200; stroke-dashoffset: 0; }
+        50% { stroke-dasharray: 89, 200; stroke-dashoffset: -35px; }
+        100% { stroke-dasharray: 89, 200; stroke-dashoffset: -124px; }
+    }
+    @keyframes pulseText {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
     }
   `]
 })

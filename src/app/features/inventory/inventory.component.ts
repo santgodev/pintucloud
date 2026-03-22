@@ -2,14 +2,21 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../shared/shared.module';
 import { InventoryService, InventoryItem } from './services/inventory.service';
-import { Observable } from 'rxjs';
+import { Router, ActivatedRoute } from '@angular/router';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { map, take } from 'rxjs/operators';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { ProductModalComponent } from './components/product-modal/product-modal.component';
+import { AdjustStockModalComponent } from './components/adjust-stock-modal/adjust-stock-modal.component';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, SharedModule, ProductModalComponent, FormsModule],
+  imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, FormsModule],
   template: `
     <div class="mb-8 p-4 text-left">
       <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
@@ -17,8 +24,8 @@ import { FormsModule } from '@angular/forms';
           <h1 class="text-3xl font-bold text-slate-900 tracking-tight text-left">Inventario Global</h1>
           <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
         </div>
-        <div class="flex gap-3">
-          <button class="btn btn-outline flex items-center gap-2" (click)="notImplemented()">
+        <div class="flex gap-3" *ngIf="isAdmin">
+          <button class="btn btn-outline flex items-center gap-2" (click)="exportInventory()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Exportar
           </button>
@@ -35,9 +42,9 @@ import { FormsModule } from '@angular/forms';
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Productos</p>
           <p class="text-2xl font-bold text-slate-900">{{ (inventory$ | async)?.length || 0 }}</p>
         </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" (click)="showLowStock()">
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bajo Stock</p>
-          <p class="text-2xl font-bold text-slate-900">0</p>
+          <p class="text-2xl font-bold text-slate-900">{{ lowStockCount$ | async }}</p>
         </div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bodegas Activas</p>
@@ -52,25 +59,31 @@ import { FormsModule } from '@angular/forms';
       <!-- Filters -->
       <div class="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div class="flex-1 relative">
-          <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900" placeholder="Buscar por nombre, SKU o categoría...">
+          <input [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900" placeholder="Buscar por nombre, SKU o categoría...">
         </div>
         <div class="flex gap-2 flex-wrap md:flex-nowrap">
-          <select [(ngModel)]="selectedBodega" (change)="refreshInventory()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+          <select [(ngModel)]="selectedBodega" (ngModelChange)="refreshInventory()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
             <option [value]="''">Todas las Bodegas</option>
             <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
           </select>
-          <select class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium">
-            <option>Todas las Categorías</option>
-            <option>Rodillos</option>
-            <option>Brochas</option>
+          <select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+            <option value="">Todas las Categorías</option>
+            <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
           </select>
-          <select class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium">
-            <option>Todos los Estados</option>
-            <option>En Stock</option>
-            <option>Bajo Stock</option>
-            <option>Agotado</option>
+          <select [(ngModel)]="selectedStatus" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+            <option value="">Todos los Estados</option>
+            <option value="En Stock">En Stock</option>
+            <option value="Bajo Stock">Bajo Stock</option>
+            <option value="Agotado">Agotado</option>
           </select>
         </div>
+      </div>
+
+      <div *ngIf="showLowStockOnly" class="bg-orange-100 text-orange-700 p-3 rounded-lg border border-orange-200 mb-4 flex justify-between items-center text-sm font-medium">
+        <span>Mostrando productos en Bajo Stock</span>
+        <button (click)="clearLowStockFilter()" class="underline hover:text-orange-900 transition-colors">
+          Ver todo
+        </button>
       </div>
 
       <app-card class="p-0 overflow-hidden shadow-xl border-slate-200">
@@ -85,7 +98,7 @@ import { FormsModule } from '@angular/forms';
                 <th class="p-4 font-semibold text-slate-600 text-sm">Precio</th>
                 <th class="p-4 font-semibold text-slate-600 text-sm">Stock</th>
                 <th class="p-4 font-semibold text-slate-600 text-sm">Estado</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
+                <th *ngIf="isAdmin" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 italic-none">
@@ -116,21 +129,26 @@ import { FormsModule } from '@angular/forms';
                 <td class="p-4 text-xs font-bold">
                   <span class="px-2.5 py-1 rounded-md" 
                     [ngClass]="{
-                      'bg-emerald-50 text-emerald-700 border border-emerald-100': item.status === 'In Stock',
-                      'bg-amber-50 text-amber-700 border border-amber-100': item.status === 'Low Stock',
-                      'bg-rose-50 text-rose-700 border border-rose-100': item.status === 'Out of Stock'
+                      'bg-emerald-50 text-emerald-700 border border-emerald-100': item.status === 'En Stock',
+                      'bg-amber-50 text-amber-700 border border-amber-100': item.status === 'Bajo Stock',
+                      'bg-rose-50 text-rose-700 border border-rose-100': item.status === 'Agotado'
                     }">
                     {{ item.status }}
                   </span>
                 </td>
-                <td class="p-4 text-right pr-6">
-                  <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white hover:shadow-md text-slate-400 hover:text-primary transition-all border-none bg-transparent cursor-pointer" (click)="editProduct(item)" title="Editar">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                  </button>
+                <td class="p-4" *ngIf="isAdmin">
+                  <div class="flex items-center justify-center gap-3">
+                    <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="adjustStock(item)" title="Ajustar inventario">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 20V10"/> <path d="M18 20V4"/> <path d="M6 20v-4"/> </svg>
+                    </button>
+                    <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="editProduct(item)" title="Editar producto">
+                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr *ngIf="(inventory$ | async)?.length === 0">
-                <td colspan="8" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
+                <td [attr.colspan]="isAdmin ? 8 : 7" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
                   No se encontraron productos con los filtros seleccionados.
                 </td>
               </tr>
@@ -141,40 +159,173 @@ import { FormsModule } from '@angular/forms';
     </div>
 
     <app-product-modal *ngIf="showProductModal" [product]="selectedProduct" (onClose)="closeModal()" (saved)="refreshInventory()"></app-product-modal>
+    
+    <app-adjust-stock-modal 
+       *ngIf="showAdjustModal && selectedAdjustItem" 
+       [item]="selectedAdjustItem" 
+       (onClose)="closeAdjustModal()" 
+       (confirm)="onConfirmAdjust($event)">
+    </app-adjust-stock-modal>
   `,
   styles: [`
     .italic-none tr { font-style: normal !important; }
   `]
 })
 export class InventoryComponent implements OnInit {
-  inventory$!: Observable<InventoryItem[]>;
+  private _allInventory: InventoryItem[] = [];
+  private inventorySubject = new BehaviorSubject<InventoryItem[]>([]);
+  inventory$: Observable<InventoryItem[]> = this.inventorySubject.asObservable();
+
+  lowStockCount$!: Observable<number>;
+  showLowStockOnly = false;
+
   showProductModal = false;
   selectedProduct: InventoryItem | null = null;
+
+  showAdjustModal = false;
+  selectedAdjustItem: InventoryItem | null = null;
+
   bodegas: any[] = [];
   selectedBodega: string = '';
+  categorias: string[] = [];
+  selectedCategory: string = '';
+  selectedStatus: string = '';
+  searchTerm: string = '';
+  filters = {
+    lowStock: false
+  };
 
-  constructor(private inventoryService: InventoryService) { }
+  constructor(
+    private inventoryService: InventoryService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService,
+    private uiService: UiService
+  ) { }
+
+  get isAdmin(): boolean {
+    return this.authService.currentUserValue?.role === 'ADMIN';
+  }
 
   async ngOnInit() {
+    this.uiService.setLoading(true);
+    this.lowStockCount$ = this.inventory$.pipe(
+      map(items => items.filter(item => item.stock <= (item.stockMinimo || 0)).length)
+    );
+
+    // Leer parámetros para filtros automáticos
+    this.route.queryParams.subscribe(params => {
+      if (params['lowStock']) {
+        this.filters.lowStock = true;
+        this.showLowStockOnly = true;
+        this.loadInventory();
+      }
+    });
+
     await this.loadBodegas();
-    this.loadInventory();
+    await this.loadCategorias();
+    await this.loadInventory();
   }
 
   async loadBodegas() {
     this.bodegas = await this.inventoryService.getBodegas();
   }
 
+  async loadCategorias() {
+    this.categorias = await this.inventoryService.getCategories();
+  }
+
   async loadInventory() {
-    this.inventory$ = await this.inventoryService.getInventory(this.selectedBodega || undefined);
+    this.uiService.setLoading(true);
+    const inv$ = await this.inventoryService.getInventory(
+      this.selectedBodega || undefined,
+      this.filters.lowStock
+    );
+    inv$.pipe(take(1)).subscribe(items => {
+      this._allInventory = items;
+      this.applyFilters();
+      this.uiService.setLoading(false);
+    });
+  }
+
+  applyFilters() {
+    let filtered = [...this._allInventory];
+
+    if (this.selectedCategory) {
+      filtered = filtered.filter(item => item.category === this.selectedCategory);
+    }
+
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.productName?.toLowerCase().includes(term) ||
+        item.sku?.toLowerCase().includes(term) ||
+        item.category?.toLowerCase().includes(term)
+      );
+    }
+
+    if (this.showLowStockOnly || this.filters.lowStock) {
+      filtered = filtered.filter(
+        item => item.stock <= (item.stockMinimo ?? 0)
+      );
+    }
+
+    if (this.selectedStatus) {
+      filtered = filtered.filter(
+        item => item.status === this.selectedStatus
+      );
+    }
+
+    this.inventorySubject.next(filtered);
   }
 
   refreshInventory() {
     this.loadInventory();
   }
 
+  showLowStock() {
+    this.showLowStockOnly = true;
+    this.filters.lowStock = true;
+    this.applyFilters();
+  }
+
+  clearLowStockFilter() {
+    this.showLowStockOnly = false;
+    this.filters.lowStock = false;
+    this.applyFilters();
+  }
+
   openModal() {
     this.selectedProduct = null;
     this.showProductModal = true;
+  }
+
+  adjustStock(item: InventoryItem) {
+    this.selectedAdjustItem = item;
+    this.showAdjustModal = true;
+  }
+
+  closeAdjustModal() {
+    this.showAdjustModal = false;
+    this.selectedAdjustItem = null;
+  }
+
+  onConfirmAdjust(payload: { cantidad: number, observacion: string }) {
+    if (!this.selectedAdjustItem) return;
+
+    this.inventoryService.adjustInventory(
+      this.selectedAdjustItem.productId,
+      // @ts-ignore
+      this.selectedAdjustItem.bodegaId || this.bodegas.find(b => b.nombre === this.selectedAdjustItem?.bodegaName)?.id,
+      payload.cantidad,
+      payload.observacion
+    ).then(() => {
+      this.refreshInventory();
+      this.closeAdjustModal();
+    }).catch((err: any) => {
+      console.error(err);
+      alert('Error ajustando inventario: ' + (err.message || err));
+    });
   }
 
   editProduct(item: InventoryItem) {
@@ -192,7 +343,25 @@ export class InventoryComponent implements OnInit {
     item.imageUrl = '';
   }
 
-  notImplemented() {
-    alert('Esta funcionalidad estará disponible en la próxima actualización.');
+  exportInventory() {
+    this.inventory$.pipe(take(1)).subscribe(items => {
+      const exportData = items.map(item => ({
+        Producto: item.productName,
+        SKU: item.sku,
+        Categoría: item.category || 'General',
+        Bodega: item.bodegaName,
+        Stock: item.stock,
+        'Stock mínimo': item.stockMinimo || 0,
+        Estado: item.status
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+
+      const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data: Blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+      saveAs(data, 'inventario.xlsx');
+    });
   }
 }
