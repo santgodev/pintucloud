@@ -6,7 +6,7 @@ import { PurchasesService, Compra, PagoProveedor } from '../services/purchases.s
 
 import { PurchasePaymentModalComponent } from '../components/purchase-payment-modal/purchase-payment-modal.component';
 import { AuthService } from '../../../core/services/auth.service';
-
+import { UiService } from '../../../core/services/ui.service';
 @Component({
   selector: 'app-purchases-list',
   standalone: true,
@@ -615,7 +615,8 @@ export class PurchasesListPage implements OnInit {
   constructor(
     private readonly purchasesService: PurchasesService,
     private readonly authService: AuthService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly uiService: UiService
   ) { }
 
   get isAdmin(): boolean {
@@ -623,6 +624,7 @@ export class PurchasesListPage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.uiService.setLoading(true);
     try {
       this.bodegas = await this.purchasesService.getBodegas();
       await Promise.all([
@@ -633,10 +635,12 @@ export class PurchasesListPage implements OnInit {
       this.errorMessage = `Error al cargar datos iniciales: ${err.message}`;
       this.loading = false;
     }
+    this.uiService.setLoading(false);
   }
 
   async loadCompras() {
     this.loading = true;
+    this.uiService.setLoading(true);
     try {
       const result = await this.purchasesService.getPurchases({
         page: this.page,
@@ -653,6 +657,7 @@ export class PurchasesListPage implements OnInit {
       this.errorMessage = `Error al cargar compras: ${err.message}`;
     } finally {
       this.loading = false;
+      this.uiService.setLoading(false);
     }
   }
 

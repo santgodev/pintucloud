@@ -7,6 +7,7 @@ import { SalesService, Sale } from './services/sales.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { SalesCaptureComponent } from './components/sales-capture/sales-capture.component';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
    selector: 'app-sales',
@@ -303,7 +304,8 @@ export class SalesComponent implements OnInit {
       private salesService: SalesService,
       private supabase: SupabaseService,
       private router: Router,
-      private route: ActivatedRoute
+      private route: ActivatedRoute,
+      private uiService: UiService
    ) { }
 
    toggleNewSaleModal() {
@@ -317,40 +319,46 @@ export class SalesComponent implements OnInit {
 
 
    async ngOnInit() {
-      await this.checkUserRole();
+      this.uiService.setLoading(true);
+      try {
+         await this.checkUserRole();
 
-      const { data } = await this.supabase.auth.getUser();
+         const { data } = await this.supabase.auth.getUser();
+         console.log('AUTH USER ID:', data?.user?.id);
 
+         this.searchControl.valueChanges
+            .pipe(
+               debounceTime(400),
+               distinctUntilChanged()
+            )
+            .subscribe(value => {
+               this.page = 0;
+               this.loadSales();
+            });
 
-      this.searchControl.valueChanges
-         .pipe(
-            debounceTime(400),
-            distinctUntilChanged()
-         )
-         .subscribe(value => {
-            this.page = 0;
-            this.loadSales();
+         // Leer parámetros de consulta para filtros automáticos
+         this.route.queryParams.subscribe(params => {
+            if (params['today']) {
+               const today = new Date();
+               const fechaLocal =
+                  today.getFullYear() + '-' +
+                  String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(today.getDate()).padStart(2, '0');
+
+               this.filters.fechaDesde = fechaLocal;
+               this.filters.fechaHasta = fechaLocal;
+               this.fechaInicio = fechaLocal;
+               this.fechaFin = fechaLocal;
+               this.loadSales();
+            }
          });
 
-      // Leer parámetros de consulta para filtros automáticos
-      this.route.queryParams.subscribe(params => {
-         if (params['today']) {
-            const today = new Date();
-            const fechaLocal =
-               today.getFullYear() + '-' +
-               String(today.getMonth() + 1).padStart(2, '0') + '-' +
-               String(today.getDate()).padStart(2, '0');
-
-            this.filters.fechaDesde = fechaLocal;
-            this.filters.fechaHasta = fechaLocal;
-            this.fechaInicio = fechaLocal;
-            this.fechaFin = fechaLocal;
-            this.loadSales();
-         }
-      });
-
-      await this.loadInitialData();
-      await this.loadSales();
+         await this.loadInitialData();
+         await this.loadSales();
+      } catch (err) {
+         console.error('Error in ngOnInit sales:', err);
+         this.uiService.setLoading(false);
+      }
    }
 
    async checkUserRole() {
@@ -374,6 +382,7 @@ export class SalesComponent implements OnInit {
 
    async loadSales() {
       this.loading = true;
+      this.uiService.setLoading(true);
       try {
          // Asegurar que el search esté actualizado del control
          this.filters.search = this.searchControl.value || '';
@@ -408,6 +417,7 @@ export class SalesComponent implements OnInit {
          console.error('Error loading sales', err);
       } finally {
          this.loading = false;
+         this.uiService.setLoading(false);
       }
    }
 

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ProveedoresService } from '../services/proveedores.service';
 import { Proveedor } from '../models/proveedor.model';
+import { UiService } from '../../../core/services/ui.service';
 
 @Component({
     selector: 'app-proveedores-list',
@@ -20,6 +21,7 @@ export class ProveedoresListPage implements OnInit {
     constructor(
         private readonly service: ProveedoresService,
         private readonly router: Router,
+        private readonly uiService: UiService
     ) { }
 
     async ngOnInit(): Promise<void> {
@@ -28,6 +30,7 @@ export class ProveedoresListPage implements OnInit {
 
     private async loadProveedores(): Promise<void> {
         this.loading.set(true);
+        this.uiService.setLoading(true);
         this.error.set(null);
         try {
             const data = await this.service.getAll();
@@ -36,6 +39,7 @@ export class ProveedoresListPage implements OnInit {
             this.error.set(`Error al cargar proveedores: ${err.message}`);
         } finally {
             this.loading.set(false);
+            this.uiService.setLoading(false);
         }
     }
 

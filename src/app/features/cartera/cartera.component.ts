@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import * as XLSX from 'xlsx';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { AuthService } from '../../core/services/auth.service';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
     selector: 'app-cartera',
@@ -407,7 +408,8 @@ export class CarteraComponent implements OnInit {
      constructor(
         private carteraService: CarteraService,
         private supabase: SupabaseService,
-        private authService: AuthService
+        private authService: AuthService,
+        private uiService: UiService
     ) { }
 
     get isAdmin(): boolean {
@@ -415,19 +417,25 @@ export class CarteraComponent implements OnInit {
     }
 
     async ngOnInit() {
-        this.initPagoForm();
-        await this.loadInitialData();
+        this.uiService.setLoading(true);
+        try {
+            this.initPagoForm();
+            await this.loadInitialData();
 
-        this.searchControl.valueChanges
-            .pipe(
-                debounceTime(400),
-                distinctUntilChanged()
-            )
-            .subscribe(value => {
-                this.loadCartera();
-            });
+            this.searchControl.valueChanges
+                .pipe(
+                    debounceTime(400),
+                    distinctUntilChanged()
+                )
+                .subscribe(value => {
+                    this.loadCartera();
+                });
 
-        this.loadCartera();
+            await this.loadCartera();
+        } catch (err) {
+            console.error('Error inicializando cartera', err);
+            this.uiService.setLoading(false);
+        }
     }
 
     initPagoForm() {
@@ -468,6 +476,7 @@ export class CarteraComponent implements OnInit {
 
     async loadCartera() {
         this.loading = true;
+        this.uiService.setLoading(true);
         try {
             this.filters.search = this.searchControl.value || '';
             
@@ -500,6 +509,7 @@ export class CarteraComponent implements OnInit {
             console.error('Error loading cartera', error);
         } finally {
             this.loading = false;
+            this.uiService.setLoading(false);
         }
     }
 

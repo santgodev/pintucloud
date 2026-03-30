@@ -8,6 +8,9 @@ export class UiService {
     private sidebarVisibleSubject = new BehaviorSubject<boolean>(true);
     public sidebarVisible$ = this.sidebarVisibleSubject.asObservable();
 
+    private loadingSubject = new BehaviorSubject<boolean>(false);
+    public isLoading$ = this.loadingSubject.asObservable();
+
     constructor() { }
 
     toggleSidebar() {
@@ -16,5 +19,9 @@ export class UiService {
 
     setSidebarVisible(visible: boolean) {
         this.sidebarVisibleSubject.next(visible);
+    }
+
+    setLoading(loading: boolean) {
+        this.loadingSubject.next(loading);
     }
 }

@@ -9,6 +9,7 @@ import { ClientModalComponent } from './components/client-modal/client-modal.com
 import { ClientDetailModalComponent } from './components/client-detail-modal/client-detail-modal.component';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
    selector: 'app-clients',
@@ -76,7 +77,8 @@ export class ClientsComponent implements OnInit {
    constructor(
       private clientsService: ClientsService, 
       private router: Router,
-      private authService: AuthService
+      private authService: AuthService,
+      private uiService: UiService
    ) { }
 
    get isAdmin(): boolean {
@@ -108,6 +110,7 @@ export class ClientsComponent implements OnInit {
 
    loadClients() {
       this.loading = true;
+      this.uiService.setLoading(true);
       this.clientsService.getClients({
          page: this.page,
          pageSize: this.pageSize,
@@ -118,6 +121,7 @@ export class ClientsComponent implements OnInit {
          this.clients = result.data;
          this.totalRecords = result.total;
          this.loading = false;
+         this.uiService.setLoading(false);
       });
    }
 

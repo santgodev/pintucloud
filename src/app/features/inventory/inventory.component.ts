@@ -12,6 +12,7 @@ import { AdjustStockModalComponent } from './components/adjust-stock-modal/adjus
 import { InitialInventoryModalComponent } from './components/initial-inventory-modal/initial-inventory-modal.component';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
   selector: 'app-inventory',
@@ -226,7 +227,8 @@ export class InventoryComponent implements OnInit {
     private inventoryService: InventoryService,
     private router: Router,
     private route: ActivatedRoute,
-    private authService: AuthService
+    private authService: AuthService,
+    private uiService: UiService
   ) { }
 
   get isAdmin(): boolean {
@@ -234,6 +236,7 @@ export class InventoryComponent implements OnInit {
   }
 
   async ngOnInit() {
+    this.uiService.setLoading(true);
     this.lowStockCount$ = this.inventory$.pipe(
       map(items => items.filter(item => item.stock <= (item.stockMinimo || 0)).length)
     );
@@ -249,7 +252,7 @@ export class InventoryComponent implements OnInit {
 
     await this.loadBodegas();
     await this.loadCategorias();
-    this.loadInventory();
+    await this.loadInventory();
   }
 
   async loadBodegas() {
@@ -269,6 +272,7 @@ export class InventoryComponent implements OnInit {
   }
 
   async loadInventory() {
+    this.uiService.setLoading(true);
     const inv$ = await this.inventoryService.getInventory(
       this.selectedBodega || undefined,
       this.filters.lowStock
@@ -297,6 +301,7 @@ export class InventoryComponent implements OnInit {
       this._allInventory = resolvedItems;
       this.totalInventoryValue = resolvedItems.reduce((acc, item) => acc + (item.inventoryValue || 0), 0);
       this.applyFilters();
+      this.uiService.setLoading(false);
     });
   }
 

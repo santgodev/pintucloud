@@ -10,6 +10,7 @@ import { Chart } from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Observable, map } from 'rxjs';
 import { Router } from '@angular/router';
+import { UiService } from '../../core/services/ui.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -365,12 +366,17 @@ export class DashboardComponent implements OnInit {
     private showcaseService: ShowcaseService,
     private inventoryService: InventoryService,
     private dashboardService: DashboardService,
-    private router: Router
+    private router: Router,
+    private uiService: UiService
   ) { }
 
-  ngOnInit() {
-    this.loadStats();
-    this.loadVentasProductos();
+  async ngOnInit() {
+    this.uiService.setLoading(true);
+    await Promise.all([
+       this.loadStats(),
+       this.loadVentasProductos()
+    ]);
+    this.uiService.setLoading(false);
   }
 
 
@@ -431,9 +437,13 @@ export class DashboardComponent implements OnInit {
     this.showNewSaleModal = !this.showNewSaleModal;
   }
 
-  refreshStats() {
-    this.loadStats();
-    this.loadVentasProductos();
+  async refreshStats() {
+    this.uiService.setLoading(true);
+    await Promise.all([
+       this.loadStats(),
+       this.loadVentasProductos()
+    ]);
+    this.uiService.setLoading(false);
   }
 
   goToVentasHoy() {

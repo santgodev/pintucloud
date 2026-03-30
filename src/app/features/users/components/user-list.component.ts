@@ -4,6 +4,7 @@ import { SharedModule } from '../../../shared/shared.module';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { Observable, from } from 'rxjs';
 import { UserFormComponent } from './user-form.component';
+import { UiService } from '../../../core/services/ui.service';
 
 @Component({
   selector: 'app-user-list',
@@ -102,13 +103,14 @@ export class UserListComponent implements OnInit {
   showModal = false;
   selectedUser: any = null;
 
-  constructor(private supabase: SupabaseService) { }
+  constructor(private supabase: SupabaseService, private uiService: UiService) { }
 
   ngOnInit() {
     this.loadUsers();
   }
 
   loadUsers() {
+    this.uiService.setLoading(true);
     this.users$ = from(
       this.supabase.from('usuarios')
         .select(`
@@ -122,6 +124,7 @@ export class UserListComponent implements OnInit {
         `)
         .order('nombre_completo')
         .then((res: any) => {
+          this.uiService.setLoading(false);
           if (res.error) {
             console.error('Error fetching users:', res.error);
             return [];

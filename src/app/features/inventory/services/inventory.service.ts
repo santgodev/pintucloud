@@ -1,10 +1,9 @@
 import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs'; // removed map if not used in pipe, but it is used
-import { map } from 'rxjs/operators';
+import { Observable, from, map } from 'rxjs';
 import { SupabaseService } from '../../../core/services/supabase.service';
 
 export interface InventoryItem {
-    id: string; // inventario_bodega id
+    id: string;
     productId: string;
     productName: string;
     sku: string;
@@ -36,11 +35,7 @@ export class InventoryService {
         const { data, error } = await this.supabase
             .from('bodegas')
             .select('*');
-
-        if (error) {
-            console.error(error);
-            return [];
-        }
+        if (error) { console.error(error); return []; }
         return data || [];
     }
 
@@ -83,7 +78,7 @@ export class InventoryService {
 
         const { data: profile } = await this.supabase
             .from('usuarios')
-            .select('bodega_asignada_id, rol')
+            .select('bodega_asignada_id, rol, distribuidor_id')
             .eq('id', user.data.user.id)
             .single();
 
@@ -224,10 +219,8 @@ export class InventoryService {
         visible_catalogo?: boolean;
     }, initialStock: number, targetBodegaId?: string): Promise<string> {
 
-        // 1. Context
         const userResponse = await this.supabase.auth.getUser();
         const user = userResponse.data.user;
-
         if (!user) throw new Error('Usuario no autenticado');
 
         const { data: userData, error: userError } = await this.supabase
@@ -238,16 +231,13 @@ export class InventoryService {
 
         if (userError || !userData) throw new Error('Error al obtener perfil');
 
-        // default bodega logic
         let bodegaId = targetBodegaId || userData.bodega_asignada_id;
         if (!bodegaId) {
-            // If admin, find first bodega
             const { data: bodegas } = await this.supabase
                 .from('bodegas')
                 .select('id')
                 .eq('distribuidor_id', userData.distribuidor_id)
                 .limit(1);
-
             if (bodegas && bodegas.length > 0) bodegaId = bodegas[0].id;
         }
 
@@ -293,30 +283,21 @@ export class InventoryService {
     async uploadProductImage(file: File): Promise<string> {
         const timestamp = Date.now();
         const fileExt = file.name.split('.').pop();
-        const fileName = `${timestamp}.${fileExt}`;
-        const filePath = `products/${fileName}`;
+        const filePath = `products/${timestamp}.${fileExt}`;
 
         const { error: uploadError } = await this.supabase.storage
-            .from('productos') // Bucket name assumed 'productos' based on previous context or convention
+            .from('productos')
             .upload(filePath, file);
 
-        if (uploadError) {
-            console.error('Upload Error:', uploadError);
-            throw new Error('Error al subir la imagen');
-        }
+        if (uploadError) throw new Error('Error al subir la imagen');
 
-        const { data } = this.supabase.storage
-            .from('productos')
-            .getPublicUrl(filePath);
-
+        const { data } = this.supabase.storage.from('productos').getPublicUrl(filePath);
         return data.publicUrl;
     }
+
     async updateProduct(productData: any, newImageFile?: File): Promise<void> {
-        // 1. Upload Image if exists
         let finalImageUrl = productData.imageUrl;
-        if (newImageFile) {
-            finalImageUrl = await this.uploadProductImage(newImageFile);
-        }
+        if (newImageFile) finalImageUrl = await this.uploadProductImage(newImageFile);
 
         // 2. Update Product Info
         const { error: prodError } = await this.supabase
@@ -333,18 +314,13 @@ export class InventoryService {
             })
             .eq('id', productData.productId);
 
-        if (prodError) {
-            console.error('Error actualizando producto en DB:', prodError);
-            throw new Error(`No se pudo actualizar el producto: ${prodError.message}`);
-        }
+        if (prodError) throw new Error(`No se pudo actualizar: ${prodError.message}`);
 
-        // 3. Update Custom Stock (for the specific inventory item ID)
         if (productData.inventoryId && productData.stock !== undefined) {
             const { error: invError } = await this.supabase
                 .from('inventario_bodega')
                 .update({ cantidad: productData.stock })
                 .eq('id', productData.inventoryId);
-
             if (invError) throw invError;
         }
     }
