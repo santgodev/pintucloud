@@ -27,8 +27,8 @@ import { ShowcaseService } from './services/showcase.service';
               <span class="sm:hidden text-xs font-bold uppercase tracking-wider">Volver</span>
             </button>
             <div class="h-8 w-[1px] bg-slate-100 hidden lg:block"></div>
-            <div class="flex flex-col hidden sm:flex">
-              <span class="text-sm md:text-lg font-black text-slate-900 tracking-tighter uppercase leading-none">Pintucloud</span>
+            <div class="hidden sm:flex flex-col">
+              <img src="logo_superior.png" alt="Brochas y Rodillos Superior" class="h-10 max-w-[180px] object-contain object-left">
               <span class="text-[9px] md:text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em] leading-none mt-1">Catálogo Comercial</span>
             </div>
           </div>
@@ -107,7 +107,7 @@ import { ShowcaseService } from './services/showcase.service';
 
       <!-- Simple Footer -->
       <footer class="py-8 border-t border-slate-100 flex flex-col items-center gap-2">
-         <p class="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">Industrial Supply Co.</p>
+         <p class="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">Brochas y Rodillos Superior</p>
          <div class="w-8 h-[1px] bg-slate-200"></div>
       </footer>
     </div>

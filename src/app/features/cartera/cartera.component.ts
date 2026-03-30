@@ -42,7 +42,9 @@ import { AuthService } from '../../core/services/auth.service';
                 <option value="">Todos los estados</option>
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="PARCIAL">Parcial</option>
+                <option value="VENCIDA">Vencida</option>
                 <option value="PAGADA">Pagada</option>
+                <option value="ANULADA">Anulada</option>
              </select>
           </div>
 
@@ -107,7 +109,6 @@ import { AuthService } from '../../core/services/auth.service';
                     <th class="p-4 border-b border-slate-200 text-right">TOTAL</th>
                     <th class="p-4 border-b border-slate-200 text-right">SALDO</th>
                     <th class="p-4 border-b border-slate-200 w-[140px] text-center">Vencimiento</th>
-                    <th class="p-4 border-b border-slate-200 w-[120px] text-center">Días vencidos</th>
                     <th class="p-4 border-b border-slate-200 text-center">Estado</th>
                     <th class="p-4 border-b border-slate-200 text-right">Acciones</th>
                  </tr>
@@ -131,34 +132,25 @@ import { AuthService } from '../../core/services/auth.service';
                     </td>
                     <td class="p-4 text-right font-semibold text-red-600">
                         {{ item.saldo_pendiente | currency:'COP':'symbol':'1.0-0' }}
-                    </td>
-                    <td class="p-4 text-sm text-slate-800 text-center">
-                        <div class="flex flex-col items-center">
-                            <span>{{ item.fecha_vencimiento | date:'dd-MMM-yyyy' | lowercase }}</span>
-                            <span [ngClass]="getEstadoVencimiento(item.fecha_vencimiento).class" class="text-[10px] mt-0.5">
-                                {{ getEstadoVencimiento(item.fecha_vencimiento).label }}
-                            </span>
-                        </div>
-                    </td>
-                    <td class="p-4 text-sm text-red-600 font-semibold text-center">
-                        {{ getDiasVencidos(item.fecha_vencimiento) }}
+                    </td>                     <td class="p-4 text-sm text-slate-800 text-center">
+                        {{ item.fecha_vencimiento | date:'dd-MMM-yyyy' | lowercase }}
                     </td>
                     <td class="p-4 text-center">
                         <span class="badge-premium" 
-                            [class.bg-slate-200]="item.estado === 'PENDIENTE'"
-                            [class.text-slate-800]="item.estado === 'PENDIENTE'"
-                            [class.border]="item.estado === 'PENDIENTE'"
-                            [class.border-slate-300]="item.estado === 'PENDIENTE'"
-                            [class.warning]="item.estado === 'PARCIAL'"
-                            [class.success]="item.estado === 'PAGADA'">
-                            {{ item.estado }}
+                            [class.info]="getDisplayEstado(item) === 'PENDIENTE'"
+                            [class.warning]="getDisplayEstado(item) === 'PARCIAL'"
+                            [class.danger]="getDisplayEstado(item) === 'VENCIDA'"
+                            [class.success]="getDisplayEstado(item) === 'PAGADO' || item.saldo_pendiente === 0"
+                            [class.neutral]="getDisplayEstado(item) === 'ANULADA'">
+                            {{ getDisplayEstado(item) }}
                         </span>
                     </td>
                     <td class="p-4 text-right">
                         <div class="flex justify-end gap-2">
-                            <!-- Registrar Pago -->
-                            <button (click)="registrarPago(item)"
-                                    [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADA'"
+                            <!-- Registrar Pago (Solo Admins/Distribuidores) -->
+                            <button *ngIf="isAdmin"
+                                    (click)="registrarPago(item)"
+                                    [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADO'"
                                     class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed" 
                                     title="Registrar Pago">
                                 Registrar pago
@@ -372,6 +364,8 @@ import { AuthService } from '../../core/services/auth.service';
     .success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
     .danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
     .input-premium {
         @apply bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 transition-all shadow-sm;
     }
@@ -476,7 +470,26 @@ export class CarteraComponent implements OnInit {
         this.loading = true;
         try {
             this.filters.search = this.searchControl.value || '';
-            this.carteras = await this.carteraService.getCartera(this.filters);
+            
+            // Si el filtro es VENCIDA, pedimos PENDIENTE y PARCIAL al backend para filtrar luego localmente
+            const originalEstadoFilter = this.filters.estado;
+            const needsLocalFilter = originalEstadoFilter === 'VENCIDA';
+            
+            let searchParams = { ...this.filters };
+            if (needsLocalFilter) {
+                // El backend no conoce VENCIDA, así que buscamos PENDIENTES y PARCIALES
+                searchParams.estado = ''; // Traemos todos para filtrar luego o podríamos optimizar pidiendo ambos
+            }
+
+            let results = await this.carteraService.getCartera(searchParams);
+
+            if (needsLocalFilter) {
+                // Filtrado local para VENCIDA
+                results = results.filter(item => this.getDisplayEstado(item) === 'VENCIDA');
+            }
+
+            this.carteras = results;
+            
             this.totalCarteraFiltrada = this.carteras.reduce(
                 (sum: number, item: CarteraItem) => sum + Number(item.saldo_pendiente || 0), 0
             );
@@ -488,6 +501,35 @@ export class CarteraComponent implements OnInit {
         } finally {
             this.loading = false;
         }
+    }
+
+    /**
+     * Calcula el estado visual dinámico (VENCIDA)
+     */
+    getDisplayEstado(item: CarteraItem): string {
+        if (!item) return '';
+        
+        // El backend devuelve PAGADO si saldo es 0, pero por seguridad visual:
+        if (item.saldo_pendiente <= 0 || item.estado === 'PAGADO') return 'PAGADO';
+        if (item.estado === 'ANULADA') return 'ANULADA';
+
+        // Lógica para VENCIDA: PENDIENTE/PARCIAL + Fecha vencimiento pasada
+        if (['PENDIENTE', 'PARCIAL'].includes(item.estado)) {
+            if (item.fecha_vencimiento) {
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0); // Solo fecha
+                
+                // Forzar la fecha de vencimiento a medianoche local para comparar solo fechas
+                const fechaVenc = new Date(item.fecha_vencimiento);
+                fechaVenc.setHours(0, 0, 0, 0);
+                
+                if (fechaVenc < hoy) {
+                    return 'VENCIDA';
+                }
+            }
+        }
+
+        return item.estado;
     }
 
     onFilterChange() {
@@ -595,9 +637,14 @@ export class CarteraComponent implements OnInit {
                 this.loadCartera();
             }, 1200);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            this.pagoError = 'Error al registrar el pago';
+            const msg = err.message || '';
+            if (msg.includes('No tienes permisos para registrar pagos')) {
+                this.pagoError = 'No tienes permisos para realizar esta acción';
+            } else {
+                this.pagoError = 'Error al registrar el pago';
+            }
             this.guardandoPago = false;
         }
     }
@@ -673,42 +720,6 @@ export class CarteraComponent implements OnInit {
         this.pagos = [];
     }
 
-    getEstadoVencimiento(fecha: string) {
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-
-        const vencimiento = new Date(fecha);
-        vencimiento.setHours(0, 0, 0, 0);
-
-        if (vencimiento < hoy) {
-            return { label: 'VENCIDA', class: 'text-red-600 font-semibold' };
-        }
-
-        // Días de diferencia (positiva o cero)
-        const diffDays = Math.round((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (diffDays <= 5) {
-            return { label: 'POR VENCER', class: 'text-yellow-600 font-semibold' };
-        }
-
-        return { label: 'AL DÍA', class: 'text-green-600 font-semibold' };
-    }
-
-    getDiasVencidos(fecha: string) {
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-
-        const vencimiento = new Date(fecha);
-        vencimiento.setHours(0, 0, 0, 0);
-
-        if (vencimiento < hoy) {
-            const diffDays = Math.round((hoy.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24));
-            return diffDays;
-        }
-
-        return 0;
-    }
-
     exportarCartera() {
         const data = this.carteras.map(item => ({
             Factura: item.numero_factura,
@@ -717,7 +728,7 @@ export class CarteraComponent implements OnInit {
             Total: item.total_factura,
             Saldo: item.saldo_pendiente,
             Vencimiento: item.fecha_vencimiento,
-            Estado: item.estado
+            Estado: this.getDisplayEstado(item)
         }));
 
         const ws = XLSX.utils.json_to_sheet(data);

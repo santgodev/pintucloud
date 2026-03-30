@@ -9,13 +9,14 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { ProductModalComponent } from './components/product-modal/product-modal.component';
 import { AdjustStockModalComponent } from './components/adjust-stock-modal/adjust-stock-modal.component';
+import { InitialInventoryModalComponent } from './components/initial-inventory-modal/initial-inventory-modal.component';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, FormsModule],
+  imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, InitialInventoryModalComponent, FormsModule],
   template: `
     <div class="mb-8 p-4 text-left">
       <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
@@ -24,6 +25,10 @@ import { AuthService } from '../../core/services/auth.service';
           <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
         </div>
         <div class="flex gap-3" *ngIf="isAdmin">
+          <button class="btn btn-outline flex items-center gap-2" (click)="showInitialModal = true" title="Sólo para productos con saldo 0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z"></path><path d="M16 8V5a4 4 0 0 0-8 0v3"></path></svg>
+            Cargar Inventario Inicial
+          </button>
           <button class="btn btn-outline flex items-center gap-2" (click)="exportInventory()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Exportar
@@ -50,8 +55,8 @@ import { AuthService } from '../../core/services/auth.service';
           <p class="text-2xl font-bold text-slate-900">{{ bodegas.length }}</p>
         </div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Moneda</p>
-          <p class="text-2xl font-bold text-slate-900 uppercase">COP</p>
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inventario</p>
+          <p class="text-2xl font-bold text-slate-900">{{ totalInventoryValue | currency:'COP':'symbol':'1.0-0' }}</p>
         </div>
       </div>
 
@@ -86,16 +91,18 @@ import { AuthService } from '../../core/services/auth.service';
       </div>
 
       <app-card class="p-0 overflow-hidden shadow-xl border-slate-200">
-        <div class="overflow-x-auto">
+        <div class="table-responsive">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200">
                 <th class="p-4 font-semibold text-slate-600 text-sm">Imagen</th>
                 <th class="p-4 font-semibold text-slate-600 text-sm">Producto</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">SKU</th>
                 <th class="p-4 font-semibold text-slate-600 text-sm">Bodega</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">Precio</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">Stock</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Compra</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Venta</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-center">Stock</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Valor Inventario</th>
+                
                 <th class="p-4 font-semibold text-slate-600 text-sm">Estado</th>
                 <th *ngIf="isAdmin" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
               </tr>
@@ -112,11 +119,16 @@ import { AuthService } from '../../core/services/auth.service';
                   <div class="font-bold text-slate-900">{{item.productName}}</div>
                   <div class="text-xs text-slate-400 truncate max-w-[200px]" [title]="item.description || ''">{{item.description}}</div>
                 </td>
-                <td class="p-4 text-sm text-slate-500 font-mono">{{item.sku}}</td>
                 <td class="p-4">
-                  <span class="px-2.5 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 uppercase border border-slate-200">{{item.bodegaName}}</span>
+                  <span class="px-2.5 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 capitalize whitespace-nowrap border border-slate-200">{{item.bodegaName}}</span>
                 </td>
-                <td class="p-4 font-bold text-slate-900">{{item.price | currency:'COP':'symbol-narrow':'1.0-0'}}</td>
+                <td class="p-4 text-right text-sm tabular-nums text-slate-700">
+                  <ng-container *ngIf="item.pricePurchase > 0; else sinCosto">
+                    {{item.pricePurchase | currency:'COP':'symbol':'1.0-0'}}
+                  </ng-container>
+                  <ng-template #sinCosto><span class="text-slate-400">—</span></ng-template>
+                </td>
+                <td class="p-4 text-right text-sm tabular-nums text-slate-900 font-medium">{{item.priceSale | currency:'COP':'symbol':'1.0-0'}}</td>
                 <td class="p-4">
                   <div class="flex items-center gap-3">
                     <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
@@ -124,6 +136,12 @@ import { AuthService } from '../../core/services/auth.service';
                     </div>
                     <span class="text-sm font-bold text-slate-700">{{item.stock}}</span>
                   </div>
+                </td>
+                <td class="p-4 text-right text-sm tabular-nums text-indigo-600 font-semibold">
+                  <ng-container *ngIf="item.pricePurchase > 0; else sinValor">
+                    {{item.inventoryValue | currency:'COP':'symbol':'1.0-0'}}
+                  </ng-container>
+                  <ng-template #sinValor><span class="text-slate-400">—</span></ng-template>
                 </td>
                 <td class="p-4 text-xs font-bold">
                   <span class="px-2.5 py-1 rounded-md" 
@@ -147,7 +165,7 @@ import { AuthService } from '../../core/services/auth.service';
                 </td>
               </tr>
               <tr *ngIf="(inventory$ | async)?.length === 0">
-                <td [attr.colspan]="isAdmin ? 8 : 7" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
+                <td [attr.colspan]="isAdmin ? 9 : 8" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
                   No se encontraron productos con los filtros seleccionados.
                 </td>
               </tr>
@@ -165,6 +183,13 @@ import { AuthService } from '../../core/services/auth.service';
        (onClose)="closeAdjustModal()" 
        (confirm)="onConfirmAdjust($event)">
     </app-adjust-stock-modal>
+
+    <app-initial-inventory-modal
+        *ngIf="showInitialModal"
+        [bodegaId]="selectedBodega"
+        (onClose)="showInitialModal = false"
+        (saved)="refreshInventory()">
+    </app-initial-inventory-modal>
   `,
   styles: [`
     .italic-none tr { font-style: normal !important; }
@@ -184,6 +209,9 @@ export class InventoryComponent implements OnInit {
   showAdjustModal = false;
   selectedAdjustItem: InventoryItem | null = null;
 
+  showInitialModal = false;
+
+  totalInventoryValue: number = 0;
   bodegas: any[] = [];
   selectedBodega: string = '';
   categorias: string[] = [];
@@ -225,7 +253,15 @@ export class InventoryComponent implements OnInit {
   }
 
   async loadBodegas() {
-    this.bodegas = await this.inventoryService.getBodegas();
+    const allBodegas = await this.inventoryService.getBodegas();
+    // Filter by maneja_inventario = true as requested
+    this.bodegas = allBodegas.filter(b => b.maneja_inventario === true);
+    
+    // Auto-select if only one bodega manages inventory
+    if (this.bodegas.length === 1 && !this.selectedBodega) {
+      this.selectedBodega = this.bodegas[0].id;
+      this.refreshInventory();
+    }
   }
 
   async loadCategorias() {
@@ -238,7 +274,28 @@ export class InventoryComponent implements OnInit {
       this.filters.lowStock
     );
     inv$.pipe(take(1)).subscribe(items => {
-      this._allInventory = items;
+      // Resolve real bodega names for items without stock records
+      const resolvedItems = items.map(item => {
+        // ALWAYS normalize to lowercase first to ensure capitalize works correctly
+        let currentName = (item.bodegaName || '').toLowerCase();
+
+        if (!currentName || currentName.includes('inventario') || currentName === 'carga inicial') {
+          const b = this.bodegas.find(w => w.id === item.bodegaId);
+          if (b) {
+            currentName = b.nombre.toLowerCase();
+          } else if (!item.bodegaId && this.bodegas.length > 0) {
+            // Fallback to first valid warehouse if none assigned yet
+            currentName = this.bodegas[0].nombre.toLowerCase();
+            item.bodegaId = this.bodegas[0].id;
+          }
+        }
+        
+        item.bodegaName = currentName;
+        return item;
+      });
+
+      this._allInventory = resolvedItems;
+      this.totalInventoryValue = resolvedItems.reduce((acc, item) => acc + (item.inventoryValue || 0), 0);
       this.applyFilters();
     });
   }
@@ -270,6 +327,14 @@ export class InventoryComponent implements OnInit {
         item => item.status === this.selectedStatus
       );
     }
+
+    // Sort: primary by commercial order, secondary by bodega name
+    filtered.sort((a, b) => {
+      const orderA = (a as any).order ?? 9999;
+      const orderB = (b as any).order ?? 9999;
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.bodegaName || '').localeCompare(b.bodegaName || '');
+    });
 
     this.inventorySubject.next(filtered);
   }

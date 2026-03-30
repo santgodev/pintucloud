@@ -33,14 +33,14 @@ import { InventoryService } from '../../services/inventory.service';
                     <p class="text-[10px] text-muted mt-2 uppercase tracking-wider">El stock inicial se cargará en esta bodega.</p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid-form">
                     <div>
-                       <label class="block text-sm font-medium text-main mb-1">SKU (Referencia)</label>
-                       <input formControlName="sku" type="text" class="input-premium w-full" [class.bg-slate-100]="product" [class.cursor-not-allowed]="product" placeholder="Ej. ROD-001" [readonly]="product">
+                        <label class="block text-sm font-medium text-main mb-1">SKU (Referencia)</label>
+                        <input formControlName="sku" type="text" class="input-premium w-full" [class.bg-slate-100]="product" [class.cursor-not-allowed]="product" placeholder="Ej. ROD-001" [readonly]="product">
                     </div>
                      <div>
-                       <label class="block text-sm font-medium text-main mb-1">Nombre Comercial</label>
-                       <input formControlName="name" type="text" class="input-premium w-full" placeholder="Ej. Rodillo Profesional">
+                        <label class="block text-sm font-medium text-main mb-1">Nombre Comercial</label>
+                        <input formControlName="name" type="text" class="input-premium w-full" placeholder="Ej. Rodillo Profesional">
                     </div>
                 </div>
 
@@ -52,12 +52,42 @@ import { InventoryService } from '../../services/inventory.service';
                    </select>
                 </div>
 
+                <div class="grid-form">
+                  <div class="relative">
+                    <label class="block text-sm font-medium text-main mb-1">Grupo</label>
+                    <input type="text" formControlName="grupo" class="input-premium w-full pr-8" placeholder="Ej: BROCHAS PREMIUM SUPERIOR"
+                           (focus)="mostrarDropdownGrupos = true"
+                           (blur)="onGrupoBlur()">
+                    
+                    <div class="absolute right-3 top-[34px] pointer-events-none text-slate-400">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+
+                    <div *ngIf="mostrarDropdownGrupos" 
+                         class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                        <div *ngFor="let g of gruposFiltrados" 
+                             (mousedown)="seleccionarGrupo(g, $event)"
+                             class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 truncate">
+                            {{ g }}
+                        </div>
+                        <div *ngIf="gruposFiltrados.length === 0" class="px-3 py-2 text-[13px] text-slate-400 italic">
+                            Se creará como nuevo grupo
+                        </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 mt-6">
+                    <input type="checkbox" formControlName="visible_catalogo" class="h-4 w-4 rounded border-slate-300 text-primary">
+                    <label class="text-sm font-medium text-main">Mostrar en catálogo</label>
+                  </div>
+                </div>
+
                 <div>
                    <label class="block text-sm font-medium text-main mb-1">Descripción</label>
                    <textarea formControlName="description" class="input-premium w-full h-20" placeholder="Detalles técnicos, dimensiones, etc..."></textarea>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid-form">
                     <div>
                          <label class="block text-sm font-medium text-main mb-1">Precio de Venta</label>
                          <div class="relative">
@@ -71,7 +101,7 @@ import { InventoryService } from '../../services/inventory.service';
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4" *ngIf="!product">
+                <div class="grid-form" *ngIf="!product">
                     <div>
                         <label class="block text-sm font-medium text-main mb-1">Stock a Ingresar</label>
                         <input formControlName="stock" type="number" class="input-premium w-full" placeholder="0" min="0">
@@ -128,7 +158,8 @@ import { InventoryService } from '../../services/inventory.service';
     </div>
   `,
    styles: [`
-    .input-premium { @apply bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-main focus:bg-white focus:border-primary focus:outline-none transition-all focus:ring-2 focus:ring-indigo-100; }
+    .input-premium { @apply bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-main focus:bg-white focus:border-primary focus:outline-none transition-all focus:ring-2 focus:ring-indigo-100; }
+    input.input-premium, select.input-premium { @apply h-[42px] leading-normal; }
   `]
 })
 export class ProductModalComponent implements OnInit {
@@ -143,6 +174,9 @@ export class ProductModalComponent implements OnInit {
 
    bodegas: any[] = [];
    categorias: string[] = [];
+   grupos: string[] = [];
+   gruposFiltrados: string[] = [];
+   mostrarDropdownGrupos = false;
 
    constructor(private fb: FormBuilder, private inventoryService: InventoryService) {
       this.productForm = this.fb.group({
@@ -154,25 +188,42 @@ export class ProductModalComponent implements OnInit {
          stock: [0, [Validators.required, Validators.min(0)]],
          category: ['general'],
          imageUrl: [''],
-         bodegaId: ['']
+         bodegaId: [''],
+         grupo: [''],
+         visible_catalogo: [false]
       });
    }
 
    async ngOnInit() {
       this.loadBodegas();
       this.loadCategorias();
+      this.loadGrupos();
+
+      this.productForm.get('name')?.valueChanges.subscribe((value: string) => {
+         if (!this.productForm.get('grupo')?.value && value) {
+            const sugerido = value.replace(/\s\d.*$/, '').trim();
+            this.productForm.patchValue({ grupo: sugerido }, { emitEvent: false });
+         }
+      });
+
+      this.productForm.get('grupo')?.valueChanges.subscribe((value: string) => {
+         const search = (value || '').toLowerCase();
+         this.gruposFiltrados = this.grupos.filter(g => g.toLowerCase().includes(search));
+      });
 
       if (this.product) {
          // Edit Mode
          this.productForm.patchValue({
             sku: this.product.sku,
             name: this.product.productName,
-            description: '',
+            description: this.product.description || '',
             price: this.product.price,
             stock_minimo: this.product.stockMinimo || 0,
             stock: this.product.stock,
             category: this.product.category || 'general',
-            imageUrl: this.product.imageUrl
+            imageUrl: this.product.imageUrl,
+            grupo: this.product.grupo || '',
+            visible_catalogo: this.product.visible_catalogo ?? false
          });
          this.imagePreview = this.product.imageUrl;
       }
@@ -188,6 +239,25 @@ export class ProductModalComponent implements OnInit {
 
    async loadCategorias() {
       this.categorias = await this.inventoryService.getCategories();
+   }
+
+   async loadGrupos() {
+      this.grupos = await this.inventoryService.getGrupos();
+      this.gruposFiltrados = [...this.grupos];
+   }
+
+   seleccionarGrupo(g: string, event?: Event) {
+      if (event) {
+          event.preventDefault(); // Prevenir blur instantáneo
+      }
+      this.productForm.patchValue({ grupo: g });
+      this.mostrarDropdownGrupos = false;
+   }
+
+   onGrupoBlur() {
+       setTimeout(() => {
+           this.mostrarDropdownGrupos = false;
+       }, 200);
    }
 
    onFileSelected(event: any) {
@@ -225,7 +295,9 @@ export class ProductModalComponent implements OnInit {
                imageUrl: formVal.imageUrl, // Existing URL
                category: formVal.category,
                stock_minimo: formVal.stock_minimo,
-               stock: formVal.stock
+               stock: formVal.stock,
+               grupo: formVal.grupo || null,
+               visible_catalogo: formVal.visible_catalogo ?? false
             }, this.selectedFile || undefined); // Only pass file if new one selected
 
          } else {
@@ -242,7 +314,9 @@ export class ProductModalComponent implements OnInit {
                description: formVal.description,
                imageUrl: imageUrl,
                stock_minimo: formVal.stock_minimo,
-               category: formVal.category || 'general'
+               category: formVal.category || 'general',
+               grupo: formVal.grupo || null,
+               visible_catalogo: formVal.visible_catalogo ?? false
             }, formVal.stock, formVal.bodegaId);
          }
 

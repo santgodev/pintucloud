@@ -482,10 +482,6 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
       // 3. Confirmar (RPC)
       await this.salesService.confirmSale(this.sale.id);
 
-      // 🧪 Verificación: confirmar que los datos quedaron correctos en BD
-      const ventaActualizada = await this.salesService.getById(this.sale.id);
-      console.log('[SalesEdit] Detalle guardado:', ventaActualizada);
-
       // Indicate completion so we bypass the unsaved changes guard
       this.isCompleted = true;
 

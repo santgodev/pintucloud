@@ -11,12 +11,18 @@ export interface InventoryItem {
     bodegaId: string;
     bodegaName: string;
     stock: number;
-    price: number;
+    price: number;          // mantenido por compatibilidad (= precio_base)
+    priceSale: number;      // precio de venta (precio_base)
+    pricePurchase: number;  // precio de compra (precio_compra)
+    inventoryValue: number; // cantidad * precio_compra
     imageUrl: string;
     description?: string;
     category?: string;
     stockMinimo?: number;
     status: 'En Stock' | 'Bajo Stock' | 'Agotado';
+    order?: number | null;
+    grupo?: string;
+    visible_catalogo?: boolean;
 }
 
 @Injectable({
@@ -53,6 +59,23 @@ export class InventoryService {
         return [...new Set(categories)] as string[];
     }
 
+    async getGrupos(): Promise<string[]> {
+        const { data, error } = await this.supabase
+            .from('productos')
+            .select('grupo');
+
+        if (error) {
+            console.error('Error fetching grupos:', error);
+            return [];
+        }
+
+        const gruposLimpios = data
+            .map((g: any) => (g.grupo || '').trim().toUpperCase())
+            .filter((g: string) => g.length > 0);
+
+        return [...new Set(gruposLimpios)].sort();
+    }
+
     async getInventory(bodegaId?: string, lowStock?: boolean): Promise<Observable<InventoryItem[]>> {
         // 1. Get User Profile for Context
         const user = await this.supabase.auth.getUser();
@@ -64,61 +87,127 @@ export class InventoryService {
             .eq('id', user.data.user.id)
             .single();
 
-        // 2. Build Query
-        let query = this.supabase.from('inventario_bodega')
+        // 2. Build Query starting from 'productos' to ensure ALL are included
+        let query = this.supabase.from('productos')
             .select(`
                 id,
-                cantidad,
-                productos (id, nombre, sku, imagen_url, precio_base, categoria, descripcion, stock_minimo),
-                bodegas (id, nombre)
+                nombre,
+                sku,
+                imagen_url,
+                precio_base,
+                precio_compra,
+                orden,
+                categoria,
+                descripcion,
+                stock_minimo,
+                grupo,
+                visible_catalogo,
+                inventario_bodega (id, cantidad, bodega_id, bodegas(id, nombre))
             `);
 
-        // Apply filters
+        // If a specific warehouse is requested, we filter the nested inventory_bodega relation
+        // Note: Supabase doesn't support full LEFT JOIN filtering in a single select easily, 
+        // but we can map it in frontend to show stock 0.
+        // However, we apply the filter to the joined table to only get relevant records for that product.
         if (bodegaId) {
-            query = query.eq('bodega_id', bodegaId);
+            query = query.filter('inventario_bodega.bodega_id', 'eq', bodegaId);
         } else if (profile?.rol === 'asesor' && profile?.bodega_asignada_id) {
-            // Filter by assigned warehouse if Advisor and no specific filter selected
-            query = query.eq('bodega_id', profile.bodega_asignada_id);
+            query = query.filter('inventario_bodega.bodega_id', 'eq', profile.bodega_asignada_id);
         }
+
+        // Apply commercial ordering
+        query = query.order('orden', { ascending: true });
 
         // 3. Execute and Map
         return from(query).pipe(
             map(({ data, error }) => {
                 if (error) {
-                    console.error('Error loading inventory', error);
+                    console.error('Error loading inventory from products', error);
                     return [];
                 }
 
-                let items = (data || []).map((item: any) => {
-                    const quantity = item.cantidad;
-                    const minStock = item.productos?.stock_minimo || 0;
+                const resultItems: InventoryItem[] = [];
 
-                    let status: InventoryItem['status'] = 'En Stock';
-                    if (quantity === 0) status = 'Agotado';
-                    else if (quantity <= minStock) status = 'Bajo Stock';
+                (data || []).forEach((prod: any) => {
+                    const priceSale = prod.precio_base || 0;
+                    const pricePurchase = prod.precio_compra || 0;
+                    const invRecords = prod.inventario_bodega || [];
 
-                    return {
-                        id: item.id,
-                        productId: item.productos?.id,
-                        productName: item.productos?.nombre,
-                        sku: item.productos?.sku,
-                        bodegaId: item.bodegas?.id,
-                        bodegaName: item.bodegas?.nombre,
-                        stock: quantity,
-                        price: item.productos?.precio_base,
-                        stockMinimo: item.productos?.stock_minimo,
-                        imageUrl: item.productos?.imagen_url,
-                        description: item.productos?.descripcion,
-                        category: item.productos?.categoria,
-                        status: status
-                    };
+                    if (invRecords.length === 0) {
+                        // Product exists but has NO record in this bodega (or any if no bodegaId)
+                        // Interpretation: stock = 0
+                        resultItems.push({
+                            id: '', // No inventory record ID
+                            productId: prod.id,
+                            productName: prod.nombre,
+                            sku: prod.sku,
+                            bodegaId: bodegaId || profile?.bodega_asignada_id || '',
+                            bodegaName: bodegaId ? 'Carga Inicial' : 'Falta Inventario Inicial',
+                            stock: 0,
+                            price: priceSale,
+                            priceSale,
+                            pricePurchase,
+                            inventoryValue: 0,
+                            stockMinimo: prod.stock_minimo,
+                            imageUrl: prod.imagen_url,
+                            description: prod.descripcion,
+                            category: prod.categoria,
+                            status: 'Agotado',
+                            order: prod.orden ?? null,
+                            grupo: prod.grupo,
+                            visible_catalogo: prod.visible_catalogo
+                        });
+                    } else {
+                        // Return one item per bodega record
+                        invRecords.forEach((inv: any) => {
+                            const quantity = inv.cantidad ?? 0;
+                            const minStock = prod.stock_minimo || 0;
+
+                            let status: InventoryItem['status'] = 'En Stock';
+                            if (quantity === 0) status = 'Agotado';
+                            else if (quantity <= minStock) status = 'Bajo Stock';
+
+                            resultItems.push({
+                                id: inv.id,
+                                productId: prod.id,
+                                productName: prod.nombre,
+                                sku: prod.sku,
+                                bodegaId: inv.bodega_id,
+                                bodegaName: inv.bodegas?.nombre || 'Bodega',
+                                stock: quantity,
+                                price: priceSale,
+                                priceSale,
+                                pricePurchase,
+                                inventoryValue: quantity * pricePurchase,
+                                stockMinimo: prod.stock_minimo,
+                                imageUrl: prod.imagen_url,
+                                description: prod.descripcion,
+                                category: prod.categoria,
+                                status: status,
+                                order: prod.orden ?? null,
+                                grupo: prod.grupo,
+                                visible_catalogo: prod.visible_catalogo
+                            });
+                        });
+                    }
+                });
+
+                // Final filtering for lowStock if requested
+                let filtered = resultItems;
+
+                // Sort by commercial order and then by bodega
+                filtered.sort((a, b) => {
+                    const orderA = a.order ?? 9999;
+                    const orderB = b.order ?? 9999;
+                    if (orderA !== orderB) return orderA - orderB;
+                    return (a.bodegaName || '').localeCompare(b.bodegaName || '');
                 });
 
                 if (lowStock) {
-                    items = items.filter(item => item.stock <= (item.stockMinimo || 0));
+                    filtered = filtered.filter(item => item.stock <= (item.stockMinimo || 0));
                 }
 
-                return items;
+                return filtered;
             })
         );
     }
@@ -131,6 +220,8 @@ export class InventoryService {
         stock_minimo?: number;
         description?: string;
         imageUrl?: string;
+        grupo?: string;
+        visible_catalogo?: boolean;
     }, initialStock: number, targetBodegaId?: string): Promise<string> {
 
         // 1. Context
@@ -171,7 +262,9 @@ export class InventoryService {
             stock_minimo: product.stock_minimo || 0,
             imagen_url: product.imageUrl,
             categoria: product.category,
-            distribuidor_id: userData.distribuidor_id
+            distribuidor_id: userData.distribuidor_id,
+            grupo: product.grupo || null,
+            visible_catalogo: product.visible_catalogo ?? false
         };
 
         const { data: prodData, error: prodError } = await this.supabase
@@ -226,7 +319,6 @@ export class InventoryService {
         }
 
         // 2. Update Product Info
-        console.log('Updating product:', productData.productId, 'with image:', finalImageUrl);
         const { error: prodError } = await this.supabase
             .from('productos')
             .update({
@@ -235,7 +327,9 @@ export class InventoryService {
                 stock_minimo: productData.stock_minimo || 0,
                 descripcion: productData.description,
                 imagen_url: finalImageUrl,
-                categoria: productData.category
+                categoria: productData.category,
+                grupo: productData.grupo || null,
+                visible_catalogo: productData.visible_catalogo ?? false
             })
             .eq('id', productData.productId);
 
@@ -272,6 +366,22 @@ export class InventoryService {
 
         if (error) {
             console.error('Error ajustando inventario:', error);
+            throw error;
+        }
+    }
+
+    async registerInitialInventory(productoId: string, bodegaId: string, cantidad: number) {
+        const { error } = await this.supabase.rpc('registrar_movimiento', {
+            p_producto_id: productoId,
+            p_bodega_id: bodegaId,
+            p_tipo_movimiento: 'INICIAL',
+            p_cantidad: cantidad,
+            p_referencia_id: null,
+            p_observacion: 'Carga inicial de inventario'
+        });
+
+        if (error) {
+            console.error('Error registrando inventario inicial:', error);
             throw error;
         }
     }

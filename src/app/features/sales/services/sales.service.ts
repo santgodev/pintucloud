@@ -41,6 +41,7 @@ export interface CreateSaleDraftPayload {
     bodega_id: string;
     tipo_documento: number; // 1 = Facturación electrónica, 2 = Orden de venta
     descuento_porcentaje?: number; // 0, 3, 5, 10... (default: 0)
+    observaciones?: string | null;
 }
 
 export interface SalesQueryParams {
@@ -193,6 +194,7 @@ export class SalesService {
                 estado,
                 total,
                 numero_factura,
+                observaciones,
                 cliente:clientes(razon_social)
             `)
             .gte('fecha', start)
@@ -203,7 +205,7 @@ export class SalesService {
 
     /** 1. Crear Venta en estado BORRADOR */
     async createDraft(payload: CreateSaleDraftPayload): Promise<string> {
-        const { cliente_id, metodo_pago, condicion_pago, dias_credito, fecha, bodega_id, tipo_documento, descuento_porcentaje } = payload;
+        const { cliente_id, metodo_pago, condicion_pago, dias_credito, fecha, bodega_id, tipo_documento, descuento_porcentaje, observaciones } = payload;
 
         // Validación defensiva
         if (![1, 2].includes(tipo_documento)) {
@@ -220,7 +222,8 @@ export class SalesService {
                 p_fecha: fecha,
                 p_bodega_id: bodega_id,
                 p_tipo_documento: tipo_documento,
-                p_descuento_porcentaje: descuento_porcentaje ?? 0
+                p_descuento_porcentaje: descuento_porcentaje ?? 0,
+                p_observaciones: observaciones || null
             }
         );
 
@@ -297,6 +300,7 @@ export class SalesService {
                 tipo_documento,
                 descuento_porcentaje,
                 descuento_valor,
+                observaciones,
                 clientes (razon_social, telefono, direccion, ciudad, email, codigo),
                 usuarios (nombre_completo),
                 bodegas (nombre, codigo, direccion),

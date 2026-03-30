@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+﻿import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -63,7 +63,7 @@ import { UiService } from '../../../core/services/ui.service';
 
           <div class="nav-group">
             <span class="group-label">Catalog & Stock</span>
-            <a routerLink="/inventory" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
+            <a *ngIf="isAdmin" routerLink="/inventory" routerLinkActive="active" class="nav-item" (click)="closeOnMobile()">
                <span>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                   Inventario
@@ -255,3 +255,4 @@ export class SidebarComponent {
       }
    }
 }
+

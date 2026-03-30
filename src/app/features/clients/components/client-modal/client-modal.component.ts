@@ -9,7 +9,7 @@ import { ClientsService, Client } from '../../services/clients.service';
    imports: [CommonModule, ReactiveFormsModule],
    template: `
     <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-       <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+       <div class="bg-white border border-slate-200 rounded-xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
           
           <div class="p-5 border-b border-slate-200 flex justify-between items-center">
              <h2 class="text-xl font-bold text-main">{{ clientToEdit ? 'Editar Cliente' : 'Nuevo Cliente' }}</h2>
@@ -21,12 +21,20 @@ import { ClientsService, Client } from '../../services/clients.service';
           <form [formGroup]="clientForm" (ngSubmit)="onSubmit()" class="p-6">
              <div class="space-y-4">
 
-                <!-- Código Cliente -->
-                <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Código Cliente</label>
-                   <input formControlName="codigo" type="text" class="input-premium w-full" placeholder="Ej. CLI-001"
-                          (input)="clientForm.get('codigo')?.setValue($any($event.target).value.toUpperCase(), { emitEvent: false })">
-                   
+                <div class="grid-form">
+                   <!-- Código Cliente -->
+                   <div>
+                      <label class="block text-sm font-bold text-slate-700 mb-1.5">Código Cliente</label>
+                      <input formControlName="codigo" type="text" class="input-premium w-full" placeholder="Ej. CLI-001"
+                             (input)="clientForm.get('codigo')?.setValue($any($event.target).value.toUpperCase(), { emitEvent: false })">
+                      
+                   </div>
+
+                   <!-- NIT -->
+                   <div>
+                     <label class="block text-sm font-bold text-slate-700 mb-1.5">NIT <span class="text-slate-400 font-normal">(opcional)</span></label>
+                     <input formControlName="nit" type="text" class="input-premium w-full" placeholder="Ej. 900123456">
+                   </div>
                 </div>
 
                 <!-- Razón Social -->
@@ -36,40 +44,38 @@ import { ClientsService, Client } from '../../services/clients.service';
                    <p *ngIf="f['razon_social'].invalid && f['razon_social'].touched" class="text-red-500 text-xs mt-1">La razón social es obligatoria.</p>
                 </div>
 
-                <!-- Ciudad -->
-                <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Ciudad *</label>
-                   <input formControlName="ciudad" type="text" class="input-premium w-full" placeholder="Ej. Barranquilla">
-                   <p *ngIf="f['ciudad'].invalid && f['ciudad'].touched" class="text-red-500 text-xs mt-1">La ciudad es obligatoria.</p>
+                <div class="grid-form">
+                   <!-- Ciudad -->
+                   <div>
+                      <label class="block text-sm font-bold text-slate-700 mb-1.5">Ciudad *</label>
+                      <input formControlName="ciudad" type="text" class="input-premium w-full" placeholder="Ej. Barranquilla">
+                      <p *ngIf="f['ciudad'].invalid && f['ciudad'].touched" class="text-red-500 text-xs mt-1">La ciudad es obligatoria.</p>
+                   </div>
+
+                   <!-- Sector -->
+                   <div>
+                     <label class="block text-sm font-bold text-slate-700 mb-1.5">Sector *</label>
+                     <input formControlName="sector" type="text" class="input-premium w-full" placeholder="Ej. Construcción">
+                     <p *ngIf="f['sector'].invalid && f['sector'].touched" class="text-red-500 text-xs mt-1">
+                       El sector es obligatorio.
+                     </p>
+                   </div>
                 </div>
 
-                <!-- Sector -->
-                <div>
-                  <label class="block text-sm font-bold text-slate-700 mb-1.5">Sector *</label>
-                  <input formControlName="sector" type="text" class="input-premium w-full" placeholder="Ej. Construcción">
-                  <p *ngIf="f['sector'].invalid && f['sector'].touched" class="text-red-500 text-xs mt-1">
-                    El sector es obligatorio.
-                  </p>
-                </div>
+                <div class="grid-form">
+                   <!-- Dirección -->
+                   <div>
+                      <label class="block text-sm font-bold text-slate-700 mb-1.5">Dirección *</label>
+                      <input formControlName="direccion" type="text" class="input-premium w-full" placeholder="Ej. Cra 43 # 32-12">
+                      <p *ngIf="f['direccion'].invalid && f['direccion'].touched" class="text-red-500 text-xs mt-1">La dirección es obligatoria.</p>
+                   </div>
 
-                <!-- Dirección -->
-                <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Dirección *</label>
-                   <input formControlName="direccion" type="text" class="input-premium w-full" placeholder="Ej. Cra 43 # 32-12">
-                   <p *ngIf="f['direccion'].invalid && f['direccion'].touched" class="text-red-500 text-xs mt-1">La dirección es obligatoria.</p>
-                </div>
-
-                <!-- Teléfono -->
-                <div>
-                   <label class="block text-sm font-bold text-slate-700 mb-1.5">Teléfono *</label>
-                   <input formControlName="telefono" type="text" class="input-premium w-full" placeholder="Ej. 300 123 4567">
-                   <p *ngIf="f['telefono'].invalid && f['telefono'].touched" class="text-red-500 text-xs mt-1">El teléfono es obligatorio.</p>
-                </div>
-
-                <!-- NIT -->
-                <div>
-                  <label class="block text-sm font-bold text-slate-700 mb-1.5">NIT <span class="text-slate-400 font-normal">(opcional)</span></label>
-                  <input formControlName="nit" type="text" class="input-premium w-full" placeholder="Ej. 900123456">
+                   <!-- Teléfono -->
+                   <div>
+                      <label class="block text-sm font-bold text-slate-700 mb-1.5">Teléfono *</label>
+                      <input formControlName="telefono" type="text" class="input-premium w-full" placeholder="Ej. 300 123 4567">
+                      <p *ngIf="f['telefono'].invalid && f['telefono'].touched" class="text-red-500 text-xs mt-1">El teléfono es obligatorio.</p>
+                   </div>
                 </div>
 
 

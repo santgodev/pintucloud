@@ -127,7 +127,7 @@
       </table>
 
     </div>
-
+    
     <!-- ===== PRODUCTOS ===== -->
     <table class="products-table">
       <thead>
@@ -153,20 +153,27 @@
           <td class="right text-right">{{ item.precio_unitario | number:'1.2-2' }}</td>
           <td class="right text-right">{{ item.subtotal | number:'1.2-2' }}</td>
         </tr>
-        <!-- Empty filler rows for visual balance -->
-        <tr class="filler" *ngFor="let f of fillerRows">
-          <td colspan="5">&nbsp;</td>
+        <!-- Info Generación y Observaciones (Fila Única de Tabla) -->
+        <tr>
+          <td colspan="5" style="padding: 70px 10px 15px;">
+            <div style="font-size: 10px; color: #888; font-style: italic;">
+              <div>
+                Documento generado el {{ today | date:'dd/MM/yyyy HH:mm' }}
+              </div>
+              <div *ngIf="sale?.observaciones" style="margin-top: 4px; font-size: 11px; color: #444;">
+                <strong style="font-style: normal; color: #1f2937;">Observaciones:</strong> {{ sale.observaciones }}
+              </div>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
 
     <!-- ===== FOOTER / TOTALES ===== -->
-    <div class="footer-row">
-
-      <!-- Left info -->
-      <div class="footer-info">
-        <p class="footer-note text-xs text-slate-400">Documento generado el {{ today | date:'dd/MM/yyyy HH:mm' }}</p>
-      </div>
+    <div class="footer-row" style="margin-top: 20px;">
+      
+      <!-- Left info (Vacio ahora que está en la tabla, o para notas legales) -->
+      <div class="footer-info"></div>
 
       <!-- Right totals box -->
       <table class="totals-table">

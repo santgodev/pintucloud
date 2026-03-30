@@ -382,8 +382,6 @@ export class DashboardComponent implements OnInit {
   async loadVentasProductos() {
     try {
       const data = await this.dashboardService.getVentasProductosMes();
-      console.log('Productos ventas mes:', data);
-      console.log('Cantidad registros:', data?.length);
 
       // Versión segura con tipos y normalización de barras
       this.productosVentasMes = data.map((p: any) => ({
@@ -399,8 +397,6 @@ export class DashboardComponent implements OnInit {
         width: max > 0 ? (p.porcentaje / max) * 100 : 0
       }));
 
-      console.log('Ranking Procesado:', this.productosVentasMes);
-
     } catch (err) {
       console.error('Error cargando ranking de productos:', err);
       this.productosVentasMes = [];
@@ -411,7 +407,6 @@ export class DashboardComponent implements OnInit {
     try {
       // Real sales summary from RPC - returns an array
       const data = await this.dashboardService.getVentasResumen();
-      console.log("Resumen ventas:", data);
 
       if (data && data.length > 0) {
         this.ventasHoy = Number(data[0].ventas_hoy || 0);

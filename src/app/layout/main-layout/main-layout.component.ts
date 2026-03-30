@@ -26,16 +26,24 @@ import { UiService } from '../../core/services/ui.service';
     .layout-wrapper {
       display: flex;
       height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       background: transparent;
     }
     
     .layout-main {
+      width: 100%;
+      margin: 0 auto;
       flex: 1;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
       position: relative;
+    }
+
+    @media (min-width: 1024px) {
+        .layout-main {
+            max-width: 1400px;
+        }
     }
     
     .layout-content {
@@ -66,7 +74,16 @@ import { UiService } from '../../core/services/ui.service';
         transform: translateX(-100%);
     }
 
-    @media (max-width: 767px) {
+    @media (max-width: 768px) {
+        .layout-main {
+            max-width: 100% !important;
+            padding: 12px;
+        }
+
+        .layout-content {
+            padding: 12px;
+        }
+
         .app-sidebar {
             position: fixed;
             z-index: 100;

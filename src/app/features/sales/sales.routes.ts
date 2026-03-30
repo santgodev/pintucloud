@@ -5,6 +5,7 @@ import { unsavedChangesGuard } from './guards/unsaved-changes.guard';
 export const SALES_ROUTES: Routes = [
     { path: '', component: SalesComponent },
 
+
     // 🔴 Rutas específicas primero
     {
         path: ':id/invoice',

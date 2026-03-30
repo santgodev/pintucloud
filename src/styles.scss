@@ -303,3 +303,49 @@ a {
 .hidden {
     display: none;
 }
+
+/* -------------------------------------------------------------------------- */
+/* GLOBAL RESPONSIVE & LAYOUT                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Global Form Elements */
+input, select, textarea {
+    width: 100%;
+}
+
+/* Responsive Grid for Forms */
+.grid-form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .grid-form {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Global Table Responsiveness Wrapper */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .page-wrapper {
+        padding: 12px;
+    }
+}
+
+.table-responsive table {
+    width: 100%;
+    min-width: 600px;
+}
+
+@media (max-width: 640px) {
+    .table-responsive table {
+        min-width: 100%;
+    }
+}

@@ -14,6 +14,8 @@ export interface Product {
     isNew?: boolean;
     isFeatured?: boolean;
     stock: number;
+    orden?: number;
+    grupo?: string;
 }
 
 export interface Category {
@@ -47,8 +49,7 @@ export class ShowcaseService {
                 cantidad
             )
         `)
-            .order('categoria', { ascending: true })
-            .order('nombre', { ascending: true });
+            .order('orden', { ascending: true });
 
         if (categoryId && categoryId !== 'all') {
             query = query.eq('categoria', categoryId);
@@ -60,7 +61,7 @@ export class ShowcaseService {
                     console.error('Error fetching products:', error);
                     return [];
                 }
-                return (data || []).map((item: any) => {
+                const mapped = (data || []).map((item: any) => {
                     // Sum stock from all warehouses
                     const stock = (item.inventario_bodega || []).reduce((acc: number, inv: any) => acc + (inv.cantidad || 0), 0);
 
@@ -75,9 +76,48 @@ export class ShowcaseService {
                         features: [], // TODO: Add features column to DB if needed
                         isNew: false,
                         isFeatured: item.destacado || false,
-                        stock: stock
+                        stock: stock,
+                        orden: item.orden ?? 9999,
+                        grupo: item.grupo,
+                        visible_catalogo: item.visible_catalogo
                     };
                 });
+
+                // 1. Orden global por orden comercial
+                mapped.sort((a: any, b: any) => (a.orden ?? 9999) - (b.orden ?? 9999));
+
+                // 2. Agrupar por grupo
+
+                const grouped = mapped.reduce((acc: Record<string, any[]>, item: any) => {
+                    const key = item.grupo || item.name;
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(item);
+                    return acc;
+                }, {});
+
+                // 3. Limitar a 3 por grupo
+                const limited = Object.values(grouped).flatMap(group => {
+                    // Filtrar solo los configurados como visibles en catálogo
+                    const visibles = group.filter(p => p.visible_catalogo);
+
+                    // 🔥 Priorizar productos con imagen
+                    visibles.sort((a, b) => {
+                        const hasImageA = !!a.imageUrl;
+                        const hasImageB = !!b.imageUrl;
+
+                        // 1. Primero los que tienen imagen
+                        if (hasImageA && !hasImageB) return -1;
+                        if (!hasImageA && hasImageB) return 1;
+
+                        // 2. Luego respetar orden comercial
+                        return (a.orden ?? 9999) - (b.orden ?? 9999);
+                    });
+
+                    // 3. Tomar solo 3
+                    return visibles.slice(0, 3);
+                });
+
+                return limited;
             })
         );
     }

@@ -38,15 +38,7 @@ export class SalesInvoiceComponent implements OnInit {
 
     try {
       this.sale = await this.salesService.getById(id);
-      console.log('VENTA COMPLETA:', this.sale);
 
-      // 🔍 DEBUG — verificar datos recibidos de BD
-      console.log('[Invoice] Venta cargada:', this.sale);
-      console.log('FECHA RAW:', this.sale.fecha);
-      console.log('TIPO:', typeof this.sale.fecha);
-      console.log('CREATED_AT RAW:', this.sale.created_at);
-      console.log('AUTORIZACION RAW:', this.sale.fecha_autorizacion);
-      console.log('[Invoice] Detalle ventas:', this.sale?.detalle_ventas);
 
       // Forzar detección de cambios con nueva referencia
       this.sale = { ...this.sale };
@@ -154,7 +146,6 @@ export class SalesInvoiceComponent implements OnInit {
       await this.salesService.authorizeSale(this.sale.id);
       // Recargar la venta para ver el nuevo estado
       this.sale = await this.salesService.getById(this.sale.id);
-      console.log('Orden autorizada correctamente');
     } catch (error) {
       console.error('[Invoice] Error al autorizar orden:', error);
       alert('Error al autorizar la orden');
