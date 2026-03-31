@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SalesService } from './services/sales.service';
@@ -18,6 +18,24 @@ export class SalesInvoiceComponent implements OnInit {
   isLoading = true;
   today = new Date();
   fillerRows: number[] = [];
+  invoiceZoom: string = '1';
+
+  private readonly INVOICE_WIDTH = 820;
+
+  @HostListener('window:resize')
+  onResize() {
+    this.updateScale();
+  }
+
+  private updateScale() {
+    const vw = window.innerWidth;
+    if (vw < this.INVOICE_WIDTH) {
+      const zoom = (vw - 8) / this.INVOICE_WIDTH;
+      this.invoiceZoom = zoom.toFixed(4);
+    } else {
+      this.invoiceZoom = '1';
+    }
+  }
 
   get isAdmin(): boolean {
     return this.currentUser?.rol === 'admin_distribuidor';
@@ -30,6 +48,7 @@ export class SalesInvoiceComponent implements OnInit {
   ) { }
 
   async ngOnInit() {
+    this.updateScale();
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.router.navigate(['/sales']);

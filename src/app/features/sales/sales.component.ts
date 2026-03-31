@@ -77,26 +77,28 @@ import { UiService } from '../../core/services/ui.service';
            </div>
 
            <!-- Filtro Rango de Fechas -->
-           <div class="mb-4 flex flex-wrap items-center gap-3">
-              <div class="flex items-center gap-2">
-                 <label class="text-xs font-bold text-muted uppercase tracking-wider whitespace-nowrap">Desde</label>
+           <div class="mb-4 flex flex-wrap items-start gap-3">
+              <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+                 <label class="text-xs font-bold text-muted uppercase tracking-wider">Desde</label>
                  <input type="date" [(ngModel)]="fechaInicio"
-                        class="h-10 px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+                        class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
               </div>
-              <div class="flex items-center gap-2">
-                 <label class="text-xs font-bold text-muted uppercase tracking-wider whitespace-nowrap">Hasta</label>
+              <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+                 <label class="text-xs font-bold text-muted uppercase tracking-wider">Hasta</label>
                  <input type="date" [(ngModel)]="fechaFin"
-                        class="h-10 px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+                        class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
               </div>
-              <button (click)="filtrarPorFecha()"
-                      [disabled]="!fechaInicio || !fechaFin"
-                      class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all">
-                 Filtrar por fecha
-              </button>
-              <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
-                      class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white">
-                 Limpiar
-              </button>
+              <div class="flex gap-2 items-end pt-5">
+                 <button (click)="filtrarPorFecha()"
+                         [disabled]="!fechaInicio || !fechaFin"
+                         class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all whitespace-nowrap">
+                    Filtrar
+                 </button>
+                 <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
+                         class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white whitespace-nowrap">
+                    Limpiar
+                 </button>
+              </div>
            </div>
           </div>
 
@@ -113,26 +115,28 @@ import { UiService } from '../../core/services/ui.service';
              </div>
            </div>
            <!-- Tabla de Resultados -->
-          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <table class="w-full text-left border-collapse">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm" style="overflow: hidden;">
+              <!-- Scroll horizontal en móvil -->
+              <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+              <table style="min-width: 700px;" class="w-full text-left border-collapse">
                  <thead>
                     <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
-                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('numero_factura')">
+                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors whitespace-nowrap" (click)="sortBy('numero_factura')">
                           <div class="flex items-center gap-1">Factura <span *ngIf="sortField === 'numero_factura'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'numero_factura'" class="text-slate-300 opacity-50">↕</span></div>
                        </th>
-                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('fecha')">
+                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors whitespace-nowrap" (click)="sortBy('fecha')">
                           <div class="flex items-center gap-1">Fecha <span *ngIf="sortField === 'fecha'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'fecha'" class="text-slate-300 opacity-50">↕</span></div>
                        </th>
-                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('clientName')">
+                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" style="min-width: 140px;" (click)="sortBy('clientName')">
                           <div class="flex items-center gap-1">Cliente <span *ngIf="sortField === 'clientName'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'clientName'" class="text-slate-300 opacity-50">↕</span></div>
                        </th>
-                       <th class="p-4 border-b border-slate-200">Bodega</th>
-                        <th class="p-4 border-b border-slate-200">Asesor</th>
-                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" (click)="sortBy('total')">
+                       <th class="p-4 border-b border-slate-200 whitespace-nowrap">Bodega</th>
+                       <th class="p-4 border-b border-slate-200 whitespace-nowrap">Asesor</th>
+                       <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors whitespace-nowrap" (click)="sortBy('total')">
                           <div class="flex items-center gap-1">Total <span *ngIf="sortField === 'total'" class="text-indigo-600">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span><span *ngIf="sortField !== 'total'" class="text-slate-300 opacity-50">↕</span></div>
                        </th>
-                       <th class="p-4 border-b border-slate-200 text-center">Estado</th>
-                       <th class="p-4 border-b border-slate-200 text-right">Acciones</th>
+                       <th class="p-4 border-b border-slate-200 text-center whitespace-nowrap">Estado</th>
+                       <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">Acciones</th>
                     </tr>
                  </thead>
                  <tbody class="relative">
@@ -140,20 +144,20 @@ import { UiService } from '../../core/services/ui.service';
                     <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
 
                     <tr *ngFor="let sale of paginatedSales" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                        <td class="p-4 font-mono text-sm font-bold text-indigo-600 cursor-pointer hover:underline" (click)="verDetalle(sale.id)">
+                        <td class="p-4 font-mono text-sm font-bold text-indigo-600 cursor-pointer hover:underline whitespace-nowrap" (click)="verDetalle(sale.id)">
                            {{ formatFactura(sale.numero_factura) }}
                        </td>
-                       <td class="p-4 text-sm text-slate-800">
+                       <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
                            {{ sale.fecha | date:'dd/MM/yyyy' }}
                        </td>
-                       <td class="p-4">
-                           <div class="text-sm font-medium text-slate-900">{{ sale.clientName }}</div>
+                       <td class="p-4" style="max-width: 160px;">
+                           <div class="text-sm font-medium text-slate-900" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="sale.clientName">{{ sale.clientName }}</div>
                        </td>
-                        <td class="p-4 text-sm text-slate-500">{{ sale.bodegaName }}</td>
-                        <td class="p-4 text-sm text-slate-600">
+                        <td class="p-4 text-sm text-slate-500 whitespace-nowrap">{{ sale.bodegaName }}</td>
+                        <td class="p-4 text-sm text-slate-600 whitespace-nowrap">
                             {{ sale.vendedorName }}
                         </td>
-                       <td class="p-4 font-bold text-slate-900">
+                       <td class="p-4 font-bold text-slate-900 whitespace-nowrap">
                            \${{ sale.total | number: '1.0-0' }}
                        </td>
                        <td class="p-4 text-center">
@@ -203,6 +207,7 @@ import { UiService } from '../../core/services/ui.service';
                     </tr>
                  </tbody>
               </table>
+              </div>
 
               <!-- Footer con Paginación -->
               <div class="bg-slate-50/80 p-4 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">

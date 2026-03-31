@@ -33,7 +33,9 @@
   </div>
 
   <!-- =============== INVOICE =============== -->
-  <div *ngIf="!isLoading" class="invoice" id="invoice-content">
+  <!-- Wrapper de zoom para móvil: el zoom solo aplica visualmente, NO al PDF -->
+  <div *ngIf="!isLoading" class="invoice-zoom-wrapper" [style.zoom]="invoiceZoom">
+  <div class="invoice" id="invoice-content">
 
     <!-- BORRADOR watermark -->
     <div *ngIf="sale?.estado === 'BORRADOR'" class="watermark">BORRADOR</div>
@@ -129,6 +131,7 @@
     </div>
     
     <!-- ===== PRODUCTOS ===== -->
+    <div class="products-table-wrapper">
     <table class="products-table">
       <thead>
         <tr>
@@ -168,6 +171,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
 
     <!-- ===== FOOTER / TOTALES ===== -->
     <div class="footer-row" style="margin-top: 20px;">
@@ -199,4 +203,5 @@
     </div>
 
   </div><!-- /invoice -->
-</div>
+  </div><!-- /invoice-zoom-wrapper -->
+</div>

@@ -19,21 +19,21 @@ interface CartItem {
    standalone: true,
    imports: [CommonModule, SharedModule, FormsModule],
    template: `
-    <div class="p-6 w-full max-w-7xl mx-auto flex flex-col">
+    <div class="p-4 md:p-6 w-full max-w-7xl mx-auto flex flex-col">
       <div class="max-w-5xl w-full flex flex-col animate-in zoom-in-95 duration-300">
         
         <!-- Header -->
         <!-- Header Simplificado -->
-        <div class="flex items-center justify-between p-6 pb-4">
+        <div class="flex items-center justify-between px-2 py-3 md:p-6 md:pb-4">
           <button (click)="onClose.emit()" class="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 font-medium transition-colors">
             ← Volver
           </button>
-          <h1 class="text-2xl font-bold text-slate-900">
+          <h1 class="text-xl md:text-2xl font-bold text-slate-900">
             Nueva Venta
           </h1>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-8 mt-2 flex flex-col gap-8">
+        <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-4 md:p-8 mt-2 flex flex-col gap-6 md:gap-8">
           
           <!-- DATOS DE LA VENTA -->
           <div class="w-full flex flex-col gap-4">
@@ -91,13 +91,13 @@ interface CartItem {
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h4 class="text-xs font-bold text-slate-800 uppercase truncate">{{ item.productName }}</h4>
+                  <h4 class="text-xs font-bold text-slate-800 uppercase leading-tight">{{ item.productName }}</h4>
                   <p class="text-[10px] text-slate-400 font-semibold">Stock: {{ item.stock }}</p>
                 </div>
-                <div class="text-right flex flex-col items-end gap-1">
-                  <span class="text-sm font-bold text-indigo-600">$ {{ item.price | number:'1.0-0' }}</span>
+                <div class="text-right flex flex-col items-end gap-1 flex-shrink-0">
+                  <span class="text-sm font-bold text-indigo-600 whitespace-nowrap">$ {{ item.price | number:'1.0-0' }}</span>
                   <button (click)="addToCart(item)" 
-                          class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-tighter">
+                          class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-tighter whitespace-nowrap">
                     AÑADIR +
                   </button>
                 </div>
@@ -110,14 +110,14 @@ interface CartItem {
                         <!-- Carrito (Tabla Refinada) -->
               <div class="border border-slate-200 rounded-lg overflow-hidden mb-6 bg-white shadow-sm">
                 <div class="overflow-x-auto">
-                  <table class="w-full text-sm border-collapse">
+                  <table style="min-width: 380px;" class="w-full text-sm border-collapse">
                     <thead class="bg-slate-100 text-slate-700 text-xs uppercase tracking-wide font-semibold">
                       <tr>
                         <th class="p-3 text-left">Producto</th>
-                        <th class="p-3 text-center">Cant.</th>
-                        <th class="p-3 text-right">Precio</th>
-                        <th class="p-3 text-right">Subtotal</th>
-                        <th class="p-3 text-center">Acci&#243;n</th>
+                        <th class="p-3 text-center whitespace-nowrap">Cant.</th>
+                        <th class="p-3 text-right whitespace-nowrap">Precio</th>
+                        <th class="p-3 text-right whitespace-nowrap">Subtotal</th>
+                        <th class="p-3 text-center">&#x2715;</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -162,7 +162,7 @@ interface CartItem {
               <!-- Configuración de Pago (Separación) -->
               <div class="space-y-4 pt-8 border-t border-slate-100">
                 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Configuración de Cobro</h3>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div class="space-y-1">
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight">Forma de Pago</label>
                     <select [(ngModel)]="condicionPago" (change)="onCondicionPagoChange()" 
@@ -230,9 +230,9 @@ interface CartItem {
                     <span>- $ {{ descuentoCalculado | number:'1.0-0' }}</span>
                   </div>
 
-                  <div class="flex justify-between items-center text-lg font-bold border-t border-slate-200 pt-3 mt-2 text-slate-800">
-                    <span>Total a Pagar</span>
-                    <span class="text-2xl font-bold text-slate-900 tabular-nums font-serif italic">$ {{ totalConDescuento | number:'1.0-0' }}</span>
+                  <div class="flex justify-between items-center font-bold border-t border-slate-200 pt-3 mt-2 text-slate-800">
+                    <span class="text-base">Total a Pagar</span>
+                    <span class="text-xl font-bold text-slate-900 tabular-nums">$ {{ totalConDescuento | number:'1.0-0' }}</span>
                   </div>
                 </div>
               </div>
