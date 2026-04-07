@@ -83,7 +83,7 @@ export class ClientsComponent implements OnInit {
 
    get isAdmin(): boolean {
       const role = this.authService.currentUserValue?.role;
-      return role === 'ADMIN';
+      return role === 'admin_distribuidor';
    }
 
    formatCurrency(valor: number): string {

@@ -7,6 +7,6 @@ export const WAREHOUSES_ROUTES: Routes = [
         path: '',
         component: WarehousesComponent,
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] }
+        data: { roles: ['admin_distribuidor'] }
     }
 ];

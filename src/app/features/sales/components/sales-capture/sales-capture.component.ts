@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../../../shared/shared.module';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +7,8 @@ import { ClientsService, Client } from '../../../clients/services/clients.servic
 import { InventoryService, InventoryItem } from '../../../inventory/services/inventory.service';
 import { SalesService } from '../../services/sales.service';
 import { Observable, BehaviorSubject, combineLatest, map } from 'rxjs';
+import { AuthService } from '../../../../core/services/auth.service';
+import { SupabaseService } from '../../../../core/services/supabase.service';
 
 interface CartItem {
    product: InventoryItem;
@@ -308,19 +310,23 @@ export class SalesCaptureComponent implements OnInit {
    bodegas: any[] = [];
    selectedBodegaId: string | null = null;
    selectedBodega: any = null;
-   isAdmin = false;
+
    mostrarSelectorBodega = false;
+
+   private authService = inject(AuthService);
+   private clientsService = inject(ClientsService);
+   private inventoryService = inject(InventoryService);
+   private salesService = inject(SalesService);
+   private supabase = inject(SupabaseService);
+   private router = inject(Router);
+
+   isAdmin = this.authService.isAdmin;
 
    get manejaInventario(): boolean {
       return this.selectedBodega?.maneja_inventario !== false;
    }
 
-   constructor(
-      private clientsService: ClientsService,
-      private inventoryService: InventoryService,
-      private salesService: SalesService,
-      private router: Router
-   ) {
+   constructor() {
       this.inventory$ = new BehaviorSubject<InventoryItem[]>([]).asObservable();
       this.filteredInventory$ = new BehaviorSubject<InventoryItem[]>([]).asObservable();
    }
@@ -332,29 +338,21 @@ export class SalesCaptureComponent implements OnInit {
    async ngOnInit() {
       try {
          this.loadClientsDirectly();
-         const supabase = this.salesService['supabase'];
-         const { data: { user } } = await supabase.auth.getUser();
-         const userId = user?.id;
+         const profile = this.authService.currentUserSignal() as any;
 
-         if (userId) {
-            const { data: profile } = await supabase
-               .from('usuarios')
-               .select('rol, bodega_asignada_id, distribuidor_id')
-               .eq('id', userId)
-               .single();
+         if (profile) {
+            const userId = profile.id;
+            const principalBodegaId = profile.bodega_asignada_id;
+            const distribuidorId = profile.distribuidor_id;
 
-            this.isAdmin = profile?.rol === 'admin_distribuidor';
-            const principalBodegaId = profile?.bodega_asignada_id;
-            const distribuidorId = profile?.distribuidor_id;
-
-            const { data: ubData } = await supabase
+            const { data: ubData } = await this.supabase
                .from('usuarios_bodegas')
                .select('bodega_id')
                .eq('usuario_id', userId);
 
             const bodegaIds = (ubData || []).map(b => b.bodega_id);
 
-            const { data: bodegasData } = await supabase
+            const { data: bodegasData } = await this.supabase
                .from('bodegas')
                .select('id, nombre, maneja_inventario, distribuidor_id')
                .in('id', bodegaIds);
@@ -362,11 +360,7 @@ export class SalesCaptureComponent implements OnInit {
             this.bodegas = bodegasData || [];
 
             if (this.bodegas.length === 0 && distribuidorId) {
-               const { data: allBods } = await supabase
-                  .from('bodegas')
-                  .select('*')
-                  .eq('distribuidor_id', distribuidorId);
-               this.bodegas = allBods || [];
+               this.bodegas = await this.inventoryService.getBodegasByDistribuidor(distribuidorId);
             }
 
             if (this.bodegas.length === 1) {

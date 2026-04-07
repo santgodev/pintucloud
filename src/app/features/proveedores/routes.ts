@@ -7,20 +7,20 @@ export const PROVEEDORES_ROUTES: Routes = [
         loadComponent: () =>
             import('./pages/proveedores-list.page').then(m => m.ProveedoresListPage),
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] }
+        data: { roles: ['admin_distribuidor'] }
     },
     {
         path: 'new',
         loadComponent: () =>
             import('./pages/proveedores-create.page').then(m => m.ProveedoresCreatePage),
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] }
+        data: { roles: ['admin_distribuidor'] }
     },
     {
         path: ':id/edit',
         loadComponent: () =>
             import('./pages/proveedores-edit.page').then(m => m.ProveedoresEditPage),
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] }
+        data: { roles: ['admin_distribuidor'] }
     },
 ];

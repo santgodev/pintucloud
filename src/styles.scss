@@ -341,11 +341,5 @@ input, select, textarea {
 
 .table-responsive table {
     width: 100%;
-    min-width: 600px;
-}
-
-@media (max-width: 640px) {
-    .table-responsive table {
-        min-width: 100%;
-    }
+    min-width: 800px; /* Garantiza scroll en móvil */
 }

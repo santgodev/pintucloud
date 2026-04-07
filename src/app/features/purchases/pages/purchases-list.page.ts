@@ -632,7 +632,7 @@ export class PurchasesListPage implements OnInit {
   ) { }
 
   get isAdmin(): boolean {
-    return this.authService.currentUserValue?.role === 'ADMIN';
+    return this.authService.currentUserValue?.role === 'admin_distribuidor';
   }
 
   async ngOnInit(): Promise<void> {
