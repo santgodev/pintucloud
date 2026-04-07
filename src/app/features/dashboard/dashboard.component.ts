@@ -86,21 +86,6 @@ import { UiService } from '../../core/services/ui.service';
             </div>
          </app-card>
          
-         <!-- Mock Visits -->
-         <app-card customClass="p-0 overflow-hidden relative" class="slide-in-4 card-dashboard" (click)="goToVisitas()">
-             <div class="absolute top-0 right-0 p-4 opacity-10 text-info">
-                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-             </div>
-            <div class="stat-box">
-               <div>
-                 <div class="stat-label mb-1">Visitas</div>
-                 <div class="stat-value text-info">54</div>
-               </div>
-            </div>
-             <div class="stat-footer border-t border-slate-200">
-               <span class="text-muted">Pendientes hoy</span>
-            </div>
-         </app-card>
       </div>
 
       <!-- Main Content Grid -->
@@ -161,12 +146,12 @@ import { UiService } from '../../core/services/ui.service';
                    </div>
                    
                    <div class="feed-item">
-                       <div class="feed-icon bg-primary-soft">
-                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                       <div class="feed-icon bg-info-soft">
+                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                        </div>
                        <div class="feed-content">
-                           <div class="feed-title">Pedido en Ruta</div>
-                           <div class="feed-desc">Pedido #INV-2024 asignado a Carlos.</div>
+                           <div class="feed-title">Inventario Actualizado</div>
+                           <div class="feed-desc">Se cargaron 50 unidades de Rodillo Felpón.</div>
                            <div class="feed-time">Hace 32 min</div>
                        </div>
                    </div>
@@ -462,7 +447,4 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  goToVisitas() {
-    this.router.navigate(['/geo-ruta']);
-  }
 }

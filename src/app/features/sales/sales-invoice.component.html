@@ -6,7 +6,7 @@
     <div class="toolbar-right">
 
       <!-- Admin only: Editar (BORRADOR o CONFIRMADA) -->
-      <button *ngIf="isAdmin && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA')" (click)="editarOrden()"
+      <button *ngIf="isAdmin() && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA')" (click)="editarOrden()"
         class="btn-print">
         ✏ Editar Orden
       </button>
@@ -15,12 +15,12 @@
       <button *ngIf="sale" (click)="descargarPDF()" class="btn-pdf">⬇ Descargar PDF</button>
 
       <!-- Admin only: Autorizar (solo si CONFIRMADA) -->
-      <button *ngIf="isAdmin && sale?.estado === 'CONFIRMADA'" (click)="autorizarOrden()" class="btn-success">
+      <button *ngIf="isAdmin() && sale?.estado === 'CONFIRMADA'" (click)="autorizarOrden()" class="btn-success">
         ✅ Autorizar Orden
       </button>
 
       <!-- Admin only: Anular (solo si CONFIRMADA) -->
-      <button *ngIf="isAdmin && sale?.estado === 'CONFIRMADA'" (click)="anularVenta()" class="btn-anular">
+      <button *ngIf="isAdmin() && sale?.estado === 'CONFIRMADA'" (click)="anularVenta()" class="btn-anular">
         ✕ Anular Orden
       </button>
 

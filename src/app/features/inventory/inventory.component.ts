@@ -1,10 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../shared/shared.module';
 import { InventoryService, InventoryItem } from './services/inventory.service';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { map, take } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { ProductModalComponent } from './components/product-modal/product-modal.component';
@@ -18,302 +17,55 @@ import { UiService } from '../../core/services/ui.service';
   selector: 'app-inventory',
   standalone: true,
   imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, InitialInventoryModalComponent, FormsModule],
-  template: `
-    <div class="mb-8 p-4 text-left">
-      <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-slate-900 tracking-tight text-left">Inventario Global</h1>
-          <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
-        </div>
-        <div class="flex gap-3" *ngIf="isAdmin">
-          <button class="btn btn-outline flex items-center gap-2" (click)="showInitialModal = true" title="Sólo para productos con saldo 0">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z"></path><path d="M16 8V5a4 4 0 0 0-8 0v3"></path></svg>
-            Cargar Inventario Inicial
-          </button>
-          <button class="btn btn-outline flex items-center gap-2" (click)="exportInventory()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Exportar
-          </button>
-          <button class="btn btn-primary flex items-center gap-2 px-6 shadow-lg shadow-primary/20" (click)="openModal()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Nuevo Producto
-          </button>
-        </div>
-      </div>
-
-      <!-- Quick Stats / KPIs -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Productos</p>
-          <p class="text-2xl font-bold text-slate-900">{{ (inventory$ | async)?.length || 0 }}</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" (click)="showLowStock()">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bajo Stock</p>
-          <p class="text-2xl font-bold text-slate-900">{{ lowStockCount$ | async }}</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bodegas Activas</p>
-          <p class="text-2xl font-bold text-slate-900">{{ bodegas.length }}</p>
-        </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inventario</p>
-          <p class="text-2xl font-bold text-slate-900">{{ totalInventoryValue | currency:'COP':'symbol':'1.0-0' }}</p>
-        </div>
-      </div>
-
-      <!-- Filters -->
-      <div class="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div class="flex-1 relative">
-          <input [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900" placeholder="Buscar por nombre, SKU o categoría...">
-        </div>
-        <div class="flex gap-2 flex-wrap md:flex-nowrap">
-          <select [(ngModel)]="selectedBodega" (ngModelChange)="refreshInventory()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
-            <option [value]="''">Todas las Bodegas</option>
-            <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
-          </select>
-          <select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
-            <option value="">Todas las Categorías</option>
-            <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
-          </select>
-          <select [(ngModel)]="selectedStatus" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
-            <option value="">Todos los Estados</option>
-            <option value="En Stock">En Stock</option>
-            <option value="Bajo Stock">Bajo Stock</option>
-            <option value="Agotado">Agotado</option>
-          </select>
-        </div>
-      </div>
-
-      <div *ngIf="showLowStockOnly" class="bg-orange-100 text-orange-700 p-3 rounded-lg border border-orange-200 mb-4 flex justify-between items-center text-sm font-medium">
-        <span>Mostrando productos en Bajo Stock</span>
-        <button (click)="clearLowStockFilter()" class="underline hover:text-orange-900 transition-colors">
-          Ver todo
-        </button>
-      </div>
-
-      <app-card class="p-0 overflow-hidden shadow-xl border-slate-200">
-        <div class="table-responsive">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-200">
-                <th class="p-4 font-semibold text-slate-600 text-sm">Imagen</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">Producto</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">Bodega</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Compra</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Venta</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-center">Stock</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Valor Inventario</th>
-                
-                <th class="p-4 font-semibold text-slate-600 text-sm">Estado</th>
-                <th *ngIf="isAdmin" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 italic-none">
-              <tr *ngFor="let item of inventory$ | async" class="hover:bg-slate-50/50 transition-colors">
-                <td class="p-4">
-                  <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shadow-sm">
-                    <img *ngIf="item.imageUrl" [src]="item.imageUrl" (error)="handleImageError(item)" class="w-full h-full object-cover">
-                    <svg *ngIf="!item.imageUrl" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-slate-300"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><line x1="16" y1="5" x2="22" y2="5"></line><line x1="19" y1="2" x2="19" y2="8"></line><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
-                  </div>
-                </td>
-                <td class="p-4">
-                  <div class="font-bold text-slate-900">{{item.productName}}</div>
-                  <div class="text-xs text-slate-400 truncate max-w-[200px]" [title]="item.description || ''">{{item.description}}</div>
-                </td>
-                <td class="p-4">
-                  <span class="px-2.5 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 capitalize whitespace-nowrap border border-slate-200">{{item.bodegaName}}</span>
-                </td>
-                <td class="p-4 text-right text-sm tabular-nums text-slate-700">
-                  <ng-container *ngIf="item.pricePurchase > 0; else sinCosto">
-                    {{item.pricePurchase | currency:'COP':'symbol':'1.0-0'}}
-                  </ng-container>
-                  <ng-template #sinCosto><span class="text-slate-400">—</span></ng-template>
-                </td>
-                <td class="p-4 text-right text-sm tabular-nums text-slate-900 font-medium">{{item.priceSale | currency:'COP':'symbol':'1.0-0'}}</td>
-                <td class="p-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                      <div class="h-full bg-primary rounded-full" [style.width.%]="(item.stock / 1000) * 100"></div>
-                    </div>
-                    <span class="text-sm font-bold text-slate-700">{{item.stock}}</span>
-                  </div>
-                </td>
-                <td class="p-4 text-right text-sm tabular-nums text-indigo-600 font-semibold">
-                  <ng-container *ngIf="item.pricePurchase > 0; else sinValor">
-                    {{item.inventoryValue | currency:'COP':'symbol':'1.0-0'}}
-                  </ng-container>
-                  <ng-template #sinValor><span class="text-slate-400">—</span></ng-template>
-                </td>
-                <td class="p-4 text-xs font-bold">
-                  <span class="px-2.5 py-1 rounded-md" 
-                    [ngClass]="{
-                      'bg-emerald-50 text-emerald-700 border border-emerald-100': item.status === 'En Stock',
-                      'bg-amber-50 text-amber-700 border border-amber-100': item.status === 'Bajo Stock',
-                      'bg-rose-50 text-rose-700 border border-rose-100': item.status === 'Agotado'
-                    }">
-                    {{ item.status }}
-                  </span>
-                </td>
-                <td class="p-4" *ngIf="isAdmin">
-                  <div class="flex items-center justify-center gap-3">
-                    <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="adjustStock(item)" title="Ajustar inventario">
-                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 20V10"/> <path d="M18 20V4"/> <path d="M6 20v-4"/> </svg>
-                    </button>
-                    <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="editProduct(item)" title="Editar producto">
-                      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr *ngIf="(inventory$ | async)?.length === 0">
-                <td [attr.colspan]="isAdmin ? 9 : 8" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
-                  No se encontraron productos con los filtros seleccionados.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </app-card>
-    </div>
-
-    <app-product-modal *ngIf="showProductModal" [product]="selectedProduct" (onClose)="closeModal()" (saved)="refreshInventory()"></app-product-modal>
-    
-    <app-adjust-stock-modal 
-       *ngIf="showAdjustModal && selectedAdjustItem" 
-       [item]="selectedAdjustItem" 
-       (onClose)="closeAdjustModal()" 
-       (confirm)="onConfirmAdjust($event)">
-    </app-adjust-stock-modal>
-
-    <app-initial-inventory-modal
-        *ngIf="showInitialModal"
-        [bodegaId]="selectedBodega"
-        (onClose)="showInitialModal = false"
-        (saved)="refreshInventory()">
-    </app-initial-inventory-modal>
-  `,
+  templateUrl: './inventory.component.html',
   styles: [`
     .italic-none tr { font-style: normal !important; }
   `]
 })
 export class InventoryComponent implements OnInit {
-  private _allInventory: InventoryItem[] = [];
-  private inventorySubject = new BehaviorSubject<InventoryItem[]>([]);
-  inventory$: Observable<InventoryItem[]> = this.inventorySubject.asObservable();
+  private inventoryService = inject(InventoryService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private authService = inject(AuthService);
+  private uiService = inject(UiService);
 
-  lowStockCount$!: Observable<number>;
-  showLowStockOnly = false;
+  // State Signals
+  allInventory = signal<InventoryItem[]>([]);
+  bodegas = signal<any[]>([]);
+  categorias = signal<string[]>([]);
+  showLowStockOnly = signal(false);
+  showProductModal = signal(false);
+  showAdjustModal = signal(false);
+  showInitialModal = signal(false);
 
-  showProductModal = false;
-  selectedProduct: InventoryItem | null = null;
+  // Selection/Filter Signals
+  selectedProduct = signal<InventoryItem | null>(null);
+  selectedAdjustItem = signal<InventoryItem | null>(null);
+  selectedBodega = signal<string>('');
+  selectedCategory = signal<string>('');
+  selectedStatus = signal<string>('');
+  searchTerm = signal<string>('');
 
-  showAdjustModal = false;
-  selectedAdjustItem: InventoryItem | null = null;
+  // Computed signals
+  isAdmin = this.authService.isAdmin;
+  
+  lowStockCount = computed(() => 
+    this.allInventory().filter(item => item.stock <= (item.stockMinimo || 0)).length
+  );
 
-  showInitialModal = false;
+  totalInventoryValue = computed(() => 
+    this.allInventory().reduce((acc, item) => acc + (item.inventoryValue || 0), 0)
+  );
 
-  totalInventoryValue: number = 0;
-  bodegas: any[] = [];
-  selectedBodega: string = '';
-  categorias: string[] = [];
-  selectedCategory: string = '';
-  selectedStatus: string = '';
-  searchTerm: string = '';
-  filters = {
-    lowStock: false
-  };
+  filteredItems = computed(() => {
+    let filtered = [...this.allInventory()];
 
-  constructor(
-    private inventoryService: InventoryService,
-    private router: Router,
-    private route: ActivatedRoute,
-    private authService: AuthService,
-    private uiService: UiService
-  ) { }
-
-  get isAdmin(): boolean {
-    return this.authService.currentUserValue?.role === 'ADMIN';
-  }
-
-  async ngOnInit() {
-    this.uiService.setLoading(true);
-    this.lowStockCount$ = this.inventory$.pipe(
-      map(items => items.filter(item => item.stock <= (item.stockMinimo || 0)).length)
-    );
-
-    // Leer parámetros para filtros automáticos
-    this.route.queryParams.subscribe(params => {
-      if (params['lowStock']) {
-        this.filters.lowStock = true;
-        this.showLowStockOnly = true;
-        this.loadInventory();
-      }
-    });
-
-    await this.loadBodegas();
-    await this.loadCategorias();
-    await this.loadInventory();
-  }
-
-  async loadBodegas() {
-    const allBodegas = await this.inventoryService.getBodegas();
-    // Filter by maneja_inventario = true as requested
-    this.bodegas = allBodegas.filter(b => b.maneja_inventario === true);
-    
-    // Auto-select if only one bodega manages inventory
-    if (this.bodegas.length === 1 && !this.selectedBodega) {
-      this.selectedBodega = this.bodegas[0].id;
-      this.refreshInventory();
-    }
-  }
-
-  async loadCategorias() {
-    this.categorias = await this.inventoryService.getCategories();
-  }
-
-  async loadInventory() {
-    this.uiService.setLoading(true);
-    const inv$ = await this.inventoryService.getInventory(
-      this.selectedBodega || undefined,
-      this.filters.lowStock
-    );
-    inv$.pipe(take(1)).subscribe(items => {
-      // Resolve real bodega names for items without stock records
-      const resolvedItems = items.map(item => {
-        // ALWAYS normalize to lowercase first to ensure capitalize works correctly
-        let currentName = (item.bodegaName || '').toLowerCase();
-
-        if (!currentName || currentName.includes('inventario') || currentName === 'carga inicial') {
-          const b = this.bodegas.find(w => w.id === item.bodegaId);
-          if (b) {
-            currentName = b.nombre.toLowerCase();
-          } else if (!item.bodegaId && this.bodegas.length > 0) {
-            // Fallback to first valid warehouse if none assigned yet
-            currentName = this.bodegas[0].nombre.toLowerCase();
-            item.bodegaId = this.bodegas[0].id;
-          }
-        }
-        
-        item.bodegaName = currentName;
-        return item;
-      });
-
-      this._allInventory = resolvedItems;
-      this.totalInventoryValue = resolvedItems.reduce((acc, item) => acc + (item.inventoryValue || 0), 0);
-      this.applyFilters();
-      this.uiService.setLoading(false);
-    });
-  }
-
-  applyFilters() {
-    let filtered = [...this._allInventory];
-
-    if (this.selectedCategory) {
-      filtered = filtered.filter(item => item.category === this.selectedCategory);
+    if (this.selectedCategory()) {
+      filtered = filtered.filter(item => item.category === this.selectedCategory());
     }
 
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
+    if (this.searchTerm()) {
+      const term = this.searchTerm().toLowerCase();
       filtered = filtered.filter(item =>
         item.productName?.toLowerCase().includes(term) ||
         item.sku?.toLowerCase().includes(term) ||
@@ -321,112 +73,164 @@ export class InventoryComponent implements OnInit {
       );
     }
 
-    if (this.showLowStockOnly || this.filters.lowStock) {
-      filtered = filtered.filter(
-        item => item.stock <= (item.stockMinimo ?? 0)
-      );
+    if (this.showLowStockOnly()) {
+      filtered = filtered.filter(item => item.stock <= (item.stockMinimo ?? 0));
     }
 
-    if (this.selectedStatus) {
-      filtered = filtered.filter(
-        item => item.status === this.selectedStatus
-      );
+    if (this.selectedStatus()) {
+      filtered = filtered.filter(item => item.status === this.selectedStatus());
     }
 
     // Sort: primary by commercial order, secondary by bodega name
-    filtered.sort((a, b) => {
+    return filtered.sort((a, b) => {
       const orderA = (a as any).order ?? 9999;
       const orderB = (b as any).order ?? 9999;
       if (orderA !== orderB) return orderA - orderB;
       return (a.bodegaName || '').localeCompare(b.bodegaName || '');
     });
+  });
 
-    this.inventorySubject.next(filtered);
+  async ngOnInit() {
+    this.uiService.setLoading(true);
+
+    // Initial load dependencies
+    await Promise.all([
+      this.loadBodegas(),
+      this.loadCategorias()
+    ]);
+
+    // Handle initial query params
+    this.route.queryParams.subscribe(params => {
+      if (params['lowStock']) {
+        this.showLowStockOnly.set(true);
+      }
+    });
+
+    await this.loadInventory();
+  }
+
+  async loadBodegas() {
+    const allBodegas = await this.inventoryService.getBodegas();
+    const managedBodegas = allBodegas.filter(b => b.maneja_inventario === true);
+    this.bodegas.set(managedBodegas);
+    
+    // Auto-select if unique
+    if (managedBodegas.length === 1 && !this.selectedBodega()) {
+      this.selectedBodega.set(managedBodegas[0].id);
+    }
+  }
+
+  async loadCategorias() {
+    const cats = await this.inventoryService.getCategories();
+    this.categorias.set(cats);
+  }
+
+  async loadInventory() {
+    this.uiService.setLoading(true);
+    const inv$ = await this.inventoryService.getInventory(
+      this.selectedBodega() || undefined,
+      this.showLowStockOnly()
+    );
+
+    inv$.pipe(take(1)).subscribe(items => {
+      const resolved = items.map(item => {
+        let currentName = (item.bodegaName || '').toLowerCase();
+        if (!currentName || currentName.includes('inventario') || currentName === 'carga inicial') {
+          const b = this.bodegas().find(w => w.id === item.bodegaId);
+          if (b) currentName = b.nombre.toLowerCase();
+          else if (!item.bodegaId && this.bodegas().length > 0) {
+            currentName = this.bodegas()[0].nombre.toLowerCase();
+            item.bodegaId = this.bodegas()[0].id;
+          }
+        }
+        item.bodegaName = currentName;
+        return item;
+      });
+
+      this.allInventory.set(resolved);
+      this.uiService.setLoading(false);
+    });
   }
 
   refreshInventory() {
     this.loadInventory();
   }
 
+  onBodegaChange(id: string) {
+    this.selectedBodega.set(id);
+    this.refreshInventory();
+  }
+
   showLowStock() {
-    this.showLowStockOnly = true;
-    this.filters.lowStock = true;
-    this.applyFilters();
+    this.showLowStockOnly.set(true);
   }
 
   clearLowStockFilter() {
-    this.showLowStockOnly = false;
-    this.filters.lowStock = false;
-    this.applyFilters();
+    this.showLowStockOnly.set(false);
   }
 
   openModal() {
-    this.selectedProduct = null;
-    this.showProductModal = true;
+    this.selectedProduct.set(null);
+    this.showProductModal.set(true);
   }
 
   adjustStock(item: InventoryItem) {
-    this.selectedAdjustItem = item;
-    this.showAdjustModal = true;
+    this.selectedAdjustItem.set(item);
+    this.showAdjustModal.set(true);
   }
 
   closeAdjustModal() {
-    this.showAdjustModal = false;
-    this.selectedAdjustItem = null;
+    this.showAdjustModal.set(false);
+    this.selectedAdjustItem.set(null);
   }
 
-  onConfirmAdjust(payload: { cantidad: number, observacion: string }) {
-    if (!this.selectedAdjustItem) return;
+  async onConfirmAdjust(payload: { cantidad: number, observacion: string }) {
+    const item = this.selectedAdjustItem();
+    if (!item) return;
 
-    this.inventoryService.adjustInventory(
-      this.selectedAdjustItem.productId,
-      // @ts-ignore
-      this.selectedAdjustItem.bodegaId || this.bodegas.find(b => b.nombre === this.selectedAdjustItem?.bodegaName)?.id,
-      payload.cantidad,
-      payload.observacion
-    ).then(() => {
+    try {
+      const bId = item.bodegaId || this.bodegas().find(b => b.nombre === item.bodegaName)?.id;
+      await this.inventoryService.adjustInventory(item.productId, bId, payload.cantidad, payload.observacion);
       this.refreshInventory();
       this.closeAdjustModal();
-    }).catch((err: any) => {
+    } catch (err: any) {
       console.error(err);
       alert('Error ajustando inventario: ' + (err.message || err));
-    });
+    }
   }
 
   editProduct(item: InventoryItem) {
-    this.selectedProduct = item;
-    this.showProductModal = true;
+    this.selectedProduct.set(item);
+    this.showProductModal.set(true);
   }
 
   closeModal() {
-    this.showProductModal = false;
-    this.selectedProduct = null;
+    this.showProductModal.set(false);
+    this.selectedProduct.set(null);
   }
 
   handleImageError(item: InventoryItem) {
-    console.warn('Failing image URL:', item.imageUrl);
     item.imageUrl = '';
   }
 
   exportInventory() {
-    this.inventory$.pipe(take(1)).subscribe(items => {
-      const exportData = items.map(item => ({
-        Producto: item.productName,
-        SKU: item.sku,
-        Categoría: item.category || 'General',
-        Bodega: item.bodegaName,
-        Stock: item.stock,
-        'Stock mínimo': item.stockMinimo || 0,
-        Estado: item.status
-      }));
+    const items = this.filteredItems();
+    const exportData = items.map(item => ({
+      Producto: item.productName,
+      SKU: item.sku,
+      Categoría: item.category || 'General',
+      Bodega: item.bodegaName,
+      Stock: item.stock,
+      'Stock mínimo': item.stockMinimo || 0,
+      Estado: item.status
+    }));
 
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
 
-      const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const data: Blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-      saveAs(data, 'inventario.xlsx');
-    });
+    const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data: Blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+    saveAs(data, 'inventario.xlsx');
   }
 }

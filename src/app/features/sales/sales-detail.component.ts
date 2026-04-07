@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SalesService } from './services/sales.service';
 import { SharedModule } from '../../shared/shared.module';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
     selector: 'app-sales-detail',
@@ -26,7 +27,7 @@ import { SharedModule } from '../../shared/shared.module';
 
         <div class="flex gap-3">
           <button 
-            *ngIf="sale.estado === 'CONFIRMADA' && isAdmin"
+            *ngIf="sale.estado === 'CONFIRMADA' && isAdmin()"
             (click)="anularVenta()"
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold shadow-sm flex items-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -137,13 +138,14 @@ import { SharedModule } from '../../shared/shared.module';
 })
 export class SalesDetailComponent implements OnInit {
     sale: any;
-    isAdmin = false;
+    private authService = inject(AuthService);
+    private salesService = inject(SalesService);
+    private route = inject(ActivatedRoute);
+    private router = inject(Router);
 
-    constructor(
-        private route: ActivatedRoute,
-        private router: Router,
-        private salesService: SalesService
-    ) { }
+    isAdmin = this.authService.isAdmin;
+
+    constructor() { }
 
     async ngOnInit() {
         const id = this.route.snapshot.paramMap.get('id');
@@ -155,9 +157,6 @@ export class SalesDetailComponent implements OnInit {
         try {
             this.sale = await this.salesService.getById(id);
 
-            // Validar rol (Simulado aquí, idealmente desde un AuthService)
-            const userRole = localStorage.getItem('rol');
-            this.isAdmin = userRole === 'admin_distribuidor';
 
             // Fallback para nombres virtuales si no vienen del servicio
             if (!this.sale.vendedorName && this.sale.usuarios) {

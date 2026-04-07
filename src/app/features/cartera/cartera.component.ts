@@ -100,7 +100,7 @@ import { UiService } from '../../core/services/ui.service';
        </div>
 
        <!-- Tabla de Resultados -->
-       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+       <div class="bg-white rounded-xl border border-slate-200 shadow-sm table-responsive">
            <table class="w-full text-left border-collapse">
               <thead>
                  <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
@@ -413,7 +413,7 @@ export class CarteraComponent implements OnInit {
     ) { }
 
     get isAdmin(): boolean {
-        return this.authService.currentUserValue?.role === 'ADMIN';
+        return this.authService.currentUserValue?.role === 'admin_distribuidor';
     }
 
     async ngOnInit() {

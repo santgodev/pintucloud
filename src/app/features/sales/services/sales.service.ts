@@ -19,6 +19,11 @@ export interface Sale {
     fecha_autorizacion: string | null;
     total: number;
     created_at: string;
+    metodo_pago?: string | null;
+    tipo_documento?: number | null;
+    descuento_porcentaje?: number | null;
+    descuento_valor?: number | null;
+    observaciones?: string | null;
     clientName?: string; // Virtual para UI
     vendedorName?: string; // Virtual para UI
 }
@@ -262,6 +267,18 @@ export class SalesService {
         const { error } = await this.supabase.rpc('revertir_venta_a_borrador', {
             p_venta_id: id
         });
+        if (error) throw error;
+    }
+
+    /** Actualizar encabezado de una venta */
+    async updateSaleHeader(id: string, data: any): Promise<void> {
+        const { error } = await this.supabase.from('ventas').update(data).eq('id', id);
+        if (error) throw error;
+    }
+
+    /** Eliminar todos los detalles de una venta */
+    async deleteDetails(ventaId: string): Promise<void> {
+        const { error } = await this.supabase.from('detalle_ventas').delete().eq('venta_id', ventaId);
         if (error) throw error;
     }
 

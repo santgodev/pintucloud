@@ -1,9 +1,10 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SalesService } from './services/sales.service';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-sales-invoice',
@@ -14,7 +15,6 @@ import jsPDF from 'jspdf';
 })
 export class SalesInvoiceComponent implements OnInit {
   sale: any;
-  currentUser: { id: string; rol: string } | null = null;
   isLoading = true;
   today = new Date();
   fillerRows: number[] = [];
@@ -37,15 +37,14 @@ export class SalesInvoiceComponent implements OnInit {
     }
   }
 
-  get isAdmin(): boolean {
-    return this.currentUser?.rol === 'admin_distribuidor';
-  }
+  private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private salesService = inject(SalesService);
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private salesService: SalesService
-  ) { }
+  isAdmin = this.authService.isAdmin;
+
+  constructor() { }
 
   async ngOnInit() {
     this.updateScale();
@@ -61,18 +60,6 @@ export class SalesInvoiceComponent implements OnInit {
 
       // Forzar detección de cambios con nueva referencia
       this.sale = { ...this.sale };
-
-      // Cargar rol del usuario autenticado desde la sesión de Supabase
-      const { data: authData } = await (this.salesService as any)['supabase'].auth.getUser();
-      const userId = authData?.user?.id;
-      if (userId) {
-        const { data: profile } = await (this.salesService as any)['supabase']
-          .from('usuarios')
-          .select('id, rol')
-          .eq('id', userId)
-          .single();
-        this.currentUser = profile ?? null;
-      }
 
       const itemCount = this.sale?.detalle_ventas?.length || 0;
       const fill = Math.max(0, 8 - itemCount);
@@ -155,7 +142,7 @@ export class SalesInvoiceComponent implements OnInit {
   }
 
   async autorizarOrden() {
-    if (!this.isAdmin || this.sale?.estado !== 'CONFIRMADA') return;
+    if (!this.isAdmin() || this.sale?.estado !== 'CONFIRMADA') return;
 
     const ok = confirm('¿Desea autorizar esta orden? Esto afectará el inventario.');
     if (!ok) return;

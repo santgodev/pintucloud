@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -8,6 +8,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { SalesCaptureComponent } from './components/sales-capture/sales-capture.component';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { UiService } from '../../core/services/ui.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
    selector: 'app-sales',
@@ -68,7 +69,7 @@ import { UiService } from '../../core/services/ui.service';
              </div>
 
              <!-- Filtro Asesor (Si es Admin) -->
-             <div *ngIf="isAdmin">
+           <div *ngIf="isAdmin()">
                 <select [(ngModel)]="filters.asesorId" (change)="onFilterChange()" class="input-premium w-full">
                    <option value="">Todos los asesores</option>
                    <option *ngFor="let u of asesores" [value]="u.id">{{ u.nombre_completo }}</option>
@@ -115,10 +116,8 @@ import { UiService } from '../../core/services/ui.service';
              </div>
            </div>
            <!-- Tabla de Resultados -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm" style="overflow: hidden;">
-              <!-- Scroll horizontal en móvil -->
-              <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-              <table style="min-width: 700px;" class="w-full text-left border-collapse">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm table-responsive">
+              <table class="w-full text-left border-collapse">
                  <thead>
                     <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
                        <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors whitespace-nowrap" (click)="sortBy('numero_factura')">
@@ -176,7 +175,7 @@ import { UiService } from '../../core/services/ui.service';
                        <td class="p-4 text-right">
                            <div class="flex justify-end gap-2">
                                <!-- EDITAR -->
-                                <button *ngIf="sale.estado !== 'ANULADA' && sale.estado !== 'AUTORIZADO' && isAdmin" 
+                                <button *ngIf="sale.estado !== 'ANULADA' && sale.estado !== 'AUTORIZADO' && isAdmin()" 
                                         (click)="editarVenta(sale)" 
                                        class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" 
                                         title="Editar">
@@ -207,7 +206,6 @@ import { UiService } from '../../core/services/ui.service';
                     </tr>
                  </tbody>
               </table>
-              </div>
 
               <!-- Footer con Paginación -->
               <div class="bg-slate-50/80 p-4 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -280,6 +278,14 @@ export class SalesComponent implements OnInit {
    pageSize = 10;
    showNewSaleModal = false;
 
+   private authService = inject(AuthService);
+   isAdmin = this.authService.isAdmin;
+   private salesService = inject(SalesService);
+   private supabase = inject(SupabaseService);
+   private router = inject(Router);
+   private route = inject(ActivatedRoute);
+   private uiService = inject(UiService);
+
 
    searchControl = new FormControl('');
    filters = {
@@ -294,7 +300,6 @@ export class SalesComponent implements OnInit {
    // Para los dropdowns de filtros
    bodegas: any[] = [];
    asesores: any[] = [];
-   isAdmin = false;
    Math = Math; // Para usar en el template
 
    // Filtro por rango de fechas
@@ -305,13 +310,7 @@ export class SalesComponent implements OnInit {
    sortField: string = 'fecha';
    sortDirection: 'asc' | 'desc' = 'desc';
 
-   constructor(
-      private salesService: SalesService,
-      private supabase: SupabaseService,
-      private router: Router,
-      private route: ActivatedRoute,
-      private uiService: UiService
-   ) { }
+   constructor() { }
 
    toggleNewSaleModal() {
       this.showNewSaleModal = !this.showNewSaleModal;
@@ -326,7 +325,7 @@ export class SalesComponent implements OnInit {
    async ngOnInit() {
       this.uiService.setLoading(true);
       try {
-         await this.checkUserRole();
+         // Ya no necesitamos checkUserRole manual, usamos el signal centralizado del AuthService
 
          const { data } = await this.supabase.auth.getUser();
          console.log('AUTH USER ID:', data?.user?.id);
@@ -366,17 +365,9 @@ export class SalesComponent implements OnInit {
       }
    }
 
-   async checkUserRole() {
-      const user = await this.supabase.auth.getUser();
-      const userId = user.data.user?.id;
-      if (userId) {
-         const { data } = await this.supabase.from('usuarios').select('rol').eq('id', userId).single();
-         this.isAdmin = data?.rol === 'admin_distribuidor';
-      }
-   }
 
    async loadInitialData() {
-      if (this.isAdmin) {
+      if (this.isAdmin()) {
          const { data: bods } = await this.supabase.from('bodegas').select('*').order('nombre');
          this.bodegas = bods || [];
 
@@ -505,7 +496,7 @@ export class SalesComponent implements OnInit {
       }
 
       if (sale.estado === 'CONFIRMADA') {
-         if (!this.isAdmin) {
+         if (!this.isAdmin()) {
             this.router.navigate(['/sales', sale.id, 'invoice']);
             return;
          }

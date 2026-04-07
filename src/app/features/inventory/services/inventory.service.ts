@@ -39,6 +39,15 @@ export class InventoryService {
         return data || [];
     }
 
+    async getBodegasByDistribuidor(distribuidorId: string): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('bodegas')
+            .select('*')
+            .eq('distribuidor_id', distribuidorId);
+        if (error) { console.error(error); return []; }
+        return data || [];
+    }
+
     async getCategories(): Promise<string[]> {
         const { data, error } = await this.supabase
             .from('productos')
