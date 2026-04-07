@@ -14,9 +14,9 @@ import { UiService } from '../../core/services/ui.service';
     standalone: true,
     imports: [CommonModule, SharedModule, ReactiveFormsModule, FormsModule],
     template: `
-    <div class="cartera-container p-6 animate-in fade-in duration-500">
-       <div class="flex justify-between items-center mb-6">
-          <h1 class="text-2xl font-bold text-slate-900">Cuentas por Cobrar (Cartera)</h1>
+    <div class="cartera-container p-4 md:p-6 animate-in fade-in duration-500">
+       <div class="flex justify-between items-center mb-4 md:mb-6">
+          <h1 class="text-xl md:text-2xl font-bold text-slate-900">Cuentas por Cobrar (Cartera)</h1>
        </div>
        
        <!-- Contenedor Principal de Filtros -->
@@ -59,29 +59,29 @@ import { UiService } from '../../core/services/ui.service';
         </div>
 
         <!-- Filtro Rango de Fechas -->
-        <div class="mb-4 flex flex-wrap items-center gap-3">
-           <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-muted uppercase tracking-wider whitespace-nowrap">Desde</label>
+        <div class="mb-4 flex flex-wrap items-start gap-3">
+           <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+              <label class="text-xs font-bold text-muted uppercase tracking-wider">Desde</label>
               <input type="date" [(ngModel)]="fechaInicio"
-                     class="h-10 px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+                     class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
            </div>
-           <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-muted uppercase tracking-wider whitespace-nowrap">Hasta</label>
+           <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+              <label class="text-xs font-bold text-muted uppercase tracking-wider">Hasta</label>
               <input type="date" [(ngModel)]="fechaFin"
-                     class="h-10 px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+                     class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
            </div>
-           <div class="flex gap-2">
-           <button (click)="exportarCartera()" class="h-10 px-4 border border-slate-200 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center gap-2">
+           <div class="flex gap-2 items-end pt-5 flex-wrap">
+           <button (click)="exportarCartera()" class="h-10 px-3 border border-slate-200 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center gap-2 whitespace-nowrap">
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-             Exportar cartera
+             Exportar
            </button>
            <button (click)="filtrarPorFecha()"
                    [disabled]="!fechaInicio || !fechaFin"
-                   class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all">
+                   class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all whitespace-nowrap">
               Filtrar
            </button>
            <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
-                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white">
+                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white whitespace-nowrap">
               Limpiar
            </button>
         </div>
@@ -100,18 +100,20 @@ import { UiService } from '../../core/services/ui.service';
        </div>
 
        <!-- Tabla de Resultados -->
-       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-           <table class="w-full text-left border-collapse">
+       <div class="bg-white rounded-xl border border-slate-200 shadow-sm" style="overflow: hidden;">
+           <!-- Scroll horizontal en móvil -->
+           <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+           <table style="min-width: 680px;" class="w-full text-left border-collapse">
               <thead>
                  <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
-                    <th class="p-4 border-b border-slate-200">Factura</th>
-                    <th class="p-4 border-b border-slate-200">Cliente</th>
-                    <th class="p-4 border-b border-slate-200">Fecha</th>
-                    <th class="p-4 border-b border-slate-200 text-right">TOTAL</th>
-                    <th class="p-4 border-b border-slate-200 text-right">SALDO</th>
-                    <th class="p-4 border-b border-slate-200 w-[140px] text-center">Vencimiento</th>
-                    <th class="p-4 border-b border-slate-200 text-center">Estado</th>
-                    <th class="p-4 border-b border-slate-200 text-right">Acciones</th>
+                    <th class="p-4 border-b border-slate-200 whitespace-nowrap">Factura</th>
+                    <th class="p-4 border-b border-slate-200" style="min-width:130px">Cliente</th>
+                    <th class="p-4 border-b border-slate-200 whitespace-nowrap">Fecha</th>
+                    <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">TOTAL</th>
+                    <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">SALDO</th>
+                    <th class="p-4 border-b border-slate-200 w-[130px] text-center whitespace-nowrap">Vencimiento</th>
+                    <th class="p-4 border-b border-slate-200 text-center whitespace-nowrap">Estado</th>
+                    <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">Acciones</th>
                  </tr>
               </thead>
               <tbody class="relative">
@@ -119,21 +121,22 @@ import { UiService } from '../../core/services/ui.service';
                  <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
 
                  <tr *ngFor="let item of carteras" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                     <td class="p-4 font-mono text-sm font-bold text-indigo-600">
+                     <td class="p-4 font-mono text-sm font-bold text-indigo-600 whitespace-nowrap">
                         {{ formatFactura(item.numero_factura) }}
                     </td>
-                    <td class="p-4">
-                        <div class="text-sm font-medium text-slate-900">{{ item.cliente }}</div>
+                    <td class="p-4" style="max-width: 160px;">
+                        <div class="text-sm font-medium text-slate-900" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" [title]="item.cliente">{{ item.cliente }}</div>
                     </td>
-                    <td class="p-4 text-sm text-slate-800">
+                    <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
                         {{ formatFechaColombia(item.fecha) }}
                     </td>
-                    <td class="p-4 text-right font-medium">
+                    <td class="p-4 text-right font-medium whitespace-nowrap">
                         {{ item.total_factura | currency:'COP':'symbol':'1.0-0' }}
                     </td>
-                    <td class="p-4 text-right font-semibold text-red-600">
+                    <td class="p-4 text-right font-semibold text-red-600 whitespace-nowrap">
                         {{ item.saldo_pendiente | currency:'COP':'symbol':'1.0-0' }}
-                    </td>                     <td class="p-4 text-sm text-slate-800 text-center">
+                    </td>
+                    <td class="p-4 text-sm text-slate-800 text-center whitespace-nowrap">
                         {{ item.fecha_vencimiento | date:'dd-MMM-yyyy' | lowercase }}
                     </td>
                     <td class="p-4 text-center">
@@ -152,14 +155,14 @@ import { UiService } from '../../core/services/ui.service';
                             <button *ngIf="isAdmin"
                                     (click)="registrarPago(item)"
                                     [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADO'"
-                                    class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                    class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap" 
                                     title="Registrar Pago">
                                 Registrar pago
                             </button>
                             
                             <!-- Ver Pagos -->
                             <button (click)="openPagosModal(item)"
-                                    class="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-100 transition-all border border-slate-200" 
+                                    class="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-100 transition-all border border-slate-200 whitespace-nowrap" 
                                     title="Ver Historial de Pagos">
                                 Ver pagos
                             </button>
@@ -173,6 +176,7 @@ import { UiService } from '../../core/services/ui.service';
                  </tr>
               </tbody>
            </table>
+           </div>
        </div>
     </div>
 

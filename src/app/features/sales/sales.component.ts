@@ -55,6 +55,7 @@ import { UiService } from '../../core/services/ui.service';
                    <option value="">Todos los estados</option>
                    <option value="BORRADOR">Borrador</option>
                    <option value="CONFIRMADA">Confirmada</option>
+                   <option value="AUTORIZADO">Autorizado</option>
                    <option value="ANULADA">Anulada</option>
                 </select>
              </div>

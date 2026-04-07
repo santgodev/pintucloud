@@ -48,7 +48,7 @@ export interface SalesQueryParams {
     page: number;
     pageSize: number;
     search?: string;
-    estado?: 'BORRADOR' | 'CONFIRMADA' | 'ANULADA' | '';
+    estado?: 'BORRADOR' | 'CONFIRMADA' | 'AUTORIZADO' | 'ANULADA' | '';
     fechaDesde?: string;
     fechaHasta?: string;
     asesorId?: string;

@@ -125,13 +125,28 @@ interface CartItem {
                         <td class="p-3 font-medium text-slate-800">
                           {{ item.product.productName }}
                         </td>
-                        <td class="p-3">
-                          <div class="flex items-center justify-center gap-2">
-                            <button (click)="updateQuantity(i, -1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600 font-bold">-</button>
-                            <span class="px-2 font-medium text-slate-700 min-w-[24px] text-center">{{ item.quantity }}</span>
-                            <button (click)="updateQuantity(i, 1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600 font-bold">+</button>
-                          </div>
-                        </td>
+                         <td class="p-3">
+                           <div class="flex flex-col items-center gap-1">
+                             <div class="flex items-center justify-center gap-1">
+                               <button (click)="updateQuantity(i, -1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600 font-bold flex-shrink-0">-</button>
+                               <input
+                                 type="number"
+                                 [value]="item.quantity"
+                                 min="1"
+                                 (change)="onCantidadInput(i, $event)"
+                                 [class.border-red-400]="manejaInventario && item.quantity > item.product.stock"
+                                 [class.bg-red-50]="manejaInventario && item.quantity > item.product.stock"
+                                 class="w-14 text-center text-sm font-semibold text-slate-700 border border-slate-200 rounded-md py-1 focus:outline-none focus:ring-2 focus:ring-indigo-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                               />
+                               <button (click)="updateQuantity(i, 1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600 font-bold flex-shrink-0">+</button>
+                             </div>
+                             <!-- Advertencia de stock -->
+                             <div *ngIf="manejaInventario && item.quantity > item.product.stock"
+                                  class="text-[10px] font-semibold text-red-600 whitespace-nowrap">
+                               Stock: {{ item.product.stock }}
+                             </div>
+                           </div>
+                         </td>
                         <td class="p-3 text-right text-slate-500 whitespace-nowrap">
                           $ {{ item.product.price | number:'1.0-0' }}
                         </td>
@@ -497,6 +512,21 @@ export class SalesCaptureComponent implements OnInit {
 
    calculateTotal() {
       this.total = this.cart.reduce((sum, item) => sum + item.subtotal, 0);
+   }
+
+   onCantidadInput(index: number, event: Event) {
+      const input = event.target as HTMLInputElement;
+      let valor = parseInt(input.value, 10);
+
+      if (isNaN(valor) || valor <= 0) {
+         input.value = String(this.cart[index].quantity); // restaurar valor anterior
+         return;
+      }
+
+      const item = this.cart[index];
+      item.quantity = valor;
+      item.subtotal = item.quantity * item.product.price;
+      this.calculateTotal();
    }
 
    get subtotalCarrito(): number {

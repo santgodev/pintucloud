@@ -19,22 +19,22 @@ import { UiService } from '../../core/services/ui.service';
   standalone: true,
   imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, InitialInventoryModalComponent, FormsModule],
   template: `
-    <div class="mb-8 p-4 text-left">
-      <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
+    <div class="mb-8 p-4 md:p-6 text-left">
+      <div class="flex flex-col md:flex-row justify-between items-start mb-6 md:mb-8 gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-slate-900 tracking-tight text-left">Inventario Global</h1>
-          <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
+          <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight text-left">Inventario Global</h1>
+          <p class="text-slate-500 text-sm md:text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
         </div>
-        <div class="flex gap-3" *ngIf="isAdmin">
-          <button class="btn btn-outline flex items-center gap-2" (click)="showInitialModal = true" title="Sólo para productos con saldo 0">
+        <div class="flex flex-wrap gap-2 w-full md:w-auto" *ngIf="isAdmin">
+          <button class="btn btn-outline flex items-center gap-2 flex-1 md:flex-none justify-center" (click)="showInitialModal = true" title="Sólo para productos con saldo 0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z"></path><path d="M16 8V5a4 4 0 0 0-8 0v3"></path></svg>
-            Cargar Inventario Inicial
+            Cargar Inventario
           </button>
-          <button class="btn btn-outline flex items-center gap-2" (click)="exportInventory()">
+          <button class="btn btn-outline flex items-center gap-2 flex-1 md:flex-none justify-center" (click)="exportInventory()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             Exportar
           </button>
-          <button class="btn btn-primary flex items-center gap-2 px-6 shadow-lg shadow-primary/20" (click)="openModal()">
+          <button class="btn btn-primary flex items-center gap-2 w-full md:w-auto justify-center px-6 shadow-lg shadow-primary/20" (click)="openModal()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Nuevo Producto
           </button>
@@ -42,40 +42,40 @@ import { UiService } from '../../core/services/ui.service';
       </div>
 
       <!-- Quick Stats / KPIs -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Productos</p>
-          <p class="text-2xl font-bold text-slate-900">{{ (inventory$ | async)?.length || 0 }}</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Productos</p>
+          <p class="text-xl md:text-2xl font-bold text-slate-900">{{ (inventory$ | async)?.length || 0 }}</p>
         </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" (click)="showLowStock()">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bajo Stock</p>
-          <p class="text-2xl font-bold text-slate-900">{{ lowStockCount$ | async }}</p>
+        <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors" (click)="showLowStock()">
+          <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bajo Stock</p>
+          <p class="text-xl md:text-2xl font-bold text-slate-900">{{ lowStockCount$ | async }}</p>
         </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bodegas Activas</p>
-          <p class="text-2xl font-bold text-slate-900">{{ bodegas.length }}</p>
+        <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bodegas Activas</p>
+          <p class="text-xl md:text-2xl font-bold text-slate-900">{{ bodegas.length }}</p>
         </div>
-        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inventario</p>
-          <p class="text-2xl font-bold text-slate-900">{{ totalInventoryValue | currency:'COP':'symbol':'1.0-0' }}</p>
+        <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inventario</p>
+          <p class="text-xl md:text-2xl font-bold text-slate-900">{{ totalInventoryValue | currency:'COP':'symbol':'1.0-0' }}</p>
         </div>
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div class="flex-1 relative">
+      <div class="flex flex-col gap-3 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div class="relative">
           <input [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900" placeholder="Buscar por nombre, SKU o categoría...">
         </div>
-        <div class="flex gap-2 flex-wrap md:flex-nowrap">
-          <select [(ngModel)]="selectedBodega" (ngModelChange)="refreshInventory()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <select [(ngModel)]="selectedBodega" (ngModelChange)="refreshInventory()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-700 font-medium cursor-pointer">
             <option [value]="''">Todas las Bodegas</option>
             <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
           </select>
-          <select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+          <select [(ngModel)]="selectedCategory" (ngModelChange)="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-700 font-medium cursor-pointer">
             <option value="">Todas las Categorías</option>
             <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
           </select>
-          <select [(ngModel)]="selectedStatus" (ngModelChange)="applyFilters()" class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm min-w-[150px] text-slate-700 font-medium cursor-pointer">
+          <select [(ngModel)]="selectedStatus" (ngModelChange)="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-700 font-medium cursor-pointer">
             <option value="">Todos los Estados</option>
             <option value="En Stock">En Stock</option>
             <option value="Bajo Stock">Bajo Stock</option>
@@ -92,60 +92,60 @@ import { UiService } from '../../core/services/ui.service';
       </div>
 
       <app-card class="p-0 overflow-hidden shadow-xl border-slate-200">
-        <div class="table-responsive">
-          <table class="w-full text-left border-collapse">
+        <!-- Scroll horizontal en móvil -->
+        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <table style="min-width: 680px;" class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-slate-50 border-b border-slate-200">
-                <th class="p-4 font-semibold text-slate-600 text-sm">Imagen</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">Producto</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm">Bodega</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Compra</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Venta</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-center">Stock</th>
-                <th class="p-4 font-semibold text-slate-600 text-sm text-right">Valor Inventario</th>
-                
-                <th class="p-4 font-semibold text-slate-600 text-sm">Estado</th>
-                <th *ngIf="isAdmin" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm whitespace-nowrap">Imagen</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm whitespace-nowrap">Producto</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm whitespace-nowrap">Bodega</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-right whitespace-nowrap">P. Compra</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-right whitespace-nowrap">P. Venta</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-center whitespace-nowrap">Stock</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm text-right whitespace-nowrap">Valor</th>
+                <th class="p-4 font-semibold text-slate-600 text-sm whitespace-nowrap">Estado</th>
+                <th *ngIf="isAdmin" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6 whitespace-nowrap">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 italic-none">
               <tr *ngFor="let item of inventory$ | async" class="hover:bg-slate-50/50 transition-colors">
                 <td class="p-4">
-                  <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shadow-sm">
+                  <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden shadow-sm">
                     <img *ngIf="item.imageUrl" [src]="item.imageUrl" (error)="handleImageError(item)" class="w-full h-full object-cover">
                     <svg *ngIf="!item.imageUrl" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-slate-300"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path><line x1="16" y1="5" x2="22" y2="5"></line><line x1="19" y1="2" x2="19" y2="8"></line><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
                   </div>
                 </td>
-                <td class="p-4">
-                  <div class="font-bold text-slate-900">{{item.productName}}</div>
-                  <div class="text-xs text-slate-400 truncate max-w-[200px]" [title]="item.description || ''">{{item.description}}</div>
+                <td class="p-4" style="max-width: 180px;">
+                  <div class="font-bold text-slate-900 text-sm leading-tight">{{item.productName}}</div>
+                  <div class="text-xs text-slate-400 truncate" [title]="item.description || ''">{{item.description}}</div>
                 </td>
                 <td class="p-4">
-                  <span class="px-2.5 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 capitalize whitespace-nowrap border border-slate-200">{{item.bodegaName}}</span>
+                  <span class="px-2 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 capitalize whitespace-nowrap border border-slate-200">{{item.bodegaName}}</span>
                 </td>
-                <td class="p-4 text-right text-sm tabular-nums text-slate-700">
+                <td class="p-4 text-right text-sm tabular-nums text-slate-700 whitespace-nowrap">
                   <ng-container *ngIf="item.pricePurchase > 0; else sinCosto">
                     {{item.pricePurchase | currency:'COP':'symbol':'1.0-0'}}
                   </ng-container>
                   <ng-template #sinCosto><span class="text-slate-400">—</span></ng-template>
                 </td>
-                <td class="p-4 text-right text-sm tabular-nums text-slate-900 font-medium">{{item.priceSale | currency:'COP':'symbol':'1.0-0'}}</td>
+                <td class="p-4 text-right text-sm tabular-nums text-slate-900 font-medium whitespace-nowrap">{{item.priceSale | currency:'COP':'symbol':'1.0-0'}}</td>
                 <td class="p-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                  <div class="flex items-center gap-2">
+                    <div class="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                       <div class="h-full bg-primary rounded-full" [style.width.%]="(item.stock / 1000) * 100"></div>
                     </div>
                     <span class="text-sm font-bold text-slate-700">{{item.stock}}</span>
                   </div>
                 </td>
-                <td class="p-4 text-right text-sm tabular-nums text-indigo-600 font-semibold">
+                <td class="p-4 text-right text-sm tabular-nums text-indigo-600 font-semibold whitespace-nowrap">
                   <ng-container *ngIf="item.pricePurchase > 0; else sinValor">
                     {{item.inventoryValue | currency:'COP':'symbol':'1.0-0'}}
                   </ng-container>
                   <ng-template #sinValor><span class="text-slate-400">—</span></ng-template>
                 </td>
                 <td class="p-4 text-xs font-bold">
-                  <span class="px-2.5 py-1 rounded-md" 
+                  <span class="px-2 py-1 rounded-md whitespace-nowrap" 
                     [ngClass]="{
                       'bg-emerald-50 text-emerald-700 border border-emerald-100': item.status === 'En Stock',
                       'bg-amber-50 text-amber-700 border border-amber-100': item.status === 'Bajo Stock',
@@ -155,7 +155,7 @@ import { UiService } from '../../core/services/ui.service';
                   </span>
                 </td>
                 <td class="p-4" *ngIf="isAdmin">
-                  <div class="flex items-center justify-center gap-3">
+                  <div class="flex items-center justify-center gap-2">
                     <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="adjustStock(item)" title="Ajustar inventario">
                       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M12 20V10"/> <path d="M18 20V4"/> <path d="M6 20v-4"/> </svg>
                     </button>
