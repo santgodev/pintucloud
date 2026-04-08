@@ -1,7 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, switchMap, tap, catchError } from 'rxjs/operators';
-import { User } from '../../models/user.model'; // App Model
+import { User, UserRole } from '../../models/user.model'; // App Model
 import { SupabaseService } from './supabase.service';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -101,14 +101,18 @@ export class AuthService {
             }
 
             if (data) {
-                // Map Supabase profile to App User model
+                let normalizedRole: UserRole = data.rol;
+                if (data.rol === 'ADMIN') normalizedRole = 'admin_distribuidor';
+                else if (data.rol === 'SELLER' || data.rol === 'WAREHOUSE_MANAGER') normalizedRole = 'asesor';
+
                 const user: User = {
                     id: data.id,
                     email: data.email,
                     fullName: data.nombre_completo,
-                    role: data.rol, // Keep original role from DB
+                    role: normalizedRole,
                     companyId: data.distribuidor_id,
-                    zones: [], // TODO: Load from bodegas or zones table if exists
+                    distribuidor_id: data.distribuidor_id, // For backward compatibility
+                    zones: [],
                     isActive: true,
                     avatarUrl: data.avatar_url,
                     lastLogin: new Date()

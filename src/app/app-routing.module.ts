@@ -21,6 +21,12 @@ const routes: Routes = [
   },
 
   {
+    path: 'showcase',
+    canActivate: [AuthGuard],
+    loadChildren: () => import('./features/showcase/showcase.routes').then(m => m.SHOWCASE_ROUTES)
+  },
+
+  {
     path: '',
     component: MainLayoutComponent,
     canActivate: [AuthGuard],

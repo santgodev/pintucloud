@@ -1,7 +1,8 @@
-import { Component, OnInit, signal, computed, Signal } from '@angular/core';
+import { Component, OnInit, signal, computed, Signal, HostListener } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import {
+  FormsModule,
   ReactiveFormsModule,
   FormBuilder,
   FormGroup,
@@ -29,7 +30,7 @@ interface DetalleRow {
 @Component({
   selector: 'app-purchase-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, CurrencyPipe],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CurrencyPipe],
   templateUrl: './purchase-create.page.html',
   styles: [`
     .btn-confirmar {
@@ -98,6 +99,38 @@ interface DetalleRow {
       color: white;
       border: none;
     }
+
+    /* Searchable dropdown custom styles */
+    .dropdown-container {
+      position: relative;
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-top: 4px;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .dropdown-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .dropdown-item:hover {
+      background-color: #f1f5f9;
+    }
+    .dropdown-item.selected {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      font-weight: 600;
+    }
   `]
 })
 export class PurchaseCreatePage implements OnInit {
@@ -105,7 +138,27 @@ export class PurchaseCreatePage implements OnInit {
   // ── Lookup data ─────────────────────────────────────────────────────────────
   proveedores: Proveedor[] = [];
   bodegas: { id: string; nombre: string }[] = [];
-  productos: { id: string; nombre: string; sku: string; precio_base: number }[] = [];
+  productos = signal<{ id: string; nombre: string; sku: string; precio_base: number }[]>([]);
+
+  // Searchable dropdown logic
+  readonly searchTerm = signal('');
+  readonly showDropdown = signal(false);
+  readonly filteredProductos = computed(() => {
+    const products = this.productos();
+    const term = this.searchTerm().toLowerCase().trim();
+    if (!term) return products;
+    return products.filter(p =>
+      (p.nombre ?? '').toLowerCase().includes(term) ||
+      (p.sku ?? '').toLowerCase().includes(term)
+    );
+  });
+
+  readonly selectedProductLabel = computed(() => {
+    const id = this.detalleForm.get('producto_id')?.value;
+    if (!id) return null;
+    const p = this.productos().find(prod => prod.id === id);
+    return p ? `${p.nombre} — ${p.sku}` : null;
+  });
 
   // ── Forms (inicializados en constructor — necesario para toSignal) ──────────
   compraForm: FormGroup;
@@ -270,7 +323,7 @@ export class PurchaseCreatePage implements OnInit {
       ]);
       this.proveedores = proveedores;
       this.bodegas = bodegas;
-      this.productos = productos;
+      this.productos.set(productos);
     } catch (err: any) {
       this.error.set(`Error al cargar datos iniciales: ${err.message}`);
     }
@@ -315,7 +368,7 @@ export class PurchaseCreatePage implements OnInit {
       const detalles = (compra as any).compras_detalle ?? [];
       this.detalle.set(
         detalles.map((d: any) => {
-          const producto = this.productos.find(p => p.id === d.producto_id);
+          const producto = this.productos().find(p => p.id === d.producto_id);
           return {
             id: d.id,
             compra_id: id,
@@ -346,8 +399,31 @@ export class PurchaseCreatePage implements OnInit {
 
   onProductoChange(): void {
     const id = this.detalleForm.get('producto_id')?.value;
-    const producto = this.productos.find(p => p.id === id);
+    const producto = this.productos().find(p => p.id === id);
     this.detalleForm.get('precio_unitario')?.patchValue(producto?.precio_base ?? null);
+  }
+
+  // --- Searchable Dropdown Methods ---
+  toggleDropdown(): void {
+    this.showDropdown.update(v => !v);
+    if (this.showDropdown()) {
+      this.searchTerm.set('');
+    }
+  }
+
+  selectProduct(p: { id: string; nombre: string; sku: string; precio_base: number }): void {
+    this.detalleForm.get('producto_id')?.setValue(p.id);
+    this.onProductoChange();
+    this.showDropdown.set(false);
+    this.searchTerm.set('');
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.dropdown-container')) {
+      this.showDropdown.set(false);
+    }
   }
 
   // ── Paso 1: Crear cabecera ───────────────────────────────────────────────────
@@ -432,7 +508,7 @@ export class PurchaseCreatePage implements OnInit {
       };
 
       const realId = await this.purchasesService.addDetail(payload);
-      const producto = this.productos.find(p => p.id === payload.producto_id);
+      const producto = this.productos().find(p => p.id === payload.producto_id);
 
       this.detalle.update(rows => [...rows, {
         id: realId,

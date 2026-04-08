@@ -129,6 +129,10 @@ export class SalesInvoiceComponent implements OnInit {
     pdf.save(fileName);
   }
 
+  imprimir() {
+    window.print();
+  }
+
   async anularVenta() {
     if (!confirm('¿Está seguro de anular esta orden? Esta acción es irreversible.')) return;
 

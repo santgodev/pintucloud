@@ -279,11 +279,54 @@
           <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
             Producto <span class="text-red-500">*</span>
           </label>
-          <select formControlName="producto_id" id="select-producto" (change)="onProductoChange()"
-            class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-            <option value="">Seleccionar producto...</option>
-            <option *ngFor="let p of productos" [value]="p.id">{{ p.nombre }} — {{ p.sku }}</option>
-          </select>
+          <div class="dropdown-container">
+            <!-- Selector visual (Simula el select) -->
+            <div (click)="toggleDropdown()" 
+                 class="w-full border border-slate-200 bg-slate-50 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 cursor-pointer flex justify-between items-center transition hover:border-slate-300 shadow-sm">
+              <span [class.text-slate-400]="!selectedProductLabel()" class="truncate">
+                {{ selectedProductLabel() || 'Seleccionar producto...' }}
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-slate-400 transition-transform duration-200" [class.rotate-180]="showDropdown()">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+
+            <!-- Menú desplegable con buscador -->
+            <div *ngIf="showDropdown()" class="dropdown-menu border border-slate-200 bg-white shadow-2xl rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
+              <!-- Buscador interno -->
+              <div class="p-2 border-b border-slate-50 sticky top-0 bg-white z-10">
+                <div class="relative">
+                  <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input #searchInput
+                         type="text" 
+                         [ngModel]="searchTerm()" 
+                         (ngModelChange)="searchTerm.set($event)"
+                         [ngModelOptions]="{standalone: true}"
+                         (input)="searchTerm.set(searchInput.value)"
+                         (click)="$event.stopPropagation()"
+                         placeholder="Escribe nombre o SKU..." 
+                         autofocus
+                         class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 transition-all">
+                </div>
+              </div>
+
+              <!-- Lista de resultados -->
+              <div class="py-1">
+                <div *ngFor="let p of filteredProductos()" 
+                     (click)="selectProduct(p)"
+                     class="dropdown-item px-4 py-2.5 flex flex-col gap-0.5 hover:bg-slate-50 transition-colors"
+                     [class.selected]="detalleForm.get('producto_id')?.value === p.id">
+                  <span class="text-sm font-semibold text-slate-800">{{ p.nombre }}</span>
+                  <span class="text-[10px] text-slate-500 font-mono tracking-tight">{{ p.sku }}</span>
+                </div>
+                <div *ngIf="filteredProductos().length === 0" class="px-6 py-8 text-center bg-slate-50/50">
+                   <p class="text-xs text-slate-400 italic">No se encontraron productos para "{{ searchTerm() }}"</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Cantidad -->

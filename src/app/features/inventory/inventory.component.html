@@ -1,8 +1,8 @@
 <div class="mb-8 p-4 text-left">
   <div class="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
     <div>
-      <h1 class="text-3xl font-bold text-slate-900 tracking-tight text-left">Inventario Global</h1>
-      <p class="text-slate-500 text-lg text-left">Supervise el stock, precios y catálogo en tiempo real.</p>
+      <h1 class="text-3xl font-bold text-slate-900 tracking-tight text-left">Catálogo de Productos</h1>
+      <p class="text-slate-500 text-lg text-left">Consulte existencias, precios y detalles de productos en tiempo real.</p>
     </div>
     <div class="flex flex-wrap gap-2 w-full md:w-auto" *ngIf="isAdmin()">
       <button class="btn btn-outline flex items-center gap-2 flex-1 md:flex-none justify-center" (click)="showInitialModal.set(true)" title="Sólo para productos con saldo 0">
@@ -141,6 +141,9 @@
                 <button class="p-2 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-600 hover:text-gray-900 hover:scale-105 transition-all duration-150" (click)="editProduct(item)" title="Editar producto">
                   <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
+                <button class="p-2 rounded-md bg-rose-50 hover:bg-rose-200 text-rose-600 hover:text-rose-900 hover:scale-105 transition-all duration-150" (click)="confirmDelete(item)" title="Eliminar/Inactivar producto">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
             </td>
           </tr>
@@ -151,7 +154,6 @@
           </tr>
         </tbody>
       </table>
-    </div>
     </div>
   </app-card>
 </div>

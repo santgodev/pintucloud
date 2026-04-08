@@ -2,8 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../shared/shared.module';
 import { SalesService } from '../sales/services/sales.service';
-import { ShowcaseService } from '../showcase/services/showcase.service';
-import { InventoryService } from '../inventory/services/inventory.service';
+import { InventoryService, InventoryItem } from '../inventory/services/inventory.service';
 import { SalesCaptureComponent } from '../sales/components/sales-capture/sales-capture.component';
 import { DashboardService } from './services/dashboard.service';
 import { Chart } from 'chart.js/auto';
@@ -348,7 +347,6 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private salesService: SalesService,
-    private showcaseService: ShowcaseService,
     private inventoryService: InventoryService,
     private dashboardService: DashboardService,
     private router: Router,
@@ -405,13 +403,19 @@ export class DashboardComponent implements OnInit {
         this.variacionVentas = Number(data[0].variacion || 0);
       }
 
-      this.productCount$ = this.showcaseService.getProducts().pipe(
-        map(products => products.length)
+      // Use inventoryService instead of showcaseService
+      const inventory$ = await this.inventoryService.getInventory();
+      
+      this.productCount$ = inventory$.pipe(
+        map((items: InventoryItem[]) => {
+          // Count unique products by productId
+          const uniqueIds = new Set(items.map(i => i.productId));
+          return uniqueIds.size;
+        })
       );
 
-      const inventory = await this.inventoryService.getInventory();
-      this.lowStockCount$ = inventory.pipe(
-        map(items => items.filter(item => item.status !== 'En Stock').length)
+      this.lowStockCount$ = inventory$.pipe(
+        map((items: InventoryItem[]) => items.filter(item => item.status !== 'En Stock').length)
       );
     } catch (error) {
       console.error('Error loading dashboard stats:', error);

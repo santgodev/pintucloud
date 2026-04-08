@@ -80,6 +80,22 @@
   }
 }
 
+.btn-dark {
+  padding: 0.45rem 1rem;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  background: #111827;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #1f2937;
+  }
+}
+
 .btn-success {
   padding: 0.45rem 1rem;
   border: 1px solid #059669;
@@ -154,7 +170,7 @@
     gap: 4px;
   }
 
-  .btn-print, .btn-pdf, .btn-success, .btn-anular {
+  .btn-print, .btn-pdf, .btn-dark, .btn-success, .btn-anular {
     font-size: 0.72rem;
     padding: 0.3rem 0.6rem;
   }
@@ -463,11 +479,17 @@
 }
 
 /* =====================================
+/* =====================================
    PRINT
 ===================================== */
 @media print {
   .no-print {
     display: none !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .page-wrapper {
@@ -476,13 +498,29 @@
   }
 
   .invoice {
-    width: 100%;
-    border: none;
-    box-shadow: none;
+    width: 100% !important;
+    max-width: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  .client-table td, 
+  .dates-table td, 
+  .products-table td, 
+  .products-table th,
+  .totals-table td {
+    border: 0.8pt solid #111827 !important; 
+  }
+
+  .products-table thead th {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact;
   }
 
   @page {
-    margin: 1cm;
-    size: A4;
+    margin: 0;
+    size: auto;
   }
 }

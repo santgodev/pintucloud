@@ -290,9 +290,9 @@ import { UiService } from '../../../core/services/ui.service';
                       
                       <!-- Editar -->
                       <button (click)="$event.stopPropagation(); goToEdit(c.id!)"
-                        [disabled]="c.estado === 'ANULADA'"
+                        [disabled]="c.estado !== 'BORRADOR'"
                         class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-all" 
-                        title="Editar">
+                        [title]="c.estado === 'BORRADOR' ? 'Editar' : 'No se puede editar una compra confirmada o anulada'">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                       </button>
                     </div>
@@ -444,11 +444,7 @@ import { UiService } from '../../../core/services/ui.service';
                   <button (click)="$event.stopPropagation(); goToDetail(c.id!)"
                     class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    Ver
-                  </button>
-                  <button (click)="$event.stopPropagation(); goToEdit(c.id!)"
-                    class="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg">
-                    Editar
+                    Ver Detalle / Anular
                   </button>
                 </ng-container>
 
@@ -457,7 +453,7 @@ import { UiService } from '../../../core/services/ui.service';
                   (click)="$event.stopPropagation(); goToDetail(c.id!)"
                   class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  Ver
+                  Ver Detalle
                 </button>
             </div>
           </div>

@@ -368,12 +368,31 @@ export class SalesComponent implements OnInit {
 
 
    async loadInitialData() {
+      const user = this.authService.currentUserValue;
+      if (!user) return;
+
       if (this.isAdmin()) {
-         const { data: bods } = await this.supabase.from('bodegas').select('*').order('nombre');
+         const { data: bods } = await this.supabase
+            .from('bodegas')
+            .select('*')
+            .eq('distribuidor_id', user.distribuidor_id)
+            .order('nombre');
          this.bodegas = bods || [];
 
-         const { data: users } = await this.supabase.from('usuarios').select('*').order('nombre_completo');
+         const { data: users } = await this.supabase
+            .from('usuarios')
+            .select('*')
+            .eq('distribuidor_id', user.distribuidor_id)
+            .order('nombre_completo');
          this.asesores = users || [];
+      } else {
+         // Load only assigned bodegas for advisors
+         const { data: ubData } = await this.supabase
+            .from('usuarios_bodegas')
+            .select('bodega_id, bodegas(*)')
+            .eq('usuario_id', user.id);
+         
+         this.bodegas = (ubData || []).map(ub => ub.bodegas).filter(b => b);
       }
    }
 

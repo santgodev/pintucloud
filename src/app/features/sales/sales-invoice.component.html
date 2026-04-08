@@ -11,6 +11,9 @@
         ✏ Editar Orden
       </button>
 
+      <!-- Todos: Imprimir -->
+      <button *ngIf="sale" (click)="imprimir()" class="btn-dark">🖨 Imprimir</button>
+
       <!-- Todos: Descargar PDF -->
       <button *ngIf="sale" (click)="descargarPDF()" class="btn-pdf">⬇ Descargar PDF</button>
 

@@ -23,7 +23,7 @@ export class AdminGuard implements CanActivate {
                     filter(user => user !== null), // Wait until user is loaded
                     take(1),
                     map(user => {
-                        if (user?.role === 'admin_distribuidor' || user?.role === 'admin_distribuidor') {
+                        if (user?.role === 'admin_distribuidor') {
                             return true;
                         }
                         return this.router.createUrlTree(['/dashboard']);

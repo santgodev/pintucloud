@@ -338,13 +338,22 @@ export class SalesCaptureComponent implements OnInit {
    async ngOnInit() {
       try {
          this.loadClientsDirectly();
-         const profile = this.authService.currentUserSignal() as any;
+         
+         // Use the value from the subject or signal, but wait if it's still null initially
+         let profile = this.authService.currentUserValue as any;
+         if (!profile) {
+            // Wait briefly or just try to get it from signal
+            profile = this.authService.currentUserSignal() as any;
+         }
 
          if (profile) {
             const userId = profile.id;
             const principalBodegaId = profile.bodega_asignada_id;
-            const distribuidorId = profile.distribuidor_id;
+            const distribuidorId = profile.distribuidor_id || (profile as any).companyId;
 
+            console.log('[SalesCapture] Loading bodegas for dist:', distribuidorId);
+
+            // 1. Try specifically assigned warehouses
             const { data: ubData } = await this.supabase
                .from('usuarios_bodegas')
                .select('bodega_id')
@@ -352,6 +361,7 @@ export class SalesCaptureComponent implements OnInit {
 
             const bodegaIds = (ubData || []).map(b => b.bodega_id);
 
+            // 2. Load the actual warehouse objects
             const { data: bodegasData } = await this.supabase
                .from('bodegas')
                .select('id, nombre, maneja_inventario, distribuidor_id')
@@ -359,10 +369,13 @@ export class SalesCaptureComponent implements OnInit {
 
             this.bodegas = bodegasData || [];
 
+            // 3. Fallback: If no specific assignments, load all for the distributor (usually for admins)
             if (this.bodegas.length === 0 && distribuidorId) {
+               console.log('[SalesCapture] No specific bodegas assigned. Loading all for dist.');
                this.bodegas = await this.inventoryService.getBodegasByDistribuidor(distribuidorId);
             }
 
+            // 4. Default selection
             if (this.bodegas.length === 1) {
                this.selectedBodegaId = this.bodegas[0].id;
                this.selectedBodega = this.bodegas[0];
@@ -376,6 +389,8 @@ export class SalesCaptureComponent implements OnInit {
                   this.selectedBodega = this.bodegas[0];
                }
             }
+         } else {
+            console.warn('[SalesCapture] Profile not loaded yet');
          }
 
          this.mostrarSelectorBodega = this.bodegas.length > 1;
@@ -407,9 +422,10 @@ export class SalesCaptureComponent implements OnInit {
    async loadInventory() {
       if (!this.manejaInventario) {
          const supabase = this.salesService['supabase'];
-         const { data, error } = await supabase
+          const { data, error } = await supabase
             .from('productos')
             .select('id, nombre, sku, precio_base, imagen_url, categoria, orden')
+            .eq('activo', true)
             .order('orden', { ascending: true });
 
          const items: InventoryItem[] = (data || []).map((p: any) => ({

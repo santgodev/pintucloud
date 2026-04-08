@@ -343,3 +343,50 @@ input, select, textarea {
     width: 100%;
     min-width: 800px; /* Garantiza scroll en móvil */
 }
+/* -------------------------------------------------------------------------- */
+/* PRINT STYLES                                                               */
+/* -------------------------------------------------------------------------- */
+@media print {
+    .no-print, 
+    app-sidebar, 
+    app-topbar,
+    .sidebar-overlay,
+    .global-spinner-overlay {
+        display: none !important;
+    }
+
+    .layout-wrapper {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .layout-main {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .layout-main main {
+        padding: 0 !important;
+    }
+
+    .layout-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+    }
+
+    @page {
+        margin: 0;
+        size: auto;
+    }
+
+    body {
+        background: white !important;
+        margin: 1cm !important;
+    }
+}

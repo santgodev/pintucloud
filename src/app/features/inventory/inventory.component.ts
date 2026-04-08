@@ -209,6 +209,30 @@ export class InventoryComponent implements OnInit {
     this.selectedProduct.set(null);
   }
 
+  async confirmDelete(item: InventoryItem) {
+    const msg = `¿Estás seguro de eliminar el producto "${item.productName}"? 
+Esta acción lo eliminará de forma permanente si no tiene historial, o lo inactivará si ya tiene movimientos.`;
+
+    if (confirm(msg)) {
+      try {
+        this.uiService.setLoading(true);
+        const result = await this.inventoryService.deleteProduct(item.productId);
+        
+        const successMsg = result.method === 'deleted' 
+          ? 'Producto eliminado permanentemente' 
+          : 'El producto tiene historial y ha sido marcado como INACTIVO';
+        
+        alert(successMsg);
+        this.refreshInventory();
+      } catch (err: any) {
+        console.error(err);
+        alert('Error al procesar la eliminación: ' + (err.message || err));
+      } finally {
+        this.uiService.setLoading(false);
+      }
+    }
+  }
+
   handleImageError(item: InventoryItem) {
     item.imageUrl = '';
   }
