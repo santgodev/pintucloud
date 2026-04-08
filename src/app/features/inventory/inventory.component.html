@@ -34,7 +34,7 @@
       <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bodegas Activas</p>
       <p class="text-2xl font-bold text-slate-900">{{ bodegas().length }}</p>
     </div>
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm" *ngIf="isAdmin()">
       <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Inventario</p>
       <p class="text-2xl font-bold text-slate-900">{{ totalInventoryValue() | currency:'COP':'symbol':'1.0-0' }}</p>
     </div>
@@ -79,10 +79,10 @@
             <th class="p-4 font-semibold text-slate-600 text-sm">Imagen</th>
             <th class="p-4 font-semibold text-slate-600 text-sm">Producto</th>
             <th class="p-4 font-semibold text-slate-600 text-sm">Bodega</th>
-            <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Compra</th>
+            <th *ngIf="isAdmin()" class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Compra</th>
             <th class="p-4 font-semibold text-slate-600 text-sm text-right">Precio Venta</th>
             <th class="p-4 font-semibold text-slate-600 text-sm text-center">Stock</th>
-            <th class="p-4 font-semibold text-slate-600 text-sm text-right">Valor Inventario</th>
+            <th *ngIf="isAdmin()" class="p-4 font-semibold text-slate-600 text-sm text-right">Valor Inventario</th>
             <th class="p-4 font-semibold text-slate-600 text-sm">Estado</th>
             <th *ngIf="isAdmin()" class="p-4 font-semibold text-slate-600 text-sm text-right pr-6">Acciones</th>
           </tr>
@@ -102,7 +102,7 @@
             <td class="p-4">
               <span class="px-2.5 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 capitalize whitespace-nowrap border border-slate-200">{{item.bodegaName}}</span>
             </td>
-            <td class="p-4 text-right text-sm tabular-nums text-slate-700">
+            <td class="p-4 text-right text-sm tabular-nums text-slate-700" *ngIf="isAdmin()">
               <ng-container *ngIf="item.pricePurchase > 0; else sinCosto">
                 {{item.pricePurchase | currency:'COP':'symbol':'1.0-0'}}
               </ng-container>
@@ -117,7 +117,7 @@
                 <span class="text-sm font-bold text-slate-700">{{item.stock}}</span>
               </div>
             </td>
-            <td class="p-4 text-right text-sm tabular-nums text-indigo-600 font-semibold">
+            <td class="p-4 text-right text-sm tabular-nums text-indigo-600 font-semibold" *ngIf="isAdmin()">
               <ng-container *ngIf="item.pricePurchase > 0; else sinValor">
                 {{item.inventoryValue | currency:'COP':'symbol':'1.0-0'}}
               </ng-container>
@@ -148,7 +148,7 @@
             </td>
           </tr>
           <tr *ngIf="filteredItems().length === 0">
-            <td [attr.colspan]="isAdmin() ? 9 : 8" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
+            <td [attr.colspan]="isAdmin() ? 9 : 6" class="text-center p-12 text-slate-400 bg-slate-50/20 italic">
               No se encontraron productos con los filtros seleccionados.
             </td>
           </tr>

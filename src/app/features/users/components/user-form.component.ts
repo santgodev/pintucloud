@@ -268,6 +268,17 @@ export class UserFormComponent implements OnInit {
     const val = this.userForm.value;
 
     try {
+      // 🔐 Obtener el distribuidor_id del administrador actual
+      const { data: adminProfile } = await this.supabase
+        .from('usuarios')
+        .select('distribuidor_id')
+        .eq('id', (await this.supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      const distribuidorId = adminProfile?.distribuidor_id;
+
+      if (!distribuidorId) throw new Error('No se pudo identificar su distribuidora.');
+
       if (this.user) {
         const { error } = await this.supabase
           .from('usuarios')
@@ -292,12 +303,14 @@ export class UserFormComponent implements OnInit {
           return;
         }
 
+        // 🔗 Al reclamar el usuario, le asignamos nuestra distribuidora
         const { error } = await this.supabase
           .from('usuarios')
           .update({
             nombre_completo: val.nombre_completo,
             rol: val.rol,
-            bodega_asignada_id: val.bodega_asignada_id
+            bodega_asignada_id: val.bodega_asignada_id,
+            distribuidor_id: distribuidorId // <-- PARÁMETRO VITAL
           })
           .eq('email', val.email);
 

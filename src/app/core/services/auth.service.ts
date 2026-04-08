@@ -101,15 +101,11 @@ export class AuthService {
             }
 
             if (data) {
-                let normalizedRole: UserRole = data.rol;
-                if (data.rol === 'ADMIN') normalizedRole = 'admin_distribuidor';
-                else if (data.rol === 'SELLER' || data.rol === 'WAREHOUSE_MANAGER') normalizedRole = 'asesor';
-
                 const user: User = {
                     id: data.id,
                     email: data.email,
                     fullName: data.nombre_completo,
-                    role: normalizedRole,
+                    role: data.rol as UserRole,
                     companyId: data.distribuidor_id,
                     distribuidor_id: data.distribuidor_id, // For backward compatibility
                     zones: [],

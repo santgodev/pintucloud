@@ -131,7 +131,11 @@ export class InventoryService {
 
                 (data || []).forEach((prod: any) => {
                     const priceSale = prod.precio_base || 0;
-                    const pricePurchase = prod.precio_compra || 0;
+                    
+                    // 🛡️ SECURITY: Mask buy price for advisors
+                    const isAsesor = profile?.rol === 'asesor';
+                    const pricePurchase = isAsesor ? 0 : (prod.precio_compra || 0);
+
                     let invRecords = prod.inventario_bodega || [];
 
                     // Filter by target bodega if provided
@@ -184,7 +188,7 @@ export class InventoryService {
                                 price: priceSale,
                                 priceSale,
                                 pricePurchase,
-                                inventoryValue: quantity * pricePurchase,
+                                inventoryValue: isAsesor ? 0 : (quantity * pricePurchase),
                                 stockMinimo: prod.stock_minimo,
                                 imageUrl: prod.imagen_url,
                                 description: prod.descripcion,
