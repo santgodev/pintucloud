@@ -503,6 +503,15 @@
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .client-table, 
+  .dates-table, 
+  .products-table, 
+  .totals-table {
+    border: 1pt solid #e2e8f0 !important;
+    border-collapse: collapse !important;
   }
 
   .client-table td, 
@@ -510,13 +519,14 @@
   .products-table td, 
   .products-table th,
   .totals-table td {
-    border: 0.8pt solid #111827 !important; 
+    border: 1pt solid #e2e8f0 !important;
+    padding: 8px !important;
   }
 
   .products-table thead th {
-    background-color: #374151 !important;
-    color: #ffffff !important;
-    -webkit-print-color-adjust: exact;
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
   }
 
   @page {

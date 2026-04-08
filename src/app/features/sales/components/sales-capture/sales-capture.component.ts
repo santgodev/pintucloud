@@ -457,7 +457,7 @@ export class SalesCaptureComponent implements OnInit {
          );
       } else {
          this.inventory$ = await this.inventoryService.getInventory(this.selectedBodegaId || undefined);
-         this.filteredInventory$ = combineLatest([this.inventory$, this.searchTermSubject]).pipe(
+          this.filteredInventory$ = combineLatest([this.inventory$, this.searchTermSubject]).pipe(
             map(([items, term]) => {
                const lowerTerm = term.toLowerCase();
                return items.filter(item =>
