@@ -89,8 +89,8 @@ import { UiService } from '../../core/services/ui.service';
 
       <!-- Main Content Grid -->
       <div class="grid grid-cols-12 gap-6">
-          <!-- Ventas por Producto -->
-          <div class="col-span-12 lg:col-span-9 card bg-white rounded-xl border border-slate-200 p-6 shadow-sm slide-in-5 flex flex-col min-h-[500px]">
+          <!-- Ventas por Producto (Full Width) -->
+          <div class="col-span-12 card bg-white rounded-xl border border-slate-200 p-6 shadow-sm slide-in-5 flex flex-col min-h-[500px]">
             <h3 class="text-lg font-semibold mb-4 text-slate-800">
               Ventas por Producto (Mes)
             </h3>
@@ -118,64 +118,9 @@ import { UiService } from '../../core/services/ui.service';
             </div>
           </div>
 
-          <!-- Right: Activity Feed -->
-          <div class="col-span-12 lg:col-span-3 h-full">
-            <app-card header="Actividad Reciente" class="slide-in-6 h-full">
-               <div class="feed-list">
-                   <div class="feed-item">
-                       <div class="feed-icon bg-success-soft-solid">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                       </div>
-                       <div class="feed-content">
-                           <div class="feed-title">Pago Recibido</div>
-                           <div class="feed-desc">Ferretería El Tornillo pagó <span class="text-primary font-mono font-bold">$450k</span></div>
-                           <div class="feed-time">Hace 2 min</div>
-                       </div>
-                   </div>
-
-                   <div class="feed-item">
-                       <div class="feed-icon bg-warning-soft-solid">
-                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                       </div>
-                       <div class="feed-content">
-                           <div class="feed-title">Stock Bajo</div>
-                           <div class="feed-desc">Cemento Argos por debajo del mínimo.</div>
-                           <div class="feed-time">Hace 15 min</div>
-                       </div>
-                   </div>
-                   
-                   <div class="feed-item">
-                       <div class="feed-icon bg-info-soft">
-                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                       </div>
-                       <div class="feed-content">
-                           <div class="feed-title">Inventario Actualizado</div>
-                           <div class="feed-desc">Se cargaron 50 unidades de Rodillo Felpón.</div>
-                           <div class="feed-time">Hace 32 min</div>
-                       </div>
-                   </div>
-
-                   <div class="feed-item">
-                       <div class="feed-icon bg-secondary-soft">
-                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                       </div>
-                       <div class="feed-content">
-                           <div class="feed-title">Nuevo Cliente</div>
-                           <div class="feed-desc">Registrado \"Constructora A&M\".</div>
-                           <div class="feed-time">Hace 1 hora</div>
-                       </div>
-                   </div>
-               </div>
-               
-               <div class="mt-4 pt-4 border-t border-white/5 text-center">
-                  <button class="btn btn-outline w-full text-sm py-2">Ver Todo el Historial</button>
-               </div>
-            </app-card>
-        </div>
       </div>
 
-      <!-- New Sale Modal -->
-      <app-sales-capture *ngIf="showNewSaleModal" (onClose)="toggleNewSaleModal()" (saleCompleted)="refreshStats()"></app-sales-capture>
+      <!-- Sales Capture now redirected to its own route -->
     </div>
   `,
   styles: [`
@@ -423,7 +368,7 @@ export class DashboardComponent implements OnInit {
   }
 
   toggleNewSaleModal() {
-    this.showNewSaleModal = !this.showNewSaleModal;
+    this.router.navigate(['/sales/new']);
   }
 
   async refreshStats() {

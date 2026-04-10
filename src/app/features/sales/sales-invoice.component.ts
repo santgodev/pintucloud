@@ -81,7 +81,21 @@ export class SalesInvoiceComponent implements OnInit {
   }
 
   async editarOrden() {
-    if (this.sale?.estado === 'CONFIRMADA') {
+    if (this.sale?.estado === 'AUTORIZADO') {
+      const ok = confirm('Esta orden ya está autorizada. Al editarla, se devolverá automáticamente el stock a la bodega y se cancelará la deuda en cartera. ¿Desea continuar?');
+      if (!ok) return;
+      
+      this.isLoading = true;
+      try {
+        await this.salesService.revertirVenta(this.sale.id);
+      } catch (err) {
+        console.error('[Invoice] Error al revertir venta autorizada:', err);
+        this.isLoading = false;
+        alert('Error al procesar la reversión de la orden.');
+        return;
+      }
+      this.isLoading = false;
+    } else if (this.sale?.estado === 'CONFIRMADA') {
       try {
         await this.salesService.revertirVenta(this.sale.id);
       } catch (err) {
@@ -134,14 +148,22 @@ export class SalesInvoiceComponent implements OnInit {
   }
 
   async anularVenta() {
-    if (!confirm('¿Está seguro de anular esta orden? Esta acción es irreversible.')) return;
+    let msg = '¿Está seguro de anular esta orden? Esta acción es irreversible.';
+    if (this.sale?.estado === 'AUTORIZADO') {
+      msg = '¡ATENCIÓN! Esta orden ya está AUTORIZADA. Al anularla, el stock regresará automáticamente a la bodega y se cancelará la cuenta por cobrar. ¿Desea anularla?';
+    }
 
+    if (!confirm(msg)) return;
+
+    this.isLoading = true;
     try {
       await this.salesService.anularVenta(this.sale.id);
       this.router.navigate(['/sales']);
     } catch (error) {
       console.error('Error al anular la orden:', error);
       alert('Error al anular la orden.');
+    } finally {
+      this.isLoading = false;
     }
   }
 

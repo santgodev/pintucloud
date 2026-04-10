@@ -89,11 +89,18 @@ import { InventoryService } from '../../services/inventory.service';
                    <textarea formControlName="description" class="input-premium w-full h-20" placeholder="Detalles técnicos, dimensiones, etc..."></textarea>
                 </div>
 
-                <div class="grid-form">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                         <label class="block text-sm font-medium text-main mb-1">Valor de Compra</label>
+                         <div class="relative">
+                            <span class="absolute left-3 top-2.5 text-muted text-xs">$</span>
+                            <input formControlName="cost_price" type="number" class="input-premium w-full pl-6" placeholder="0" min="0">
+                         </div>
+                    </div>
                     <div>
                          <label class="block text-sm font-medium text-main mb-1">Precio de Venta</label>
                          <div class="relative">
-                            <span class="absolute left-3 top-2 text-muted">$</span>
+                            <span class="absolute left-3 top-2.5 text-muted text-xs">$</span>
                             <input formControlName="price" type="number" class="input-premium w-full pl-6" placeholder="0" min="0">
                          </div>
                     </div>
@@ -195,7 +202,8 @@ export class ProductModalComponent implements OnInit {
          imageUrl: [''],
          bodegaId: [''],
          grupo: [''],
-         visible_catalogo: [false]
+         visible_catalogo: [false],
+         cost_price: [0, [Validators.required, Validators.min(0)]]
       });
    }
 
@@ -228,7 +236,8 @@ export class ProductModalComponent implements OnInit {
             category: this.product.category || 'general',
             imageUrl: this.product.imageUrl,
             grupo: this.product.grupo || '',
-            visible_catalogo: this.product.visible_catalogo ?? false
+            visible_catalogo: this.product.visible_catalogo ?? false,
+            cost_price: this.product.pricePurchase || 0
          });
          this.imagePreview = this.product.imageUrl;
       }
@@ -295,12 +304,10 @@ export class ProductModalComponent implements OnInit {
                productId: this.product.productId,
                inventoryId: this.product.id,
                name: formVal.name,
-               price: formVal.price,
-               description: formVal.description,
-               imageUrl: formVal.imageUrl, // Existing URL
                category: formVal.category,
                stock_minimo: formVal.stock_minimo,
                stock: formVal.stock,
+               cost_price: formVal.cost_price,
                grupo: formVal.grupo || null,
                visible_catalogo: formVal.visible_catalogo ?? false
             }, this.selectedFile || undefined); // Only pass file if new one selected
@@ -321,7 +328,8 @@ export class ProductModalComponent implements OnInit {
                stock_minimo: formVal.stock_minimo,
                category: formVal.category || 'general',
                grupo: formVal.grupo || null,
-               visible_catalogo: formVal.visible_catalogo ?? false
+               visible_catalogo: formVal.visible_catalogo ?? false,
+               precio_compra: formVal.cost_price
             }, formVal.stock, formVal.bodegaId);
          }
 

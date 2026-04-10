@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { UiService } from '../../../core/services/ui.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-topbar',
@@ -25,10 +26,39 @@ import { UiService } from '../../../core/services/ui.service';
        </div>
        
        <div class="actions">
-         <button class="icon-btn">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-            <span class="badge-dot"></span>
-         </button>
+        <div class="relative">
+          <button class="icon-btn" (click)="toggleNotificationMenu()">
+             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+             <span *ngIf="notificationService.unreadCount() > 0" class="badge-count">
+                {{ notificationService.unreadCount() }}
+             </span>
+          </button>
+
+          <!-- Notification Dropdown -->
+          <div *ngIf="showNotificationMenu" class="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-fade-in-down">
+             <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <span class="text-sm font-bold text-slate-800">Notificaciones</span>
+                <button (click)="markAllAsRead()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Marcar todo como leído</button>
+             </div>
+             
+             <div class="max-h-96 overflow-y-auto">
+                <div *ngFor="let notif of notificationService.notifications()" 
+                     (click)="handleNotificationClick(notif)"
+                     class="px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer"
+                     [class.bg-indigo-50]="!notif.leida">
+                   <div class="flex justify-between items-start mb-1">
+                      <span class="text-sm font-bold text-slate-900">{{ notif.titulo }}</span>
+                      <span class="text-[10px] text-slate-400">{{ notif.created_at | date:'HH:mm' }}</span>
+                   </div>
+                   <p class="text-xs text-slate-600 leading-relaxed">{{ notif.mensaje }}</p>
+                </div>
+                
+                <div *ngIf="notificationService.notifications().length === 0" class="p-8 text-center">
+                   <p class="text-sm text-slate-400 italic">No tienes notificaciones</p>
+                </div>
+             </div>
+          </div>
+        </div>
          
          <div class="relative" *ngIf="authService.currentUser$ | async as user">
              <div class="user-profile" (click)="toggleUserMenu()">
@@ -182,15 +212,22 @@ import { UiService } from '../../../core/services/ui.service';
       &:hover { color: var(--color-primary); }
     }
 
-    .badge-dot {
+    .badge-count {
       position: absolute;
-      top: -2px;
-      right: -2px;
-      width: 8px;
-      height: 8px;
+      top: -5px;
+      right: -5px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
       background: var(--color-danger);
-      border-radius: 50%;
-      border: 1px solid var(--bg-surface); 
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 9px;
+      border: 2px solid var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .animate-fade-in-down {
@@ -210,10 +247,12 @@ import { UiService } from '../../../core/services/ui.service';
 })
 export class TopbarComponent implements OnInit {
   showUserMenu = false;
+  showNotificationMenu = false;
 
   constructor(
     public authService: AuthService,
     public uiService: UiService,
+    public notificationService: NotificationService,
     private router: Router
   ) { }
 
@@ -221,6 +260,32 @@ export class TopbarComponent implements OnInit {
 
   toggleUserMenu() {
     this.showUserMenu = !this.showUserMenu;
+    this.showNotificationMenu = false;
+  }
+
+  toggleNotificationMenu() {
+    this.showNotificationMenu = !this.showNotificationMenu;
+    this.showUserMenu = false;
+  }
+
+  async markAllAsRead() {
+    await this.notificationService.markAllAsRead();
+  }
+
+  handleNotificationClick(notif: any) {
+    if (!notif.leida) {
+      this.notificationService.markAsRead(notif.id);
+    }
+    
+    if (notif.metadata?.venta_id) {
+      // Redirigir a Cartera con el filtro de la factura si existe
+      const navigationExtras = notif.metadata.numero_factura 
+        ? { queryParams: { search: notif.metadata.numero_factura } } 
+        : {};
+        
+      this.router.navigate(['/cartera'], navigationExtras);
+      this.showNotificationMenu = false;
+    }
   }
 
   logout() {

@@ -108,8 +108,8 @@ export class AuthService {
                     role: data.rol as UserRole,
                     companyId: data.distribuidor_id,
                     distribuidor_id: data.distribuidor_id, // For backward compatibility
+                    isActive: data.activo,
                     zones: [],
-                    isActive: true,
                     avatarUrl: data.avatar_url,
                     lastLogin: new Date()
                 };

@@ -257,6 +257,10 @@
     font-weight: 700;
     color: #1f2937;
     margin: 0;
+
+    .suffix-highlight {
+      color: #ea580c; // Deep orange-600 para resaltar el "-1" de Factura Electrónica
+    }
   }
 }
 

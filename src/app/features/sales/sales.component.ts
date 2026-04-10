@@ -27,11 +27,8 @@ import { AuthService } from '../../core/services/auth.service';
             Nueva Venta
           </button>
        </div>
-       <!-- VISTA DE NUEVA VENTA -->
-       <app-sales-capture *ngIf="showNewSaleModal" (onClose)="toggleNewSaleModal()" (saleCompleted)="onSaleCompleted()"></app-sales-capture>
-       
-       <!-- VISTA DE LISTADO (Solo si no hay Nueva Venta) -->
-       <div *ngIf="!showNewSaleModal" class="animate-in fade-in duration-500">
+       <!-- VISTA DE LISTADO -->
+       <div class="animate-in fade-in duration-500">
           <!-- Contenedor Principal de Filtros -->
           <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
             <!-- Filtros Avanzados -->
@@ -175,8 +172,8 @@ import { AuthService } from '../../core/services/auth.service';
                        </td>
                        <td class="p-4 text-right">
                            <div class="flex justify-end gap-2">
-                               <!-- EDITAR -->
-                                <button *ngIf="sale.estado !== 'ANULADA' && sale.estado !== 'AUTORIZADO' && isAdmin()" 
+                                <!-- EDITAR -->
+                                <button *ngIf="sale.estado !== 'ANULADA' && isAdmin()" 
                                         (click)="editarVenta(sale)" 
                                        class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" 
                                         title="Editar">
@@ -314,7 +311,7 @@ export class SalesComponent implements OnInit {
    constructor() { }
 
    toggleNewSaleModal() {
-      this.showNewSaleModal = !this.showNewSaleModal;
+      this.router.navigate(['/sales/new']);
    }
 
    onSaleCompleted() {
@@ -352,6 +349,7 @@ export class SalesComponent implements OnInit {
 
                this.filters.fechaDesde = fechaLocal;
                this.filters.fechaHasta = fechaLocal;
+               this.filters.estado = ''; // Mostrar todos los estados al venir del dashboard
                this.fechaInicio = fechaLocal;
                this.fechaFin = fechaLocal;
                this.loadSales();
@@ -515,16 +513,29 @@ export class SalesComponent implements OnInit {
          return;
       }
 
-      if (sale.estado === 'CONFIRMADA') {
+      const isAutorizado = sale.estado === 'AUTORIZADO';
+      const isConfirmada = sale.estado === 'CONFIRMADA';
+
+      if (isAutorizado || isConfirmada) {
          if (!this.isAdmin()) {
             this.router.navigate(['/sales', sale.id, 'invoice']);
             return;
          }
+
+         if (isAutorizado) {
+            const ok = confirm('Esta orden ya está autorizada. Al editarla, se devolverá automáticamente el stock a la bodega y se cancelará la deuda. ¿Desea continuar?');
+            if (!ok) return;
+         }
+
          try {
+            this.loading = true;
             await this.salesService.revertirVenta(sale.id);
             this.router.navigate(['/sales', sale.id, 'edit']);
          } catch (err) {
             console.error('[Sales] Error al revertir venta:', err);
+            alert('Error al procesar la reversión de la orden.');
+         } finally {
+            this.loading = false;
          }
          return;
       }

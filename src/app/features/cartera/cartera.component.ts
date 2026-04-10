@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl, FormGroup, AbstractControl } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
 import { CarteraService, CarteraItem } from './services/cartera.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -151,8 +152,8 @@ import { UiService } from '../../core/services/ui.service';
                     </td>
                     <td class="p-4 text-right">
                         <div class="flex justify-end gap-2">
-                            <!-- Registrar Pago (Solo Admins/Distribuidores) -->
-                            <button *ngIf="isAdmin"
+                            <!-- Registrar Pago (Admins o Asesores autorizados como Medellín) -->
+                            <button *ngIf="canRegisterPayment"
                                     (click)="registrarPago(item)"
                                     [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADO'"
                                     class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap" 
@@ -413,11 +414,22 @@ export class CarteraComponent implements OnInit {
         private carteraService: CarteraService,
         private supabase: SupabaseService,
         private authService: AuthService,
-        private uiService: UiService
+        private uiService: UiService,
+        private route: ActivatedRoute
     ) { }
 
     get isAdmin(): boolean {
         return this.authService.currentUserValue?.role === 'admin_distribuidor';
+    }
+
+    get canRegisterPayment(): boolean {
+        const user = this.authService.currentUserValue;
+        if (!user) return false;
+        if (user.role === 'admin_distribuidor') return true;
+        
+        // Asesores: Permitir si NO son del distribuidor de Santa Marta (Guzman)
+        const SANTA_MARTA_ID = 'e9855cef-e734-4b56-8737-c86c581342cc';
+        return user.role === 'asesor' && user.distribuidor_id !== SANTA_MARTA_ID;
     }
 
     async ngOnInit() {
@@ -434,6 +446,12 @@ export class CarteraComponent implements OnInit {
                 .subscribe(value => {
                     this.loadCartera();
                 });
+
+            // Leer parámetro de búsqueda de la URL (para redirección desde notificaciones)
+            const searchParam = this.route.snapshot.queryParamMap.get('search');
+            if (searchParam) {
+                this.searchControl.setValue(searchParam);
+            }
 
             await this.loadCartera();
         } catch (err) {

@@ -5,8 +5,8 @@
     <button (click)="goBack()" class="btn-back text-indigo-600 hover:text-indigo-800">← Volver</button>
     <div class="toolbar-right">
 
-      <!-- Admin only: Editar (BORRADOR o CONFIRMADA) -->
-      <button *ngIf="isAdmin() && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA')" (click)="editarOrden()"
+      <!-- Admin only: Editar (BORRADOR, CONFIRMADA o AUTORIZADO) -->
+      <button *ngIf="isAdmin() && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA' || sale?.estado === 'AUTORIZADO')" (click)="editarOrden()"
         class="btn-print">
         ✏ Editar Orden
       </button>
@@ -22,8 +22,8 @@
         ✅ Autorizar Orden
       </button>
 
-      <!-- Admin only: Anular (solo si CONFIRMADA) -->
-      <button *ngIf="isAdmin() && sale?.estado === 'CONFIRMADA'" (click)="anularVenta()" class="btn-anular">
+      <!-- Admin only: Anular (CONFIRMADA o AUTORIZADO) -->
+      <button *ngIf="isAdmin() && (sale?.estado === 'CONFIRMADA' || sale?.estado === 'AUTORIZADO')" (click)="anularVenta()" class="btn-anular">
         ✕ Anular Orden
       </button>
 
@@ -61,8 +61,9 @@
       <!-- Título factura -->
       <div class="inv-title">
         <p class="inv-type">ORDEN DE PEDIDO</p>
-        <p class="inv-number font-bold text-lg">No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}-{{
-          sale?.tipo_documento }}</p>
+        <p class="inv-number font-bold text-lg">
+          No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}<span [class.suffix-highlight]="sale?.tipo_documento === 1">-{{ sale?.tipo_documento }}</span>
+        </p>
       </div>
 
     </div>
@@ -100,7 +101,15 @@
           </tr>
           <tr>
             <td class="label">Asesor</td>
-            <td class="value text-slate-900 font-semibold" colspan="3">Jose R Guzman G - 313 8643696</td>
+            <td class="value text-slate-900 font-semibold" colspan="3">
+              <ng-container *ngIf="sale?.distribuidorName?.toString()?.toUpperCase()?.includes('SANTA MARTA'); else advisorDynamic">
+                Jose R Guzman G - 313 8643696
+              </ng-container>
+              <ng-template #advisorDynamic>
+                {{ sale?.vendedorName || 'Asesor Comercial' }}
+                {{ sale?.vendedorPhone ? ' - ' + sale?.vendedorPhone : '' }}
+              </ng-template>
+            </td>
           </tr>
         </tbody>
       </table>

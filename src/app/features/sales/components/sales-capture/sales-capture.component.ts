@@ -1,8 +1,8 @@
 import { Component, OnInit, Output, EventEmitter, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { SharedModule } from '../../../../shared/shared.module';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ClientsService, Client } from '../../../clients/services/clients.service';
 import { InventoryService, InventoryItem } from '../../../inventory/services/inventory.service';
 import { SalesService } from '../../services/sales.service';
@@ -13,6 +13,7 @@ import { SupabaseService } from '../../../../core/services/supabase.service';
 interface CartItem {
    product: InventoryItem;
    quantity: number;
+   price: number;
    subtotal: number;
 }
 
@@ -25,14 +26,16 @@ interface CartItem {
       <div class="max-w-5xl w-full flex flex-col animate-in zoom-in-95 duration-300">
         
         <!-- Header -->
-        <!-- Header Simplificado -->
         <div class="flex items-center justify-between px-2 py-3 md:p-6 md:pb-4">
           <button (click)="onClose.emit()" class="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 font-medium transition-colors">
             ← Volver
           </button>
           <h1 class="text-xl md:text-2xl font-bold text-slate-900">
-            Nueva Venta
+            {{ editSaleId ? 'Editar Orden' : 'Nueva Venta' }}
           </h1>
+          <div *ngIf="editSaleId" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+            EDITANDO #{{ editSaleData?.numero_factura || 'BORRADOR' }}
+          </div>
         </div>
 
         <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-4 md:p-8 mt-2 flex flex-col gap-6 md:gap-8">
@@ -53,13 +56,53 @@ interface CartItem {
             </div>
 
             <!-- Cliente -->
-            <div class="space-y-1">
-              <label class="block text-xs font-semibold text-slate-600">Cliente</label>
-              <select [(ngModel)]="selectedClientId" 
-                      class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-600">
-                  <option [ngValue]="null">Seleccionar cliente...</option>
-                  <option *ngFor="let client of clients$ | async" [value]="client.id">{{ client.codigo }} — {{ client.razon_social }}</option>
-              </select>
+            <div class="space-y-1 relative">
+              <label class="block text-xs font-semibold text-slate-600">Cliente *</label>
+              
+              <!-- Buscador de Cliente Custom -->
+              <div class="relative group">
+                <input type="text" 
+                       [(ngModel)]="clientSearchTerm"
+                       (focus)="showClientDropdown = true"
+                       (input)="onClientSearch(clientSearchTerm)"
+                       placeholder="Buscar por nombre o c&#243;digo..."
+                       class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 font-medium placeholder:text-slate-400">
+                
+                <!-- Iconos -->
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <button *ngIf="clientSearchTerm" (click)="clearClientSelection()" class="text-slate-300 hover:text-slate-500 transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                  <svg class="text-slate-300" [class.text-indigo-500]="showClientDropdown" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </div>
+              </div>
+
+              <!-- Dropdown de Resultados -->
+              <div *ngIf="showClientDropdown" 
+                   class="absolute z-[100] w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div class="max-h-[240px] overflow-y-auto custom-scrollbar">
+                  <!-- Opción no encontrado -->
+                  <div *ngIf="(filteredClients$ | async)?.length === 0" class="p-4 text-center text-slate-400 italic text-xs">
+                    No se encontraron clientes
+                  </div>
+                  
+                  <!-- Lista de Clientes -->
+                  <div *ngFor="let client of filteredClients$ | async" 
+                       (click)="selectClient(client)"
+                       class="px-4 py-2.5 hover:bg-indigo-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0 group select-none">
+                    <div class="flex flex-col">
+                      <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-tight">{{ client.codigo }}</span>
+                      <span class="text-sm font-semibold text-slate-700 group-hover:text-indigo-700">{{ client.razon_social }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Overlay invisible para cerrar el dropdown al hacer clic fuera -->
+              <div *ngIf="showClientDropdown" 
+                   (click)="showClientDropdown = false"
+                   class="fixed inset-0 z-[90] bg-transparent">
+              </div>
             </div>
           </div>
 
@@ -105,11 +148,12 @@ interface CartItem {
                 </div>
               </div>
             </div>
+          </div>
+
           <!-- RESUMEN DE COMPRA (TABLA) -->
           <div class="w-full flex flex-col gap-4 border-t border-slate-100 pt-8 mt-2">
             <div class="bg-indigo-50/30 rounded-xl border border-indigo-50 p-4 flex flex-col">
               <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">RESUMEN DE VENTA</h3>
-                        <!-- Carrito (Tabla Refinada) -->
               <div class="border border-slate-200 rounded-lg overflow-hidden mb-6 bg-white shadow-sm">
                 <div class="overflow-x-auto">
                   <table style="min-width: 380px;" class="w-full text-sm border-collapse">
@@ -142,18 +186,25 @@ interface CartItem {
                                />
                                <button (click)="updateQuantity(i, 1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600 font-bold flex-shrink-0">+</button>
                              </div>
-                             <!-- Advertencia de stock -->
                              <div *ngIf="manejaInventario && item.quantity > item.product.stock"
                                   class="text-[10px] font-semibold text-red-600 whitespace-nowrap">
                                Stock: {{ item.product.stock }}
                              </div>
                            </div>
                          </td>
-                        <td class="p-3 text-right text-slate-500 whitespace-nowrap">
-                          $ {{ item.product.price | number:'1.0-0' }}
+                        <td class="p-3 text-right">
+                          <div class="inline-flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all w-36 group">
+                            <span class="text-slate-400 font-bold text-sm mr-1.5 opacity-60 group-focus-within:opacity-100 group-focus-within:text-indigo-500 transition-all">$</span>
+                            <input
+                              type="text"
+                              [value]="formatCurrency(item.price)"
+                              (input)="onPrecioInput(i, $event)"
+                              class="w-full bg-transparent text-right text-sm font-bold text-slate-700 focus:outline-none p-0"
+                            />
+                          </div>
                         </td>
-                        <td class="p-3 text-right font-semibold text-indigo-600 whitespace-nowrap">
-                          $ {{ item.subtotal | number:'1.0-0' }}
+                        <td class="p-3 text-right font-bold text-indigo-600 whitespace-nowrap text-base">
+                          $ {{ (item.quantity * item.price) | number:'1.0-0' }}
                         </td>
                         <td class="p-3 text-center">
                           <button (click)="removeFromCart(i)" 
@@ -176,7 +227,7 @@ interface CartItem {
                 </div>
               </div>
 
-              <!-- Configuración de Pago (Separación) -->
+              <!-- Configuración de Pago -->
               <div class="space-y-4 pt-8 border-t border-slate-100">
                 <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Configuración de Cobro</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -200,6 +251,7 @@ interface CartItem {
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight">Plazo de Pago</label>
                     <select [(ngModel)]="diasCredito" 
                             class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                      <option [ngValue]="8">8 Días</option>
                       <option [ngValue]="15">15 Días</option>
                       <option [ngValue]="30">30 Días</option>
                     </select>
@@ -241,12 +293,10 @@ interface CartItem {
                     <span>Subtotal</span>
                     <span>$ {{ subtotalCarrito | number:'1.0-0' }}</span>
                   </div>
-
                   <div class="flex justify-between text-red-500 font-bold" *ngIf="descuentoPorcentaje > 0">
                     <span>Descuento ({{ descuentoPorcentaje }}%)</span>
                     <span>- $ {{ descuentoCalculado | number:'1.0-0' }}</span>
                   </div>
-
                   <div class="flex justify-between items-center font-bold border-t border-slate-200 pt-3 mt-2 text-slate-800">
                     <span class="text-base">Total a Pagar</span>
                     <span class="text-xl font-bold text-slate-900 tabular-nums">$ {{ totalConDescuento | number:'1.0-0' }}</span>
@@ -264,7 +314,7 @@ interface CartItem {
               <button (click)="submitSale()" 
                       [disabled]="cart.length === 0 || !selectedClientId || processing || !selectedBodegaId"
                       class="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-600/20 transition-all">
-                {{ processing ? 'Procesando...' : 'Confirmar Venta' }}
+                {{ processing ? 'Procesando...' : (editSaleId ? 'Guardar Cambios' : 'Confirmar Venta') }}
               </button>
             </div>
           </div>
@@ -283,7 +333,6 @@ interface CartItem {
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
   `]
-
 })
 export class SalesCaptureComponent implements OnInit {
    @Output() onClose = new EventEmitter<void>();
@@ -295,6 +344,11 @@ export class SalesCaptureComponent implements OnInit {
 
    searchTerm = '';
    private searchTermSubject = new BehaviorSubject<string>('');
+   clientSearchTerm = '';
+   showClientDropdown = false;
+   private allClients: Client[] = [];
+   private clientSearchSubject = new BehaviorSubject<string>('');
+   filteredClients$: Observable<Client[]> = new BehaviorSubject<Client[]>([]).asObservable();
 
    selectedClientId: string | null = null;
    cart: CartItem[] = [];
@@ -312,13 +366,17 @@ export class SalesCaptureComponent implements OnInit {
    selectedBodega: any = null;
 
    mostrarSelectorBodega = false;
+   editSaleId: string | null = null;
+   editSaleData: any = null;
 
    private authService = inject(AuthService);
    private clientsService = inject(ClientsService);
    private inventoryService = inject(InventoryService);
    private salesService = inject(SalesService);
    private supabase = inject(SupabaseService);
+   private location = inject(Location);
    private router = inject(Router);
+   private route = inject(ActivatedRoute);
 
    isAdmin = this.authService.isAdmin;
 
@@ -329,20 +387,36 @@ export class SalesCaptureComponent implements OnInit {
    constructor() {
       this.inventory$ = new BehaviorSubject<InventoryItem[]>([]).asObservable();
       this.filteredInventory$ = new BehaviorSubject<InventoryItem[]>([]).asObservable();
+      
+      this.filteredClients$ = combineLatest([
+         new BehaviorSubject<Client[]>([]).asObservable(), 
+         this.clientSearchSubject
+      ]).pipe(
+         map(([clients, term]) => {
+            if (!term) return clients.slice(0, 50); // Mostrar primeros 50 si no hay búsqueda
+            const lowerTerm = term.toLowerCase();
+            return clients.filter(c => 
+               (c.codigo || '').toLowerCase().includes(lowerTerm) || 
+               (c.razon_social || '').toLowerCase().includes(lowerTerm)
+            );
+         })
+      );
    }
 
    closePage() {
       this.onClose.emit();
+      // Si estamos en una ruta dedicada, volver atrás o ir a sales
+      if (this.router.url.includes('/sales/new') || this.router.url.includes('/edit')) {
+         this.router.navigate(['/sales']);
+      }
    }
 
    async ngOnInit() {
       try {
          this.loadClientsDirectly();
          
-         // Use the value from the subject or signal, but wait if it's still null initially
          let profile = this.authService.currentUserValue as any;
          if (!profile) {
-            // Wait briefly or just try to get it from signal
             profile = this.authService.currentUserSignal() as any;
          }
 
@@ -351,9 +425,6 @@ export class SalesCaptureComponent implements OnInit {
             const principalBodegaId = profile.bodega_asignada_id;
             const distribuidorId = profile.distribuidor_id || (profile as any).companyId;
 
-            console.log('[SalesCapture] Loading bodegas for dist:', distribuidorId);
-
-            // 1. Try specifically assigned warehouses
             const { data: ubData } = await this.supabase
                .from('usuarios_bodegas')
                .select('bodega_id')
@@ -361,7 +432,6 @@ export class SalesCaptureComponent implements OnInit {
 
             const bodegaIds = (ubData || []).map(b => b.bodega_id);
 
-            // 2. Load the actual warehouse objects
             const { data: bodegasData } = await this.supabase
                .from('bodegas')
                .select('id, nombre, maneja_inventario, distribuidor_id')
@@ -369,33 +439,44 @@ export class SalesCaptureComponent implements OnInit {
 
             this.bodegas = bodegasData || [];
 
-            // 3. Fallback: If no specific assignments, load all for the distributor (usually for admins)
             if (this.bodegas.length === 0 && distribuidorId) {
-               console.log('[SalesCapture] No specific bodegas assigned. Loading all for dist.');
                this.bodegas = await this.inventoryService.getBodegasByDistribuidor(distribuidorId);
             }
 
-            // 4. Default selection
-            if (this.bodegas.length === 1) {
-               this.selectedBodegaId = this.bodegas[0].id;
-               this.selectedBodega = this.bodegas[0];
-            } else if (this.bodegas.length > 1) {
-               const principal = this.bodegas.find(b => b.id === principalBodegaId);
-               if (principal) {
-                  this.selectedBodegaId = principal.id;
-                  this.selectedBodega = principal;
-               } else {
+            // Detectar modo edición antes de aplicar selección por defecto
+            const idParam = this.route.snapshot.paramMap.get('id');
+            if (idParam) {
+               this.editSaleId = idParam;
+               await this.loadSaleForEdit(idParam);
+            }
+
+            // Selección por defecto solo si NO estamos editando o no se cargó bodega
+            if (!this.selectedBodegaId) {
+               if (this.bodegas.length === 1) {
                   this.selectedBodegaId = this.bodegas[0].id;
-                  this.selectedBodega = this.bodegas[0];
+               } else if (this.bodegas.length > 1) {
+                  const principal = this.bodegas.find(b => b.id === principalBodegaId);
+                  if (principal) {
+                     this.selectedBodegaId = principal.id;
+                  } else {
+                     this.selectedBodegaId = this.bodegas[0].id;
+                  }
                }
             }
-         } else {
-            console.warn('[SalesCapture] Profile not loaded yet');
+
+            // Sincronizar objeto de bodega seleccionada
+            if (this.selectedBodegaId) {
+               this.selectedBodega = this.bodegas.find(b => b.id === this.selectedBodegaId) || null;
+            }
          }
 
          this.mostrarSelectorBodega = this.bodegas.length > 1;
          if (this.selectedBodegaId) {
             await this.loadInventory();
+         }
+
+         if (this.editSaleData && this.editSaleData.detalle_ventas) {
+            this.mapDetailsToCart(this.editSaleData.detalle_ventas);
          }
       } catch (err) {
          console.error('[SalesCapture] Fatal error:', err);
@@ -405,11 +486,69 @@ export class SalesCaptureComponent implements OnInit {
    async loadClientsDirectly() {
       try {
          const data = await this.clientsService.getClientsList();
-         this.clients$ = new BehaviorSubject<any[]>(data).asObservable();
+         this.allClients = data;
+         
+         // Re-inicializar filteredClients$ con la data real
+         this.filteredClients$ = this.clientSearchSubject.pipe(
+            map(term => {
+               if (!term) return this.allClients.slice(0, 50);
+               const lowerTerm = term.toLowerCase();
+               return this.allClients.filter(c => 
+                  (c.codigo || '').toLowerCase().includes(lowerTerm) || 
+                  (c.razon_social || '').toLowerCase().includes(lowerTerm)
+               );
+            })
+         );
+
+         // Si estamos editando, cargar el nombre del cliente en el buscador
+         if (this.selectedClientId) {
+            const client = this.allClients.find(c => c.id === this.selectedClientId);
+            if (client) this.clientSearchTerm = client.razon_social;
+         }
+
       } catch (error) {
          console.error('Error loading clients list', error);
-         this.clients$ = new BehaviorSubject<any[]>([]).asObservable();
       }
+   }
+
+   async loadSaleForEdit(id: string) {
+      try {
+         const sale = await this.salesService.getById(id);
+         this.editSaleData = sale;
+         this.selectedClientId = sale.cliente_id;
+         
+         // Buscar nombre del cliente para el buscador
+         if (this.allClients.length > 0) {
+            const client = this.allClients.find(c => c.id === sale.cliente_id);
+            if (client) this.clientSearchTerm = client.razon_social;
+         }
+
+         this.selectedBodegaId = sale.bodega_id;
+         this.condicionPago = sale.condicion_pago;
+         this.diasCredito = sale.dias_credito;
+         this.paymentMethod = sale.metodo_pago;
+         this.tipoDocumento = sale.tipo_documento;
+         this.descuentoPorcentaje = sale.descuento_porcentaje;
+         this.observaciones = sale.observaciones || '';
+      } catch (err) {
+         console.error('[SalesCapture] Error loading sale for edit:', err);
+      }
+   }
+
+   private mapDetailsToCart(details: any[]) {
+      this.cart = details.map(d => ({
+         product: {
+            productId: d.producto_id,
+            productName: d.productos?.nombre || d.producto_id,
+            sku: d.productos?.sku || '',
+            price: d.precio_unitario,
+            stock: 999 
+         } as any,
+         quantity: d.cantidad,
+         price: d.precio_unitario,
+         subtotal: d.subtotal
+      }));
+      this.calculateTotal();
    }
 
    async onBodegaChange() {
@@ -447,9 +586,9 @@ export class SalesCaptureComponent implements OnInit {
 
          const items$ = new BehaviorSubject<InventoryItem[]>(items).asObservable();
          this.filteredInventory$ = combineLatest([items$, this.searchTermSubject]).pipe(
-            map(([invItems, term]) => {
-               const lowerTerm = term.toLowerCase();
-               return invItems.filter(item =>
+            map(([invItems, term]: [InventoryItem[], string]) => {
+               const lowerTerm = (term || '').toLowerCase();
+               return invItems.filter((item: InventoryItem) =>
                   item.productName.toLowerCase().includes(lowerTerm) ||
                   item.sku.toLowerCase().includes(lowerTerm)
                ).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
@@ -458,9 +597,9 @@ export class SalesCaptureComponent implements OnInit {
       } else {
          this.inventory$ = await this.inventoryService.getInventory(this.selectedBodegaId || undefined);
           this.filteredInventory$ = combineLatest([this.inventory$, this.searchTermSubject]).pipe(
-            map(([items, term]) => {
-               const lowerTerm = term.toLowerCase();
-               return items.filter(item =>
+            map(([items, term]: [InventoryItem[], string]) => {
+               const lowerTerm = (term || '').toLowerCase();
+               return items.filter((item: InventoryItem) =>
                   item.productName.toLowerCase().includes(lowerTerm) ||
                   item.sku.toLowerCase().includes(lowerTerm)
                ).sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
@@ -471,6 +610,25 @@ export class SalesCaptureComponent implements OnInit {
 
    search(term: string) {
       this.searchTermSubject.next(term || '');
+   }
+
+   // Métodos del Buscador de Clientes
+   onClientSearch(term: string) {
+      this.clientSearchSubject.next(term || '');
+      this.showClientDropdown = true;
+   }
+
+   selectClient(client: Client) {
+      this.selectedClientId = client.id;
+      this.clientSearchTerm = client.razon_social;
+      this.showClientDropdown = false;
+   }
+
+   clearClientSelection() {
+      this.selectedClientId = null;
+      this.clientSearchTerm = '';
+      this.clientSearchSubject.next('');
+      this.showClientDropdown = false;
    }
 
    addToCart(item: InventoryItem) {
@@ -486,6 +644,7 @@ export class SalesCaptureComponent implements OnInit {
          this.cart.push({
             product: item,
             quantity: 1,
+            price: item.price,
             subtotal: item.price
          });
       }
@@ -500,7 +659,7 @@ export class SalesCaptureComponent implements OnInit {
          : newQty > 0;
       if (validQty) {
          item.quantity = newQty;
-         item.subtotal = item.quantity * item.product.price;
+         item.subtotal = item.quantity * item.price;
       }
       this.calculateTotal();
    }
@@ -511,7 +670,7 @@ export class SalesCaptureComponent implements OnInit {
       if (!newQty || newQty <= 0) newQty = 1;
       if (this.manejaInventario && newQty > item.product.stock) newQty = item.product.stock;
       item.quantity = newQty;
-      item.subtotal = item.quantity * item.product.price;
+      item.subtotal = item.quantity * item.price;
       this.calculateTotal();
    }
 
@@ -521,7 +680,7 @@ export class SalesCaptureComponent implements OnInit {
    }
 
    calculateTotal() {
-      this.total = this.cart.reduce((sum, item) => sum + item.subtotal, 0);
+      this.total = this.cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
    }
 
    onCantidadInput(index: number, event: Event) {
@@ -529,18 +688,39 @@ export class SalesCaptureComponent implements OnInit {
       let valor = parseInt(input.value, 10);
 
       if (isNaN(valor) || valor <= 0) {
-         input.value = String(this.cart[index].quantity); // restaurar valor anterior
+         input.value = String(this.cart[index].quantity); 
          return;
       }
 
       const item = this.cart[index];
       item.quantity = valor;
-      item.subtotal = item.quantity * item.product.price;
+      item.subtotal = item.quantity * item.price;
+      this.calculateTotal();
+   }
+
+   formatCurrency(value: number): string {
+      if (value === null || value === undefined) return '0';
+      return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+   }
+
+   onPrecioInput(index: number, event: any) {
+      const input = event.target as HTMLInputElement;
+      // Eliminar todo lo que no sea número
+      let rawValue = input.value.replace(/\D/g, '');
+      const numericValue = parseInt(rawValue, 10) || 0;
+      
+      // Actualizar el modelo
+      this.cart[index].price = numericValue;
+      this.cart[index].subtotal = this.cart[index].quantity * numericValue;
+      
+      // Formatear el valor visual en el input
+      input.value = this.formatCurrency(numericValue);
+      
       this.calculateTotal();
    }
 
    get subtotalCarrito(): number {
-      return this.cart.reduce((sum, item) => sum + item.subtotal, 0);
+      return this.cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
    }
 
    get descuentoCalculado(): number {
@@ -561,7 +741,6 @@ export class SalesCaptureComponent implements OnInit {
       }
    }
 
-
    async submitSale() {
       if (!this.selectedClientId || this.cart.length === 0 || !this.selectedBodegaId) return;
       if (this.condicionPago === 'CONTADO' && !this.paymentMethod) {
@@ -570,35 +749,56 @@ export class SalesCaptureComponent implements OnInit {
       }
       this.processing = true;
       try {
-         const ventaId = await this.salesService.createDraft({
-            cliente_id: this.selectedClientId,
-            metodo_pago: (this.paymentMethod || '').toUpperCase(),
-            condicion_pago: this.condicionPago,
-            dias_credito: this.condicionPago === 'CREDITO' ? this.diasCredito : null,
-            fecha: (() => {
-               const d = new Date();
-               return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-            })(),
-            bodega_id: this.selectedBodegaId,
-            tipo_documento: this.tipoDocumento,
-            descuento_porcentaje: this.descuentoPorcentaje,
-            observaciones: this.observaciones || null
-          });
+         let ventaId: string;
+
+         const finalMetodoPago = this.condicionPago === 'CREDITO' ? null : (this.paymentMethod || 'EFECTIVO').toUpperCase();
+
+         if (this.editSaleId) {
+            ventaId = this.editSaleId;
+            await this.salesService.updateSaleHeader(ventaId, {
+               cliente_id: this.selectedClientId,
+               metodo_pago: finalMetodoPago,
+               condicion_pago: this.condicionPago,
+               dias_credito: this.condicionPago === 'CREDITO' ? this.diasCredito : null,
+               bodega_id: this.selectedBodegaId,
+               tipo_documento: this.tipoDocumento,
+               descuento_porcentaje: this.descuentoPorcentaje,
+               observaciones: this.observaciones || null
+            });
+            
+            await this.salesService.deleteDetails(ventaId);
+         } else {
+            ventaId = await this.salesService.createDraft({
+               cliente_id: this.selectedClientId,
+               metodo_pago: finalMetodoPago!,
+               condicion_pago: this.condicionPago,
+               dias_credito: this.condicionPago === 'CREDITO' ? this.diasCredito : null,
+               fecha: (() => {
+                  const d = new Date();
+                  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+               })(),
+               bodega_id: this.selectedBodegaId,
+               tipo_documento: this.tipoDocumento,
+               descuento_porcentaje: this.descuentoPorcentaje,
+               observaciones: this.observaciones || null
+            });
+         }
 
          const items = this.cart.map(c => ({
             venta_id: ventaId,
             producto_id: c.product.productId,
             cantidad: c.quantity,
-            precio_unitario: c.product.price,
-            subtotal: c.subtotal
+            precio_unitario: c.price,
+            subtotal: c.quantity * c.price
          }));
          await this.salesService.addDetails(items);
          await this.salesService.confirmSale(ventaId);
+         
          this.processing = false;
          this.saleCompleted.emit();
          this.router.navigate(['/sales', ventaId, 'invoice']);
       } catch (err: any) {
-         console.error('Sale failed', err);
+         console.error('Sale action failed', err);
          this.processing = false;
          alert('Error al procesar la venta: ' + err.message);
       }

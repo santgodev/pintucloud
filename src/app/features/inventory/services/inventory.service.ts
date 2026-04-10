@@ -232,6 +232,7 @@ export class InventoryService {
         imageUrl?: string;
         grupo?: string;
         visible_catalogo?: boolean;
+        precio_compra?: number;
     }, initialStock: number, targetBodegaId?: string): Promise<string> {
 
         const userResponse = await this.supabase.auth.getUser();
@@ -269,7 +270,8 @@ export class InventoryService {
             categoria: product.category,
             distribuidor_id: userData.distribuidor_id,
             grupo: product.grupo || null,
-            visible_catalogo: product.visible_catalogo ?? false
+            visible_catalogo: product.visible_catalogo ?? false,
+            precio_compra: product.precio_compra || 0
         };
 
         const { data: prodData, error: prodError } = await this.supabase
@@ -325,7 +327,8 @@ export class InventoryService {
                 imagen_url: finalImageUrl,
                 categoria: productData.category,
                 grupo: productData.grupo || null,
-                visible_catalogo: productData.visible_catalogo ?? false
+                visible_catalogo: productData.visible_catalogo ?? false,
+                precio_compra: productData.cost_price || 0
             })
             .eq('id', productData.productId);
 
