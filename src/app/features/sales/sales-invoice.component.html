@@ -97,7 +97,12 @@
           </tr>
           <tr>
             <td class="label">Bodega Despacho</td>
-            <td class="value text-slate-900 font-semibold" colspan="3">{{ sale?.bodegas?.nombre || '—' }}</td>
+            <td class="value text-slate-900 font-semibold">{{ sale?.bodegas?.nombre || '—' }}</td>
+            <td class="label">Entrega</td>
+            <td class="value text-slate-900 font-semibold">
+              <span *ngIf="sale?.entrega_transportadora" class="text-indigo-700 font-bold">🚚 TRANSPORTADORA</span>
+              <span *ngIf="!sale?.entrega_transportadora" class="text-slate-500">PROPIA</span>
+            </td>
           </tr>
           <tr>
             <td class="label">Asesor</td>

@@ -5,7 +5,6 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
 import { SalesService, Sale } from './services/sales.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { SalesCaptureComponent } from './components/sales-capture/sales-capture.component';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { UiService } from '../../core/services/ui.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -13,7 +12,7 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
    selector: 'app-sales',
    standalone: true,
-   imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedModule, SalesCaptureComponent],
+   imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedModule],
    providers: [DatePipe],
    template: `
     <div class="sales-container p-6 animate-in fade-in duration-500">
@@ -143,6 +142,7 @@ import { AuthService } from '../../core/services/auth.service';
                     <tr *ngFor="let sale of paginatedSales" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
                         <td class="p-4 font-mono text-sm font-bold text-indigo-600 cursor-pointer hover:underline whitespace-nowrap" (click)="verDetalle(sale.id)">
                            {{ formatFactura(sale.numero_factura) }}
+                           <span *ngIf="sale.entrega_transportadora" title="Despacho por Transportadora" class="ml-1 text-base">🚚</span>
                        </td>
                        <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
                            {{ sale.fecha | date:'dd/MM/yyyy' }}

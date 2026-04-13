@@ -139,7 +139,7 @@ import { AuthService } from '../../../core/services/auth.service';
                                 </span>
                                 <span class="text-[10px] text-slate-400 font-bold bg-slate-50 px-2 rounded-full">{{ entry.created_at | date:'short' }}</span>
                               </div>
-                              <p class="text-xs text-slate-700 leading-relaxed mb-2 font-medium">{{ entry.detalle }}</p>
+                              <p class="text-xs text-slate-700 leading-relaxed mb-2 font-medium">{{ formatDetail(entry) }}</p>
                               <div class="flex items-center gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-tight italic-none">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                                 Autor: <span class="text-slate-500 font-black">{{ entry.realizado_por?.nombre_completo || 'Sistema' }}</span>
@@ -283,6 +283,37 @@ export class UserListComponent implements OnInit {
       case 'CAMBIO_CONTRASEÑA': return 'bg-rose-50 text-rose-700 border-rose-100';
       case 'ACTUALIZACION_PERFIL': return 'bg-amber-50 text-amber-700 border-amber-100';
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
+    }
+  }
+
+  formatDetail(entry: any): string {
+    if (!entry.detalle) return 'Sin detalles registrados.';
+
+    // Si el detalle ya es un texto descriptivo (no empieza con {), lo devolvemos tal cual
+    if (typeof entry.detalle === 'string' && !entry.detalle.trim().startsWith('{')) {
+      return entry.detalle;
+    }
+
+    try {
+      // Intentamos parsear por si es un string JSON o ya viene como objeto
+      const data = typeof entry.detalle === 'string' ? JSON.parse(entry.detalle) : entry.detalle;
+
+      switch (entry.accion) {
+        case 'ACTUALIZACION_PERFIL':
+          return `Se actualizaron los datos del perfil (${data.nombre_completo || 'Usuario'}).`;
+        
+        case 'CREACION':
+          return `Nuevo usuario creado en el sistema con el rol de ${data.rol === 'admin_distribuidor' ? 'Administrador' : 'Asesor'}.`;
+        
+        case 'CAMBIO_CONTRASEÑA':
+          return 'Se realizó un cambio de credenciales de acceso.';
+          
+        default:
+          return 'Se realizaron cambios en la configuración del registro.';
+      }
+    } catch (e) {
+      // Si falla el parseo, devolvemos el texto original para no perder información
+      return entry.detalle;
     }
   }
 

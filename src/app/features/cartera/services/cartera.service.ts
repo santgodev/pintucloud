@@ -94,7 +94,7 @@ export class CarteraService {
         return (data || []).map((item: any) => ({
             venta_id: item.venta_id,
             numero_factura: item.ventas?.numero_factura || null,
-            fecha: item.ventas?.fecha_autorizacion || item.ventas?.fecha || '',
+            fecha: item.ventas?.fecha || item.ventas?.fecha_autorizacion || '',
             cliente: item.clientes?.razon_social || 'Cliente Desconocido',
             total_factura: item.ventas?.total || 0,
             saldo_pendiente: item.saldo_actual,
@@ -114,6 +114,23 @@ export class CarteraService {
 
         if (error) {
             console.error('Error registering payment:', error);
+            throw error;
+        }
+    }
+
+    async cargarFacturaAntigua(payload: any): Promise<void> {
+        const { error } = await this.supabase.rpc('cargar_factura_antigua', {
+            p_cliente_id: payload.cliente_id,
+            p_numero_factura_manual: payload.numero_factura_manual,
+            p_fecha: payload.fecha,
+            p_total: payload.total,
+            p_items: payload.items,
+            p_dias_credito: payload.dias_credito,
+            p_observaciones: payload.observaciones
+        });
+
+        if (error) {
+            console.error('Error charging old invoice:', error);
             throw error;
         }
     }

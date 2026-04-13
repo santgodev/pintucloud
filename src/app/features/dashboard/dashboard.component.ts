@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { SharedModule } from '../../shared/shared.module';
 import { SalesService } from '../sales/services/sales.service';
 import { InventoryService, InventoryItem } from '../inventory/services/inventory.service';
-import { SalesCaptureComponent } from '../sales/components/sales-capture/sales-capture.component';
 import { DashboardService } from './services/dashboard.service';
 import { Chart } from 'chart.js/auto';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -14,7 +13,7 @@ import { UiService } from '../../core/services/ui.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, SharedModule, SalesCaptureComponent],
+  imports: [CommonModule, SharedModule],
   template: `
     <div class="dashboard-container">
       <div class="header mb-8 flex justify-between items-end">

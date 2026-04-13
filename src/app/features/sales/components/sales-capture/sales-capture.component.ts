@@ -288,6 +288,16 @@ interface CartItem {
                   </textarea>
                 </div>
 
+                <div class="pt-4 mt-2 border-t border-slate-100/50">
+                  <label class="flex items-center gap-3 cursor-pointer group">
+                    <div class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" [(ngModel)]="entregaTransportadora" class="sr-only peer">
+                      <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-600 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">Despacho por Transportadora</span>
+                  </label>
+                </div>
+
                 <div class="bg-slate-50 rounded-lg p-4 mt-6 space-y-2 text-sm border border-slate-200/60 shadow-inner">
                   <div class="flex justify-between text-slate-500 font-medium">
                     <span>Subtotal</span>
@@ -360,6 +370,7 @@ export class SalesCaptureComponent implements OnInit {
    descuentoPorcentaje: number = 0;
    observaciones: string = '';
    paymentMethod: string | null = 'EFECTIVO';
+   entregaTransportadora: boolean = false;
 
    bodegas: any[] = [];
    selectedBodegaId: string | null = null;
@@ -530,6 +541,7 @@ export class SalesCaptureComponent implements OnInit {
          this.tipoDocumento = sale.tipo_documento;
          this.descuentoPorcentaje = sale.descuento_porcentaje;
          this.observaciones = sale.observaciones || '';
+         this.entregaTransportadora = sale.entrega_transportadora || false;
       } catch (err) {
          console.error('[SalesCapture] Error loading sale for edit:', err);
       }
@@ -763,7 +775,8 @@ export class SalesCaptureComponent implements OnInit {
                bodega_id: this.selectedBodegaId,
                tipo_documento: this.tipoDocumento,
                descuento_porcentaje: this.descuentoPorcentaje,
-               observaciones: this.observaciones || null
+               observaciones: this.observaciones || null,
+               entrega_transportadora: this.entregaTransportadora
             });
             
             await this.salesService.deleteDetails(ventaId);
@@ -780,7 +793,8 @@ export class SalesCaptureComponent implements OnInit {
                bodega_id: this.selectedBodegaId,
                tipo_documento: this.tipoDocumento,
                descuento_porcentaje: this.descuentoPorcentaje,
-               observaciones: this.observaciones || null
+               observaciones: this.observaciones || null,
+               entrega_transportadora: this.entregaTransportadora
             });
          }
 

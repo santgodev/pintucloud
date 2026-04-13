@@ -181,4 +181,22 @@ export class ClientsComponent implements OnInit {
       this.selectedClient = null;
       this.editarCliente(client);
    }
+
+   async eliminarCliente(client: Client) {
+      const msg = `¿Estás seguro de eliminar el cliente "${client.razon_social}"? Esta acción no se puede deshacer.`;
+      
+      if (confirm(msg)) {
+         try {
+            this.uiService.setLoading(true);
+            await this.clientsService.deleteClient(client.id);
+            alert('Cliente eliminado correctamente.');
+            this.refreshClients();
+         } catch (err: any) {
+            console.error(err);
+            alert('Error al eliminar: ' + (err.message || err));
+         } finally {
+            this.uiService.setLoading(false);
+         }
+      }
+   }
 }

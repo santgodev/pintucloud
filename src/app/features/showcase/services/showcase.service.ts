@@ -49,6 +49,7 @@ export class ShowcaseService {
                 cantidad
             )
         `)
+            .eq('activo', true)
             .order('orden', { ascending: true });
 
         if (categoryId && categoryId !== 'all') {

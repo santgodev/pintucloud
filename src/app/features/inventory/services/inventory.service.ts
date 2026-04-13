@@ -109,7 +109,7 @@ export class InventoryService {
                 grupo,
                 visible_catalogo,
                 activo,
-                inventario_bodega (id, cantidad, bodega_id, bodegas(id, nombre))
+                inventario_bodega (id, cantidad, bodega_id, bodegas(id, nombre, maneja_inventario))
             `);
 
         // Filter active only for non-admins or as default
@@ -138,9 +138,12 @@ export class InventoryService {
 
                     let invRecords = prod.inventario_bodega || [];
 
-                    // Filter by target bodega if provided
+                    // Filter by target bodega OR by managed inventories
                     if (targetBodegaId) {
                         invRecords = invRecords.filter((inv: any) => inv.bodega_id === targetBodegaId);
+                    } else {
+                        // Only consider warehouses that handle physical inventory
+                        invRecords = invRecords.filter((inv: any) => inv.bodegas?.maneja_inventario === true);
                     }
 
                     if (invRecords.length === 0) {

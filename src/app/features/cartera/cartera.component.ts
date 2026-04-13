@@ -17,8 +17,12 @@ import { UiService } from '../../core/services/ui.service';
     template: `
     <div class="cartera-container p-4 md:p-6 animate-in fade-in duration-500">
        <div class="flex justify-between items-center mb-4 md:mb-6">
-          <h1 class="text-xl md:text-2xl font-bold text-slate-900">Cuentas por Cobrar (Cartera)</h1>
-       </div>
+           <h1 class="text-xl md:text-2xl font-bold text-slate-900">Cuentas por Cobrar (Cartera)</h1>
+           <button *ngIf="isAdmin" (click)="abrirModalMigracion()" class="px-4 py-2 bg-slate-800 text-white font-semibold rounded-xl shadow-sm hover:bg-slate-900 flex items-center gap-2 transition-all">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+             Carga Inicial
+           </button>
+        </div>
        
        <!-- Contenedor Principal de Filtros -->
        <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
@@ -179,6 +183,134 @@ import { UiService } from '../../core/services/ui.service';
            </table>
            </div>
        </div>
+    </div>
+
+    <!-- Modal Carga Inicial / Migración -->
+    <div *ngIf="showMigracionModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-800 text-white">
+                <div>
+                    <h3 class="text-lg font-bold">Migración de Cartera Antigua</h3>
+                    <p class="text-xs text-slate-300">Este proceso NO afecta el inventario físico ni los reportes de ventas actuales.</p>
+                </div>
+                <button (click)="cerrarModalMigracion()" class="text-slate-300 hover:text-white transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- Información General -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Cliente</label>
+                        <select [(ngModel)]="migracionForm.cliente_id" class="input-premium w-full text-xs">
+                            <option value="">Seleccione un cliente...</option>
+                            <option *ngFor="let c of clientes" [value]="c.id">{{ c.razon_social }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Factura Manual #</label>
+                        <input type="text" [(ngModel)]="migracionForm.numero_factura_manual" placeholder="Ej: 4501" class="input-premium w-full text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Fecha de Factura</label>
+                        <input type="date" [(ngModel)]="migracionForm.fecha" class="input-premium w-full text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Plazo (Días)</label>
+                        <select [(ngModel)]="migracionForm.dias_credito" class="input-premium w-full text-xs">
+                            <option [ngValue]="8">8 Días</option>
+                            <option [ngValue]="15">15 Días</option>
+                            <option [ngValue]="30">30 Días</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Detalle de Productos -->
+                <div class="mb-4">
+                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        Productos en la Factura (Informativo)
+                    </h4>
+                    
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <!-- Selector rápido de producto -->
+                        <div class="flex gap-2 mb-4">
+                            <div class="flex-1">
+                                <select #prodSelect class="w-full h-10 px-3 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500">
+                                    <option value="">Buscar producto...</option>
+                                    <option *ngFor="let p of productos" [value]="p.id" [attr.data-nombre]="p.nombre" [attr.data-precio]="p.precio_base">
+                                        {{ p.nombre }} - {{ p.sku }}
+                                    </option>
+                                </select>
+                            </div>
+                            <button (click)="agregarItemMigracion(prodSelect)" class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 whitespace-nowrap">
+                                + Añadir
+                            </button>
+                        </div>
+
+                        <!-- Tabla de Items -->
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="text-slate-500 font-bold border-b border-slate-200">
+                                    <th class="py-2 text-left">Producto</th>
+                                    <th class="py-2 text-center w-24">Cant.</th>
+                                    <th class="py-2 text-right w-32">Precio Unit.</th>
+                                    <th class="py-2 text-right w-32">Subtotal</th>
+                                    <th class="py-2 text-center w-12"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let item of migracionForm.items; let i = index" class="border-b border-slate-100 italic">
+                                    <td class="py-2">{{ item.nombre }}</td>
+                                    <td class="py-2 text-center">
+                                        <input type="number" [(ngModel)]="item.cantidad" (change)="calcularFilaMigracion(i)" class="w-16 h-8 border border-slate-200 rounded text-center">
+                                    </td>
+                                    <td class="py-2 text-right">
+                                        <input type="number" [(ngModel)]="item.precio" (change)="calcularFilaMigracion(i)" class="w-24 h-8 border border-slate-200 rounded text-right px-2">
+                                    </td>
+                                    <td class="py-2 text-right font-bold">{{ item.subtotal | currency:'COP':'symbol':'1.0-0' }}</td>
+                                    <td class="py-2 text-center">
+                                        <button (click)="eliminarItemMigracion(i)" class="text-red-400 hover:text-red-600">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="migracionForm.items.length === 0">
+                                    <td colspan="5" class="py-8 text-center text-slate-400 italic">No has añadido productos aún.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-indigo-50/50 font-bold text-sm">
+                                    <td colspan="3" class="py-3 px-4 text-right uppercase">TOTAL DEUDA</td>
+                                    <td class="py-3 text-right text-indigo-700">{{ calcularTotalMigracion() | currency:'COP':'symbol':'1.0-0' }}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Observaciones Adicionales</label>
+                    <textarea [(ngModel)]="migracionForm.observaciones" rows="2" class="input-premium w-full text-xs resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button (click)="cerrarModalMigracion()" class="px-6 py-2 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-100 transition-colors">
+                    Cancelar
+                </button>
+                <button (click)="guardarMigracion()" [disabled]="!migracionForm.cliente_id || !migracionForm.numero_factura_manual || migracionForm.items.length === 0 || guardandoMigracion" 
+                        class="px-8 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50 flex items-center gap-2">
+                    <span *ngIf="guardandoMigracion" class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    {{ guardandoMigracion ? 'Guardando...' : 'Confirmar Carga' }}
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Registrar Pago -->
@@ -409,6 +541,20 @@ export class CarteraComponent implements OnInit {
     pagos: any[] = [];
     cargandoPagos = false;
     errorPagos = '';
+ 
+    // Variables Modal Migración
+    showMigracionModal = false;
+    clientes: any[] = [];
+    productos: any[] = [];
+    migracionForm = {
+        cliente_id: '',
+        numero_factura_manual: '',
+        fecha: '',
+        dias_credito: 30,
+        observaciones: 'Migración inicial de cartera',
+        items: [] as any[]
+    };
+    guardandoMigracion = false;
 
      constructor(
         private carteraService: CarteraService,
@@ -597,12 +743,23 @@ export class CarteraComponent implements OnInit {
         try {
             // Si llega un string de fecha sin zona, forzarlo a UTC para que Intl lo mueva a Bogota
             let valueToParse = fecha;
-            if (typeof fecha === 'string' && fecha.includes('T') && !fecha.endsWith('Z') && !fecha.includes('+')) {
-                valueToParse = fecha + 'Z';
+            
+            // Si la fecha es YYYY-MM-DD (10 caracteres), la tratamos como fecha local pura
+            // para que no importe en qué zona horaria esté el navegador.
+            if (typeof fecha === 'string' && (fecha.length === 10 || fecha.includes('T00:00:00'))) {
+                const datePart = fecha.substring(0, 10);
+                const [year, month, day] = datePart.split('-').map(Number);
+                // Mes 0-indexed en JS
+                const localDate = new Date(year, month - 1, day);
+                return new Intl.DateTimeFormat('es-CO', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(localDate);
             }
 
+            // Para fechas con hora real (ventas nuevas), usamos el formateador normal
             const dateObj = new Date(valueToParse);
-
             return new Intl.DateTimeFormat('es-CO', {
                 timeZone: 'America/Bogota',
                 year: 'numeric',
@@ -745,6 +902,119 @@ export class CarteraComponent implements OnInit {
             console.error('Error al reversar pago:', err);
             alert('Error al reversar el pago: ' + (err.message || err));
         }
+    }
+
+    // Lógica de Migración
+    async abrirModalMigracion() {
+        this.showMigracionModal = true;
+        this.uiService.setLoading(true);
+        try {
+            // Cargar clientes y productos para el selector
+            const [{ data: clis }, { data: prods }] = await Promise.all([
+                this.supabase.from('clientes').select('id, razon_social').order('razon_social'),
+                this.supabase.from('productos').select('id, nombre, sku, precio_base').eq('activo', true).order('nombre')
+            ]);
+            this.clientes = clis || [];
+            this.productos = prods || [];
+            
+            // Fecha de hoy por defecto
+            this.migracionForm.fecha = new Date().toISOString().split('T')[0];
+        } catch (err) {
+            console.error('Error loading migration data', err);
+        } finally {
+            this.uiService.setLoading(false);
+        }
+    }
+
+    cerrarModalMigracion() {
+        if (this.guardandoMigracion) return;
+        this.showMigracionModal = false;
+        this.migracionForm = {
+            cliente_id: '',
+            numero_factura_manual: '',
+            fecha: new Date().toISOString().split('T')[0],
+            dias_credito: 30,
+            observaciones: 'Migración inicial de cartera',
+            items: []
+        };
+    }
+
+    agregarItemMigracion(prodSelect: HTMLSelectElement) {
+        const val = prodSelect.value;
+        if (!val) return;
+
+        const option = prodSelect.selectedOptions[0];
+        const nombre = option.getAttribute('data-nombre') || '';
+        const precio = Number(option.getAttribute('data-precio') || 0);
+
+        // Evitar duplicados
+        const exists = this.migracionForm.items.find(i => i.producto_id === val);
+        if (exists) {
+            exists.cantidad++;
+            exists.subtotal = exists.cantidad * exists.precio;
+            return;
+        }
+
+        this.migracionForm.items.push({
+            producto_id: val,
+            nombre: nombre,
+            cantidad: 1,
+            precio: precio,
+            subtotal: precio
+        });
+
+        prodSelect.value = '';
+    }
+
+    calcularFilaMigracion(index: number) {
+        const item = this.migracionForm.items[index];
+        item.subtotal = item.cantidad * item.precio;
+    }
+
+    eliminarItemMigracion(index: number) {
+        this.migracionForm.items.splice(index, 1);
+    }
+
+    calcularTotalMigracion() {
+        return this.migracionForm.items.reduce((sum, i) => sum + i.subtotal, 0);
+    }
+
+    async guardarMigracion() {
+        if (this.guardandoMigracion) return;
+        const total = this.calcularTotalMigracion();
+        if (total <= 0) return;
+
+        this.guardandoMigracion = true;
+        try {
+            await this.carteraService.cargarFacturaAntigua({
+                ...this.migracionForm,
+                total: total
+            });
+
+            // 1. Resetear el estado de carga y cerrar visualmente de inmediato
+            this.guardandoMigracion = false;
+            this.showMigracionModal = false;
+            
+            // 2. Limpiar el formulario manualmente para asegurar que no quede basura
+            this.migracionForm = {
+                cliente_id: '',
+                numero_factura_manual: '',
+                fecha: new Date().toISOString().split('T')[0],
+                dias_credito: 30,
+                observaciones: 'Migración inicial de cartera',
+                items: []
+            };
+
+            // 3. Pequeña pausa para que Angular pinte el cierre antes del alert
+            setTimeout(() => {
+                alert('Carga de cartera histórica completada.');
+                this.loadCartera();
+            }, 100);
+        } catch (err: any) {
+            console.error('Error en migración:', err);
+            this.guardandoMigracion = false;
+            alert('Error al migrar factura: ' + (err.message || 'Error desconocido'));
+        } 
     }
 
     cerrarModalVerPagos() {

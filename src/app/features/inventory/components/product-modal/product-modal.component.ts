@@ -305,6 +305,7 @@ export class ProductModalComponent implements OnInit {
                inventoryId: this.product.id,
                name: formVal.name,
                category: formVal.category,
+               price: formVal.price,
                stock_minimo: formVal.stock_minimo,
                stock: formVal.stock,
                cost_price: formVal.cost_price,

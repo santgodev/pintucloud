@@ -24,6 +24,7 @@ export interface Sale {
     descuento_porcentaje?: number | null;
     descuento_valor?: number | null;
     observaciones?: string | null;
+    entrega_transportadora?: boolean;
     clientName?: string; // Virtual para UI
     vendedorName?: string; // Virtual para UI
     distribuidorName?: string; // Virtual para UI
@@ -48,6 +49,7 @@ export interface CreateSaleDraftPayload {
     tipo_documento: number; // 1 = Facturación electrónica, 2 = Orden de venta
     descuento_porcentaje?: number; // 0, 3, 5, 10... (default: 0)
     observaciones?: string | null;
+    entrega_transportadora?: boolean;
 }
 
 export interface SalesQueryParams {
@@ -93,6 +95,7 @@ export class SalesService {
                 estado,
                 bodega_id,
                 usuario_id,
+                entrega_transportadora,
                 bodegas(nombre),
                 clientes(razon_social, codigo),
                 usuarios(nombre_completo, rol)
@@ -204,7 +207,7 @@ export class SalesService {
     }
 
     async createDraft(payload: CreateSaleDraftPayload): Promise<string> {
-        const { cliente_id, metodo_pago, condicion_pago, dias_credito, fecha, bodega_id, tipo_documento, descuento_porcentaje, observaciones } = payload;
+        const { cliente_id, metodo_pago, condicion_pago, dias_credito, fecha, bodega_id, tipo_documento, descuento_porcentaje, observaciones, entrega_transportadora } = payload;
 
         if (![1, 2].includes(tipo_documento)) {
             throw new Error('Tipo de documento inválido.');
@@ -221,7 +224,8 @@ export class SalesService {
                 p_bodega_id: bodega_id,
                 p_tipo_documento: tipo_documento,
                 p_descuento_porcentaje: descuento_porcentaje ?? 0,
-                p_observaciones: observaciones || null
+                p_observaciones: observaciones || null,
+                p_entrega_transportadora: entrega_transportadora || false
             }
         );
 
@@ -293,6 +297,7 @@ export class SalesService {
                 descuento_porcentaje,
                 descuento_valor,
                 observaciones,
+                entrega_transportadora,
                 clientes (razon_social, telefono, direccion, ciudad, email, codigo),
                 usuarios (nombre_completo),
                 bodegas (nombre, codigo, direccion),
