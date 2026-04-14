@@ -1,5 +1,5 @@
 import { Component, OnInit, HostListener, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SalesService } from './services/sales.service';
 import html2canvas from 'html2canvas';
@@ -41,6 +41,7 @@ export class SalesInvoiceComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private salesService = inject(SalesService);
+  private location = inject(Location);
 
   isAdmin = this.authService.isAdmin;
 
@@ -77,7 +78,7 @@ export class SalesInvoiceComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/sales']);
+    this.location.back();
   }
 
   async editarOrden() {

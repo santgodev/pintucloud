@@ -301,7 +301,7 @@ export class SalesService {
                 clientes (razon_social, telefono, direccion, ciudad, email, codigo),
                 usuarios (nombre_completo),
                 bodegas (nombre, codigo, direccion),
-                distribuidores (nombre_comercial, nit),
+                distribuidores (nombre_comercial, nit, logo_url),
                 cuentas_por_cobrar (fecha_vencimiento),
                 detalle_ventas (
                     *,
@@ -321,6 +321,7 @@ export class SalesService {
 
         raw.vendedorName = usuarios?.nombre_completo || 'No asignado';
         raw.distribuidorName = distribuidores?.nombre_comercial || 'General';
+        raw.logoUrl = distribuidores?.logo_url || null;
         raw.clientName = clientes?.razon_social || 'Cliente sin nombre';
         
         if (!raw.fecha_vencimiento && raw.cuentas_por_cobrar) {

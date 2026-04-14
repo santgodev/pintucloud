@@ -11,6 +11,8 @@ export interface CarteraItem {
     fecha_vencimiento: string;
     estado: string; // PENDIENTE, PARCIAL, PAGADA, ANULADA
     vendedor: string;
+    observaciones?: string;
+    tipo_documento?: number;
 }
 
 export interface CarteraQueryParams {
@@ -42,6 +44,8 @@ export class CarteraService {
                     fecha_autorizacion,
                     total,
                     usuario_id,
+                    observaciones,
+                    tipo_documento,
                     usuarios (
                         nombre_completo
                     )
@@ -100,7 +104,9 @@ export class CarteraService {
             saldo_pendiente: item.saldo_actual,
             fecha_vencimiento: item.fecha_vencimiento,
             estado: item.estado,
-            vendedor: item.ventas?.usuarios?.nombre_completo || 'Sistema'
+            vendedor: item.ventas?.usuarios?.nombre_completo || 'Sistema',
+            observaciones: item.ventas?.observaciones || '',
+            tipo_documento: item.ventas?.tipo_documento
         }));
     }
 
@@ -131,6 +137,24 @@ export class CarteraService {
 
         if (error) {
             console.error('Error charging old invoice:', error);
+            throw error;
+        }
+    }
+
+    async actualizarFacturaAntigua(ventaId: string, payload: any): Promise<void> {
+        const { error } = await this.supabase.rpc('actualizar_factura_antigua', {
+            p_venta_id: ventaId,
+            p_cliente_id: payload.cliente_id,
+            p_numero_factura_manual: payload.numero_factura_manual,
+            p_fecha: payload.fecha,
+            p_total: payload.total,
+            p_items: payload.items,
+            p_dias_credito: payload.dias_credito,
+            p_observaciones: payload.observaciones
+        });
+
+        if (error) {
+            console.error('Error al actualizar factura antigua:', error);
             throw error;
         }
     }

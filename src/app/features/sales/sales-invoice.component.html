@@ -49,8 +49,8 @@
 
       <!-- Emisor -->
       <div class="emisor">
-        <div class="logo-box">
-          <img src="logo_superior.png" alt="Brochas y Rodillos Superior"
+        <div *ngIf="sale?.logoUrl" class="logo-box">
+          <img [src]="sale.logoUrl" alt="Logo Distribuidor"
             style="height:150px; width:auto; max-width:none; object-fit:contain; display:block;">
         </div>
       </div>
@@ -160,12 +160,6 @@
         </tr>
       </thead>
       <tbody>
-        <!-- 🔍 DEBUG TEMPORAL - eliminar después -->
-        <tr *ngIf="(sale?.detalle_ventas?.length || 0) === 0" style="background:#fff3cd;">
-          <td colspan="5" style="padding:8px; color:#856404; font-size:11px;">
-            ⚠ DEBUG: detalle_ventas = {{ sale?.detalle_ventas | json }}
-          </td>
-        </tr>
         <tr *ngFor="let item of (sale?.detalle_ventas || []); let i = index">
           <td class="center">{{ i + 1 }}</td>
           <td>{{ item.productos?.nombre || item.producto_id || 'SIN NOMBRE' }}</td>
@@ -206,10 +200,6 @@
           <tr *ngIf="sale?.descuento_porcentaje > 0">
             <td class="tot-label">Descuento ({{ sale?.descuento_porcentaje }}%)</td>
             <td class="tot-value" style="color:#dc2626;">- $ {{ sale?.descuento_valor | number:'1.2-2' }}</td>
-          </tr>
-          <tr>
-            <td class="tot-label">IVA (0%)</td>
-            <td class="tot-value">$ 0.00</td>
           </tr>
           <tr class="total-row text-xl font-bold text-indigo-600">
             <td class="tot-label">Total a Pagar</td>
