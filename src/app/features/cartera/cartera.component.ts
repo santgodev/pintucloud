@@ -24,6 +24,19 @@ import { UiService } from '../../core/services/ui.service';
            </button>
         </div>
        
+        <!-- Banner: Redirección desde Recaudos Diarios -->
+        <div *ngIf="vieneDeRecaudos" class="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between gap-3 text-sm">
+          <div class="flex items-center gap-2 text-indigo-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span class="font-semibold">Vista filtrada desde Recaudos Diarios.</span>
+            <span class="text-indigo-500">Mostrando facturas/pagos del periodo seleccionado para el asesor.</span>
+          </div>
+          <button (click)="limpiarFiltroRecaudos()" class="flex items-center gap-1 px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-xs font-semibold hover:bg-indigo-50 transition-all whitespace-nowrap">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Limpiar filtro
+          </button>
+        </div>
+
        <!-- Contenedor Principal de Filtros -->
        <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
          <!-- Filtros Avanzados -->
@@ -570,6 +583,7 @@ export class CarteraComponent implements OnInit {
     asesores: any[] = [];
     fechaInicio: string = '';
     fechaFin: string = '';
+    vieneDeRecaudos: boolean = false;
 
     // Variables Modal Pago
     showPagoModal = false;
@@ -668,7 +682,29 @@ export class CarteraComponent implements OnInit {
                 this.searchControl.setValue(searchParam);
             }
 
-            await this.loadCartera();
+            // Leer params de redirección desde Dashboard (Recaudos Diarios)
+            const asesorIdParam = this.route.snapshot.queryParamMap.get('asesorId');
+            const fechaDesdeParam = this.route.snapshot.queryParamMap.get('fechaDesde');
+            const fechaHastaParam = this.route.snapshot.queryParamMap.get('fechaHasta');
+
+            if (asesorIdParam) {
+                this.filters.asesorId = asesorIdParam;
+                this.vieneDeRecaudos = true;
+            }
+            if (fechaDesdeParam) {
+                this.fechaInicio = fechaDesdeParam;
+                this.filters.fechaDesde = fechaDesdeParam;
+            }
+            if (fechaHastaParam) {
+                this.fechaFin = fechaHastaParam;
+                this.filters.fechaHasta = fechaHastaParam;
+            }
+
+            if (this.vieneDeRecaudos && this.filters.asesorId) {
+                await this.loadCarteraDesdeRecaudos();
+            } else {
+                await this.loadCartera();
+            }
         } catch (err) {
             console.error('Error inicializando cartera', err);
             this.uiService.setLoading(false);
@@ -751,6 +787,36 @@ export class CarteraComponent implements OnInit {
     }
 
     /**
+     * Carga las facturas que tuvieron PAGOS en el periodo seleccionado
+     * para el asesor indicado. Exclusivo para el drill-down desde Recaudos Diarios.
+     * NO modifica ni reemplaza loadCartera().
+     */
+    async loadCarteraDesdeRecaudos() {
+        this.loading = true;
+        this.uiService.setLoading(true);
+        try {
+            const results = await this.carteraService.getFacturasConPagosPeriodo(
+                this.filters.asesorId,
+                this.filters.fechaDesde,
+                this.filters.fechaHasta
+            );
+            this.carteras = results;
+            this.totalCarteraFiltrada = this.carteras.reduce(
+                (sum: number, item: CarteraItem) => sum + Number(item.saldo_pendiente || 0), 0
+            );
+            this.documentosPendientes = this.carteras.filter(
+                (item: CarteraItem) => Number(item.saldo_pendiente || 0) > 0
+            ).length;
+        } catch (error) {
+            console.error('Error loading cartera desde recaudos', error);
+            this.carteras = [];
+        } finally {
+            this.loading = false;
+            this.uiService.setLoading(false);
+        }
+    }
+
+    /**
      * Calcula el estado visual dinámico (VENCIDA)
      */
     getDisplayEstado(item: CarteraItem): string {
@@ -791,6 +857,16 @@ export class CarteraComponent implements OnInit {
     }
 
     limpiarFiltro() {
+        this.fechaInicio = '';
+        this.fechaFin = '';
+        this.filters.fechaDesde = '';
+        this.filters.fechaHasta = '';
+        this.loadCartera();
+    }
+
+    limpiarFiltroRecaudos() {
+        this.vieneDeRecaudos = false;
+        this.filters.asesorId = '';
         this.fechaInicio = '';
         this.fechaFin = '';
         this.filters.fechaDesde = '';

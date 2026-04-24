@@ -140,8 +140,11 @@ import { AuthService } from '../../core/services/auth.service';
                     <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
 
                     <tr *ngFor="let sale of paginatedSales" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                        <td class="p-4 font-mono text-sm font-bold text-indigo-600 cursor-pointer hover:underline whitespace-nowrap" (click)="verDetalle(sale.id)">
-                           {{ formatFactura(sale.numero_factura) }}
+                        <td class="p-4 font-mono text-sm font-bold cursor-pointer hover:underline whitespace-nowrap" 
+                            [class.text-emerald-600]="sale.bodegaName?.toUpperCase()?.includes('BOGOTA')"
+                            [class.text-indigo-600]="!sale.bodegaName?.toUpperCase()?.includes('BOGOTA')"
+                            (click)="verDetalle(sale.id)">
+                           {{ formatFactura(sale.numero_factura) }}<span *ngIf="sale.tipo_documento === 1" class="text-orange-600 font-bold">-1</span>
                            <span *ngIf="sale.entrega_transportadora" title="Despacho por Transportadora" class="ml-1 text-base">🚚</span>
                        </td>
                        <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
@@ -184,7 +187,23 @@ import { AuthService } from '../../core/services/auth.service';
                                </button>
                                
 
-                               <!-- VER (Siempre visible) -->
+                               <!-- ENTREGADO (Solo si AUTORIZADO) -->
+                                <button *ngIf="sale.estado === 'AUTORIZADO'" 
+                                        (click)="toggleDeliveryStatus(sale)" 
+                                        class="p-2 rounded-lg transition-all" 
+                                        [class.bg-emerald-100]="sale.fecha_entrega"
+                                        [class.text-emerald-600]="sale.fecha_entrega"
+                                        [class.bg-slate-50]="!sale.fecha_entrega"
+                                        [class.text-slate-400]="!sale.fecha_entrega"
+                                        [title]="sale.fecha_entrega ? 'Marcado como ENTREGADO' : 'Marcar como ENTREGADO'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                                        <path d="m3.3 7 8.7 5 8.7-5"></path>
+                                        <path d="M12 22V12"></path>
+                                    </svg>
+                                </button>
+
+                                <!-- VER (Siempre visible) -->
                                <button (click)="verDetalle(sale.id)" 
                                        class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all" 
                                        title="Ver Factura">
@@ -412,15 +431,17 @@ export class SalesComponent implements OnInit {
          this.totalRecords = result.total;
 
          // Obtener el total global filtrado desde la base de datos
+         const currentUser = this.authService.currentUserValue;
          const { data: totalGlobal, error: errorTotal } = await this.supabase.rpc('ventas_total_filtrado', {
             p_estado: this.filters.estado || null,
             p_fecha_desde: this.filters.fechaDesde || null,
-            p_fecha_hasta: this.filters.fechaHasta || null
+            p_fecha_hasta: this.filters.fechaHasta || null,
+            p_usuario_id: this.isAdmin() ? (this.filters.asesorId || null) : currentUser?.id
          });
 
          if (errorTotal) {
             console.error('Error al obtener total filtrado:', errorTotal);
-            // Fallback al cálculo local si falla el RPC (aunque solo sume la página actual)
+            // Fallback al cálculo local si falla el RPC (sumamos los de la página actual)
             this.totalVentasFiltradas = result.data.reduce(
                (sum: number, sale: any) => sum + Number(sale.total || 0), 0
             );
@@ -546,5 +567,26 @@ export class SalesComponent implements OnInit {
 
    verDetalle(id: string) {
       this.router.navigate(['/sales', id, 'invoice']);
+   }
+
+   async toggleDeliveryStatus(sale: any) {
+      const newStatus = !sale.fecha_entrega;
+      const msg = newStatus 
+         ? '¿Marcar esta orden como ENTREGADA?' 
+         : '¿Quitar la marca de ENTREGADA a esta orden?';
+      
+      if (!confirm(msg)) return;
+
+      try {
+         this.loading = true;
+         await this.salesService.updateDeliveryStatus(sale.id, newStatus);
+         // Actualizar localmente para feedback inmediato
+         sale.fecha_entrega = newStatus ? new Date().toISOString() : null;
+      } catch (err) {
+         console.error('[Sales] Error toggling delivery status:', err);
+         alert('Error al actualizar el estado de entrega.');
+      } finally {
+         this.loading = false;
+      }
    }
 }

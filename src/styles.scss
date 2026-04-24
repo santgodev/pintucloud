@@ -381,12 +381,13 @@ input, select, textarea {
     }
 
     @page {
-        margin: 0;
-        size: auto;
+        size: letter portrait;
+        margin: 0 !important;
     }
 
     body {
         background: white !important;
-        margin: 1cm !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 }

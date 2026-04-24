@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { SharedModule } from '../../shared/shared.module';
 import { SalesService } from '../sales/services/sales.service';
 import { InventoryService, InventoryItem } from '../inventory/services/inventory.service';
@@ -9,11 +10,12 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { Observable, map } from 'rxjs';
 import { Router } from '@angular/router';
 import { UiService } from '../../core/services/ui.service';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, SharedModule],
+  imports: [CommonModule, SharedModule, FormsModule],
   template: `
     <div class="dashboard-container">
       <div class="header mb-8 flex justify-between items-end">
@@ -114,6 +116,143 @@ import { UiService } from '../../core/services/ui.service';
                       \${{item.total_ventas | number}}
                     </span>
                 </div>
+            </div>
+          </div>
+
+          <!-- Recaudos Diarios (Cierre de Caja) -->
+          <div class="col-span-12 card bg-white rounded-xl border border-slate-200 p-6 shadow-sm slide-in-6 flex flex-col mt-6">
+            <div class="flex justify-between items-center mb-5">
+              <h3 class="text-lg font-semibold text-slate-800">
+                Recaudos Diarios (Cierre de Caja)
+              </h3>
+              <div class="flex items-center gap-3">
+                <!-- 
+                <button 
+                  class="btn-reporte-detallado" 
+                  (click)="descargarReporteComisiones()"
+                  [disabled]="loadingRecaudos || recaudosHoy.length === 0"
+                  style="background: #059669; border-color: #059669; color: white;"
+                  title="Descargar reporte de comisiones (3% sobre pagos <= 30 días)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-1.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                  Reporte Comisiones
+                </button>
+                -->
+
+                <button 
+                  class="btn-reporte-detallado" 
+                  (click)="descargarReporteDetallado()"
+                  [disabled]="loadingRecaudos || recaudosHoy.length === 0"
+                  title="Descargar reporte detallado de facturas y clientes">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mr-1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Reporte Detallado
+                </button>
+                <div class="recaudos-badge" [ngClass]="periodoLabel === 'Hoy' ? 'badge-hoy' : 'badge-periodo'">
+                  {{ periodoLabel }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Filtro de Periodo -->
+            <div class="filtro-periodo-wrapper mb-5">
+              <!-- Quick presets -->
+              <div class="quick-presets">
+                <button class="preset-btn" [class.active]="periodoActivo === 'HOY'" (click)="aplicarPreset('HOY')">Hoy</button>
+                <button class="preset-btn" [class.active]="periodoActivo === 'SEMANA'" (click)="aplicarPreset('SEMANA')">Esta Semana</button>
+                <button class="preset-btn" [class.active]="periodoActivo === 'MES'" (click)="aplicarPreset('MES')">Este Mes</button>
+                <button class="preset-btn" [class.active]="periodoActivo === 'CUSTOM'" (click)="periodoActivo = 'CUSTOM'">Personalizado</button>
+              </div>
+              <!-- Custom date range -->
+              <div class="date-range-row" [class.visible]="periodoActivo === 'CUSTOM'">
+                <div class="date-field">
+                  <label>Desde</label>
+                  <input type="date" [(ngModel)]="fechaInicioRecaudos" class="date-input" />
+                </div>
+                <div class="date-field">
+                  <label>Hasta</label>
+                  <input type="date" [(ngModel)]="fechaFinRecaudos" class="date-input" />
+                </div>
+                <button class="btn-buscar" (click)="aplicarFiltroPersonalizado()" [disabled]="loadingRecaudos">
+                  <svg *ngIf="!loadingRecaudos" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span *ngIf="loadingRecaudos" class="spinner-sm"></span>
+                  {{ loadingRecaudos ? 'Buscando...' : 'Consultar' }}
+                </button>
+              </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-slate-50/50 text-slate-600 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
+                    <th class="p-3 text-left">Asesor</th>
+                    <th class="p-3 text-right">Efectivo</th>
+                    <th class="p-3 text-right">Bancos/Transf.</th>
+                    <th class="p-3 text-right">Otros</th>
+                    <th class="p-3 text-right">Total Recaudado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let r of recaudosHoy"
+                      class="border-b border-slate-50 hover:bg-indigo-50/40 transition-colors group cursor-pointer"
+                      (click)="verRecaudosAsesor(r)"
+                      title="Ver facturas de {{r.asesor}}">
+                    <td class="p-3">
+                      <div class="font-semibold text-slate-700 flex items-center gap-2">
+                        {{r.asesor}}
+                        <svg class="opacity-0 group-hover:opacity-100 transition-opacity" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </div>
+                    </td>
+                    <td class="p-3 text-right">
+                      <span class="text-emerald-600 font-bold">$ {{r.efectivo | number:'1.0-0'}}</span>
+                    </td>
+                    <td class="p-3 text-right">
+                      <span class="text-blue-600 font-bold">$ {{r.transferencia | number:'1.0-0'}}</span>
+                    </td>
+                    <td class="p-3 text-right italic text-slate-400">
+                      $ {{r.otros | number:'1.0-0'}}
+                    </td>
+                    <td class="p-3 text-right">
+                      <div class="total-link-btn">
+                        <span>$ {{r.total | number:'1.0-0'}}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                      </div>
+                    </td>
+                  </tr>
+                  <!-- Fila Totales -->
+                  <tr *ngIf="recaudosHoy.length > 0" class="totales-row">
+                    <td class="p-3 font-bold text-slate-800 uppercase text-xs tracking-wide">TOTAL GENERAL</td>
+                    <td class="p-3 text-right font-bold text-emerald-700">$ {{ totalEfectivo | number:'1.0-0' }}</td>
+                    <td class="p-3 text-right font-bold text-blue-700">$ {{ totalTransferencia | number:'1.0-0' }}</td>
+                    <td class="p-3 text-right font-bold text-slate-500">$ {{ totalOtros | number:'1.0-0' }}</td>
+                    <td class="p-3 text-right">
+                      <div class="px-3 py-1 bg-indigo-600 text-white rounded-lg font-bold inline-block min-w-[100px]">
+                        $ {{ totalGeneral | number:'1.0-0' }}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr *ngIf="recaudosHoy.length === 0 && !loadingRecaudos">
+                    <td colspan="5" class="p-8 text-center text-slate-400 italic">
+                      No se han registrado recaudos en el periodo seleccionado.
+                    </td>
+                  </tr>
+                  <tr *ngIf="loadingRecaudos">
+                    <td colspan="5" class="p-8 text-center text-slate-400">
+                      <div class="flex items-center justify-center gap-2">
+                        <span class="spinner-sm" style="border-top-color: #6366f1"></span>
+                        Cargando recaudos...
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
+              <span class="text-[11px] text-slate-400 italic">
+                * Los datos se basan en los pagos registrados en el módulo de Cartera.
+              </span>
+              <span class="text-[11px] text-slate-400">
+                {{ recaudosHoy.length }} asesor{{ recaudosHoy.length !== 1 ? 'es' : '' }}
+              </span>
             </div>
           </div>
 
@@ -257,6 +396,126 @@ import { UiService } from '../../core/services/ui.service';
       transform: translateY(-3px);
       box-shadow: 0 6px 18px rgba(0,0,0,.08);
     }
+
+    /* ── Recaudos Badge ── */
+    .recaudos-badge {
+      padding: 3px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+    .badge-hoy { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    .badge-periodo { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+    /* ── Filtro de Periodo ── */
+    .filtro-periodo-wrapper {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .quick-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+    .preset-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      color: #64748b;
+      cursor: pointer;
+      transition: all .15s ease;
+    }
+    .preset-btn:hover { border-color: #6366f1; color: #6366f1; }
+    .preset-btn.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+
+    .date-range-row { display: none; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .date-range-row.visible { display: flex; }
+
+    .date-field { display: flex; flex-direction: column; gap: 4px; }
+    .date-field label {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8;
+    }
+    .date-input {
+      padding: 7px 10px; font-size: 13px;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      outline: none; background: #fff; color: #1e293b;
+      transition: border-color .15s ease;
+    }
+    .date-input:focus { border-color: #6366f1; }
+
+    .btn-buscar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px; font-size: 13px; font-weight: 600;
+      background: #6366f1; color: #fff; border: none;
+      border-radius: 8px; cursor: pointer;
+      transition: background .15s ease, opacity .15s ease;
+    }
+    .btn-buscar:hover { background: #4f46e5; }
+    .btn-buscar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ── Totals Row ── */
+    .totales-row { background: #f1f5f9; border-top: 2px solid #e2e8f0; }
+
+    /* ── Spinner ── */
+    .spinner-sm {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #e2e8f0; border-top-color: #fff;
+      border-radius: 50%; animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Total link button ── */
+    .total-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: #1e293b;
+      color: #fff;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      min-width: 100px;
+      justify-content: space-between;
+      transition: background .15s ease, transform .1s ease;
+    }
+    tr:hover .total-link-btn {
+      background: #6366f1;
+      transform: scale(1.02);
+    }
+
+    .btn-reporte-detallado {
+      display: flex;
+      align-items: center;
+      padding: 6px 14px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-reporte-detallado:hover:not(:disabled) {
+      background: #e2e8f0;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+
+    .btn-reporte-detallado:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   `]
 })
 export class DashboardComponent implements OnInit {
@@ -265,10 +524,22 @@ export class DashboardComponent implements OnInit {
   productCount$!: Observable<number>;
   lowStockCount$!: Observable<number>;
   showNewSaleModal = false;
-  productosVentasMes: any[] = [];
   ventasHoy: number = 0;
   ventasAyer: number = 0;
   variacionVentas: number = 0;
+  recaudosHoy: any[] = [];
+  // Inicialización con fecha local (evita desfase UTC)
+  fechaInicioRecaudos: string = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  fechaFinRecaudos: string = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+  periodoActivo: 'HOY' | 'SEMANA' | 'MES' | 'CUSTOM' = 'HOY';
+  periodoLabel: string = 'Hoy';
+  loadingRecaudos: boolean = false;
+  // Totals
+  totalEfectivo: number = 0;
+  totalTransferencia: number = 0;
+  totalOtros: number = 0;
+  totalGeneral: number = 0;
+  productosVentasMes: any[] = [];
   coloresBarras = [
     '#6366f1',
     '#22c55e',
@@ -301,7 +572,8 @@ export class DashboardComponent implements OnInit {
     this.uiService.setLoading(true);
     await Promise.all([
        this.loadStats(),
-       this.loadVentasProductos()
+       this.loadVentasProductos(),
+       this.loadRecaudosDiarios()
     ]);
     this.uiService.setLoading(false);
   }
@@ -366,6 +638,168 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  /** Alias used by ngOnInit / refreshStats */
+  async loadRecaudosDiarios() {
+    await this.loadRecaudosPeriodo();
+  }
+
+  async loadRecaudosPeriodo() {
+    this.loadingRecaudos = true;
+    try {
+      this.recaudosHoy = await this.dashboardService.getRecaudosPeriodo(
+        this.fechaInicioRecaudos,
+        this.fechaFinRecaudos
+      );
+      this.calcularTotales();
+    } catch (err) {
+      console.error('Error cargando recaudos:', err);
+      this.recaudosHoy = [];
+      this.calcularTotales();
+    } finally {
+      this.loadingRecaudos = false;
+    }
+  }
+
+  calcularTotales() {
+    this.totalEfectivo = this.recaudosHoy.reduce((s, r) => s + (Number(r.efectivo) || 0), 0);
+    this.totalTransferencia = this.recaudosHoy.reduce((s, r) => s + (Number(r.transferencia) || 0), 0);
+    this.totalOtros = this.recaudosHoy.reduce((s, r) => s + (Number(r.otros) || 0), 0);
+    this.totalGeneral = this.recaudosHoy.reduce((s, r) => s + (Number(r.total) || 0), 0);
+  }
+
+  aplicarPreset(preset: 'HOY' | 'SEMANA' | 'MES') {
+    const hoy = new Date();
+    // Obtener fecha local en formato YYYY-MM-DD sin desfase UTC
+    const offset = hoy.getTimezoneOffset() * 60000;
+    const localFmt = (d: Date) => new Date(d.getTime() - offset).toISOString().split('T')[0];
+    
+    this.periodoActivo = preset;
+    if (preset === 'HOY') {
+      this.fechaInicioRecaudos = localFmt(hoy);
+      this.fechaFinRecaudos = localFmt(hoy);
+      this.periodoLabel = 'Hoy';
+    } else if (preset === 'SEMANA') {
+      const lunes = new Date(hoy);
+      lunes.setDate(hoy.getDate() - hoy.getDay() + (hoy.getDay() === 0 ? -6 : 1));
+      this.fechaInicioRecaudos = localFmt(lunes);
+      this.fechaFinRecaudos = localFmt(hoy);
+      this.periodoLabel = 'Esta Semana';
+    } else if (preset === 'MES') {
+      this.fechaInicioRecaudos = localFmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+      this.fechaFinRecaudos = localFmt(hoy);
+      this.periodoLabel = 'Este Mes';
+    }
+    this.loadRecaudosPeriodo();
+  }
+
+  aplicarFiltroPersonalizado() {
+    const parseLocal = (s: string) => {
+       const [y, m, d] = s.split('-').map(Number);
+       return `${d}/${m}/${y}`;
+    };
+    this.periodoLabel = `${parseLocal(this.fechaInicioRecaudos)} – ${parseLocal(this.fechaFinRecaudos)}`;
+    this.periodoActivo = 'CUSTOM';
+    this.loadRecaudosPeriodo();
+  }
+
+  verRecaudosAsesor(r: any) {
+    this.router.navigate(['/cartera'], {
+      queryParams: {
+        asesorId: r.asesor_id,
+        fechaDesde: this.fechaInicioRecaudos,
+        fechaHasta: this.fechaFinRecaudos
+      }
+    });
+  }
+
+  async descargarReporteDetallado() {
+    this.uiService.setLoading(true);
+    try {
+      const data = await this.dashboardService.getDetallePagosPeriodo(
+        this.fechaInicioRecaudos,
+        this.fechaFinRecaudos
+      );
+
+      if (!data || data.length === 0) {
+        alert('No hay pagos detallados para exportar en este periodo.');
+        return;
+      }
+
+      // Mapeo para nombres de columnas amigables en Excel
+      const excelData = data.map((item: any) => ({
+        'Fecha Pago': item.fecha_pago,
+        'Asesor': item.asesor,
+        'Cliente': item.cliente,
+        'Factura (FAC)': item.numero_factura ? item.numero_factura.toString().padStart(6, '0') : '—',
+        'Monto Recaudado': item.monto,
+        'Método de Pago': item.metodo_pago,
+        'Observación': item.observacion || '—'
+      }));
+
+      // Generar Excel
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Detalle de Recaudos');
+
+      // Nombre del archivo con el periodo
+      const filename = `Recaudos_Detallados_${this.fechaInicioRecaudos}_al_${this.fechaFinRecaudos}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+    } catch (err) {
+      console.error('Error al generar reporte:', err);
+      alert('Error al generar el reporte detallado.');
+    } finally {
+      this.uiService.setLoading(false);
+    }
+  }
+
+  async descargarReporteComisiones() {
+    this.uiService.setLoading(true);
+    try {
+      const data = await this.dashboardService.getReporteComisiones(
+        this.fechaInicioRecaudos,
+        this.fechaFinRecaudos
+      );
+
+      if (!data || data.length === 0) {
+        alert('No hay comisiones para liquidar en este periodo.');
+        return;
+      }
+
+      // Mapeo para nombres de columnas amigables en Excel
+      const excelData = data.map((item: any) => ({
+        'Asesor': item.asesor_nombre,
+        'Fecha Pago': item.fecha_pago,
+        'Monto Recaudado': item.monto_pago,
+        'Nro Factura': item.numero_factura ? item.numero_factura.toString().padStart(6, '0') : '—',
+        'Fecha Factura': item.fecha_factura,
+        'Cliente': item.cliente_nombre,
+        'Días transcurridos': item.dias_transcurridos,
+        'Aplica Comisión': item.comisiona ? 'SÍ' : 'NO (Mora > 30 días)',
+        '% Comisión': item.porcentaje_comision + '%',
+        'VALOR COMISIÓN': item.valor_comision
+      }));
+
+      const ws: XLSX.WorkSheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // Ajustar anchos de columnas
+      const wscols = [
+        {wch: 25}, {wch: 12}, {wch: 15}, {wch: 12}, {wch: 12}, 
+        {wch: 30}, {wch: 15}, {wch: 20}, {wch: 12}, {wch: 15}
+      ];
+      ws['!cols'] = wscols;
+
+      const wb: XLSX.WorkBook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Liquidación Comisiones');
+      XLSX.writeFile(wb, `Reporte_Comisiones_${this.fechaInicioRecaudos}_al_${this.fechaFinRecaudos}.xlsx`);
+    } catch (err) {
+      console.error('Error al exportar comisiones:', err);
+      alert('Error al generar el reporte de comisiones.');
+    } finally {
+      this.uiService.setLoading(false);
+    }
+  }
+
   toggleNewSaleModal() {
     this.router.navigate(['/sales/new']);
   }
@@ -374,7 +808,8 @@ export class DashboardComponent implements OnInit {
     this.uiService.setLoading(true);
     await Promise.all([
        this.loadStats(),
-       this.loadVentasProductos()
+       this.loadVentasProductos(),
+       this.loadRecaudosDiarios()
     ]);
     this.uiService.setLoading(false);
   }

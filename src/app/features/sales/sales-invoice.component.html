@@ -193,8 +193,8 @@
       <!-- Right totals box -->
       <table class="totals-table">
         <tbody>
-          <tr>
-            <td class="tot-label">Subtotal bruto</td>
+          <tr *ngIf="sale?.descuento_porcentaje > 0">
+            <td class="tot-label">Subtotal</td>
             <td class="tot-value">$ {{ (sale?.total + (sale?.descuento_valor || 0)) | number:'1.2-2' }}</td>
           </tr>
           <tr *ngIf="sale?.descuento_porcentaje > 0">

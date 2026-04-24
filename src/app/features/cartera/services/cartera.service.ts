@@ -31,83 +31,20 @@ export class CarteraService {
     constructor(private supabase: SupabaseService) { }
 
     async getCartera(params?: CarteraQueryParams): Promise<CarteraItem[]> {
-        let query = this.supabase
-            .from('cuentas_por_cobrar')
-            .select(`
-                venta_id,
-                saldo_actual,
-                fecha_vencimiento,
-                estado,
-                ventas!inner (
-                    numero_factura,
-                    fecha,
-                    fecha_autorizacion,
-                    total,
-                    usuario_id,
-                    observaciones,
-                    tipo_documento,
-                    usuarios (
-                        nombre_completo
-                    )
-                ),
-                clientes!inner (
-                    razon_social
-                )
-            `)
-            .neq('estado', 'ANULADA');
-
-        if (params) {
-            if (params.search && params.search.trim() !== '') {
-                const value = params.search.trim();
-                const isNumber = !isNaN(Number(value));
-
-                if (isNumber) {
-                    query = query.eq('ventas.numero_factura', Number(value));
-                } else {
-                    query = query.ilike('clientes.razon_social', `%${value}%`);
-                }
-            }
-
-            if (params.estado && params.estado !== '') {
-                query = query.eq('estado', params.estado);
-            }
-
-            if (params.fechaDesde) {
-                query = query.gte('ventas.fecha', params.fechaDesde);
-            }
-
-            if (params.fechaHasta) {
-                query = query.lte('ventas.fecha', params.fechaHasta);
-            }
-
-            if (params.asesorId && params.asesorId !== '') {
-                query = query.eq('ventas.usuario_id', params.asesorId);
-            }
-        }
-
-        query = query.order('fecha_vencimiento', { ascending: true });
-
-        const { data, error } = await query;
-
+        const { data, error } = await this.supabase.rpc('obtener_cartera_completa', {
+            p_search: params?.search || '',
+            p_estado: params?.estado || '',
+            p_fecha_desde: params?.fechaDesde || null,
+            p_fecha_hasta: params?.fechaHasta || null,
+            p_asesor_id: params?.asesorId || null
+        });
 
         if (error) {
-            console.error('Error fetching cartera:', error);
+            console.error('Error fetching cartera via RPC:', error);
             throw error;
         }
 
-        return (data || []).map((item: any) => ({
-            venta_id: item.venta_id,
-            numero_factura: item.ventas?.numero_factura || null,
-            fecha: item.ventas?.fecha || item.ventas?.fecha_autorizacion || '',
-            cliente: item.clientes?.razon_social || 'Cliente Desconocido',
-            total_factura: item.ventas?.total || 0,
-            saldo_pendiente: item.saldo_actual,
-            fecha_vencimiento: item.fecha_vencimiento,
-            estado: item.estado,
-            vendedor: item.ventas?.usuarios?.nombre_completo || 'Sistema',
-            observaciones: item.ventas?.observaciones || '',
-            tipo_documento: item.ventas?.tipo_documento
-        }));
+        return data as CarteraItem[];
     }
 
     async registrarPago(ventaId: string, monto: number, metodo: string, observacion?: string): Promise<void> {
@@ -157,5 +94,29 @@ export class CarteraService {
             console.error('Error al actualizar factura antigua:', error);
             throw error;
         }
+    }
+
+    /**
+     * Devuelve las facturas que tuvieron pagos registrados por un asesor
+     * en un rango de fechas. Usa fecha_pago (NO fecha de la factura).
+     * Exclusivo para el drill-down desde Recaudos Diarios del dashboard.
+     */
+    async getFacturasConPagosPeriodo(
+        asesorId: string,
+        fechaDesde: string,
+        fechaHasta: string
+    ): Promise<CarteraItem[]> {
+        const { data, error } = await this.supabase.rpc('obtener_facturas_con_pagos_periodo', {
+            p_asesor_id: asesorId,
+            p_fecha_desde: fechaDesde,
+            p_fecha_hasta: fechaHasta
+        });
+
+        if (error) {
+            console.error('Error fetching facturas con pagos periodo:', error);
+            throw error;
+        }
+
+        return (data || []) as CarteraItem[];
     }
 }

@@ -96,6 +96,8 @@ export class SalesService {
                 bodega_id,
                 usuario_id,
                 entrega_transportadora,
+                tipo_documento,
+                fecha_entrega,
                 bodegas(nombre),
                 clientes(razon_social, codigo),
                 usuarios(nombre_completo, rol)
@@ -118,6 +120,8 @@ export class SalesService {
                         estado,
                         bodega_id,
                         usuario_id,
+                        tipo_documento,
+                        fecha_entrega,
                         bodegas(nombre),
                         clientes!inner(razon_social, codigo),
                         usuarios(nombre_completo, rol)
@@ -298,6 +302,7 @@ export class SalesService {
                 descuento_valor,
                 observaciones,
                 entrega_transportadora,
+                fecha_entrega,
                 clientes (razon_social, telefono, direccion, ciudad, email, codigo),
                 usuarios (nombre_completo),
                 bodegas (nombre, codigo, direccion),
@@ -330,5 +335,16 @@ export class SalesService {
         }
         
         return raw;
+    }
+
+    async updateDeliveryStatus(ventaId: string, delivered: boolean): Promise<void> {
+        const { error } = await this.supabase
+            .from('ventas')
+            .update({ 
+                fecha_entrega: delivered ? new Date().toISOString() : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', ventaId);
+        if (error) throw error;
     }
 }

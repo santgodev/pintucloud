@@ -487,6 +487,32 @@
    PRINT
 ===================================== */
 @media print {
+  /* Reset radical para evitar desbordamientos */
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Forzar reseteo de los contenedores globales del layout de la app */
+  .layout-wrapper, 
+  .layout-main, 
+  .layout-content, 
+  .page-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
   .no-print {
     display: none !important;
   }
@@ -496,9 +522,12 @@
     print-color-adjust: exact !important;
   }
 
-  .page-wrapper {
-    background: white;
-    padding: 0;
+  .invoice-zoom-wrapper {
+    display: block !important;
+    zoom: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .invoice {
@@ -508,6 +537,11 @@
     box-shadow: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    position: relative !important;
+    page-break-after: avoid !important; /* Evita forzar página después */
   }
 
   .client-table, 
@@ -524,7 +558,7 @@
   .products-table th,
   .totals-table td {
     border: 1pt solid #e2e8f0 !important;
-    padding: 8px !important;
+    padding: 6px !important;
   }
 
   .products-table thead th {
@@ -533,8 +567,14 @@
     font-weight: 700 !important;
   }
 
-  @page {
-    margin: 0;
-    size: auto;
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Añadimos el margen real del papel aquí para que no salgan los textos del navegador */
+  .page-wrapper {
+    padding: 1.5cm !important;
+    background: white !important;
   }
 }
