@@ -12,13 +12,13 @@ import { UiService } from '../../../core/services/ui.service';
   standalone: true,
   imports: [CommonModule, RouterModule, CurrencyPipe, DatePipe, FormsModule, PurchasePaymentModalComponent],
   template: `
-    <div class="p-6">
+    <div class="p-4 md:p-6">
       
       <!-- Header -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 md:mb-6">
         <div>
-          <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Compras</h1>
-          <p class="text-slate-500 mt-1 text-sm md:text-base">Registro de recepciones de mercancía e ingresos de inventario.</p>
+          <h1 class="text-xl md:text-3xl font-bold text-slate-900 tracking-tight">Compras</h1>
+          <p class="text-slate-500 mt-1 text-sm">Registro de recepciones de mercancía e ingresos de inventario.</p>
         </div>
         <button
           (click)="goToCreate()"
@@ -139,33 +139,33 @@ import { UiService } from '../../../core/services/ui.service';
         </div>
 
         <!-- Date Range -->
-        <div class="flex items-center gap-2">
-            <div>
+        <div class="w-full flex flex-wrap items-end gap-2">
+            <div class="flex-1 min-w-[130px]">
               <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Desde</label>
               <input type="date" [(ngModel)]="dateFrom"
                 class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
             </div>
-            <div>
+            <div class="flex-1 min-w-[130px]">
               <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Hasta</label>
               <input type="date" [(ngModel)]="dateTo"
                 class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
             </div>
             <button (click)="applyFilters()"
-              class="h-[38px] px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center">
+              class="h-[38px] px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center whitespace-nowrap">
               Filtrar fecha
             </button>
             <button *ngIf="dateFrom || dateTo" (click)="clearDateFilter()"
-              class="h-[38px] px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center justify-center">
+              class="h-[38px] px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center justify-center whitespace-nowrap">
               Limpiar
             </button>
         </div>
         
         <!-- Filter Clarification Note -->
-        <div class="w-full flex items-center gap-2 mt-1 px-1">
-          <svg class="text-amber-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <div class="w-full flex items-start gap-2 mt-1 px-1">
+          <svg class="text-amber-500 flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>
           </svg>
-          <p class="text-[10px] font-bold text-amber-600 uppercase tracking-tight">El resumen superior no se ve afectado por estos filtros</p>
+          <p class="text-[10px] font-bold text-amber-600 uppercase tracking-tight leading-tight">El resumen superior no se ve afectado por estos filtros</p>
         </div>
 
       </div>
@@ -290,9 +290,9 @@ import { UiService } from '../../../core/services/ui.service';
                       
                       <!-- Editar -->
                       <button (click)="$event.stopPropagation(); goToEdit(c.id!)"
-                        [disabled]="c.estado === 'ANULADA'"
+                        [disabled]="c.estado !== 'BORRADOR'"
                         class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-all" 
-                        title="Editar">
+                        [title]="c.estado === 'BORRADOR' ? 'Editar' : 'No se puede editar una compra confirmada o anulada'">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                       </button>
                     </div>
@@ -372,14 +372,19 @@ import { UiService } from '../../../core/services/ui.service';
               </span>
             </div>
             <div class="flex justify-between items-center pt-3 border-t border-slate-100">
-              <div class="flex flex-col">
+              <div class="flex flex-col gap-1">
                 <a (click)="$event.stopPropagation(); goToDetail(c.id!)" 
                    class="px-2 py-1 rounded bg-indigo-50 text-[11px] font-mono text-indigo-700 border border-indigo-100 transition-colors w-fit">
                   #{{ c.numero_factura || 'Sin factura' }}
                 </a>
-                <div *ngIf="c.cuentas_por_pagar && c.cuentas_por_pagar[0]" class="mt-2 text-[10px] text-slate-500 flex flex-col gap-0.5">
+                <!-- Total siempre visible pero pequeño -->
+                <span class="text-[10px] text-slate-500 font-medium">
+                  Total Factura: {{ (c.total ?? 0) | currency:'COP':'symbol-narrow':'1.0-0' }}
+                </span>
+                
+                <!-- Otros detalles de cartera si existen -->
+                <div *ngIf="c.cuentas_por_pagar && c.cuentas_por_pagar[0]" class="text-[10px] text-slate-500 flex flex-col gap-0.5">
                    @let cpMob = c.cuentas_por_pagar[0];
-                   <span class="font-bold text-slate-800">Saldo CP: {{ cpMob.saldo_actual | currency:'COP':'symbol-narrow':'1.0-0' }}</span>
                    <div class="flex items-center gap-1 font-medium">
                       <span>Vence: {{ cpMob.fecha_vencimiento | date:'dd/MM/yyyy' }}</span>
                       @let estadoFinMob = getEstadoFinanciero(cpMob);
@@ -391,13 +396,20 @@ import { UiService } from '../../../core/services/ui.service';
                    </div>
                 </div>
               </div>
+
               <div class="flex flex-col items-end gap-1">
-                <span class="font-bold text-slate-900 text-base">
-                  {{ (c.total ?? 0) | currency:'COP':'symbol-narrow':'1.0-0' }}
+                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Saldo Pendiente</p>
+                <span class="font-bold text-slate-900 text-base tabular-nums">
+                  <ng-container *ngIf="c.cuentas_por_pagar && c.cuentas_por_pagar[0]; else soloTotal">
+                    {{ c.cuentas_por_pagar[0].saldo_actual | currency:'COP':'symbol-narrow':'1.0-0' }}
+                  </ng-container>
+                  <ng-template #soloTotal>
+                    {{ (c.total ?? 0) | currency:'COP':'symbol-narrow':'1.0-0' }}
+                  </ng-template>
                 </span>
                 <div *ngIf="c.cuentas_por_pagar && c.cuentas_por_pagar[0]" class="flex flex-col items-end gap-1">
                   @let estadoFinMobBadge = getEstadoFinanciero(c.cuentas_por_pagar[0]);
-                  <span class="badge-premium mt-1 scale-90 origin-right rounded-full text-[10px] font-bold uppercase tracking-wider"
+                  <span class="badge-premium mt-0.5 scale-90 origin-right rounded-full text-[10px] font-bold uppercase tracking-wider"
                         [class]="estadoFinMobBadge === 'PAGADA' ? 'bg-emerald-600 text-white' : 
                                  estadoFinMobBadge === 'VENCIDA' ? 'bg-rose-500 text-white' : 
                                  'bg-emerald-100 text-emerald-700 border border-emerald-200'">
@@ -432,11 +444,7 @@ import { UiService } from '../../../core/services/ui.service';
                   <button (click)="$event.stopPropagation(); goToDetail(c.id!)"
                     class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    Ver
-                  </button>
-                  <button (click)="$event.stopPropagation(); goToEdit(c.id!)"
-                    class="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg">
-                    Editar
+                    Ver Detalle / Anular
                   </button>
                 </ng-container>
 
@@ -445,7 +453,7 @@ import { UiService } from '../../../core/services/ui.service';
                   (click)="$event.stopPropagation(); goToDetail(c.id!)"
                   class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  Ver
+                  Ver Detalle
                 </button>
             </div>
           </div>
@@ -620,7 +628,7 @@ export class PurchasesListPage implements OnInit {
   ) { }
 
   get isAdmin(): boolean {
-    return this.authService.currentUserValue?.role === 'ADMIN';
+    return this.authService.currentUserValue?.role === 'admin_distribuidor';
   }
 
   async ngOnInit(): Promise<void> {

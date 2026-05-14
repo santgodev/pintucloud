@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl, FormGroup, AbstractControl } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
 import { CarteraService, CarteraItem } from './services/cartera.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -14,11 +15,28 @@ import { UiService } from '../../core/services/ui.service';
     standalone: true,
     imports: [CommonModule, SharedModule, ReactiveFormsModule, FormsModule],
     template: `
-    <div class="cartera-container p-6 animate-in fade-in duration-500">
-       <div class="flex justify-between items-center mb-6">
-          <h1 class="text-2xl font-bold text-slate-900">Cuentas por Cobrar (Cartera)</h1>
-       </div>
+    <div class="cartera-container p-4 md:p-6 animate-in fade-in duration-500">
+       <div class="flex justify-between items-center mb-4 md:mb-6">
+           <h1 class="text-xl md:text-2xl font-bold text-slate-900">Cuentas por Cobrar (Cartera)</h1>
+           <button *ngIf="isAdmin" (click)="abrirModalMigracion()" class="px-4 py-2 bg-slate-800 text-white font-semibold rounded-xl shadow-sm hover:bg-slate-900 flex items-center gap-2 transition-all">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+             Carga Inicial
+           </button>
+        </div>
        
+        <!-- Banner: Redirección desde Recaudos Diarios -->
+        <div *ngIf="vieneDeRecaudos" class="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between gap-3 text-sm">
+          <div class="flex items-center gap-2 text-indigo-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span class="font-semibold">Vista filtrada desde Recaudos Diarios.</span>
+            <span class="text-indigo-500">Mostrando facturas/pagos del periodo seleccionado para el asesor.</span>
+          </div>
+          <button (click)="limpiarFiltroRecaudos()" class="flex items-center gap-1 px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-xs font-semibold hover:bg-indigo-50 transition-all whitespace-nowrap">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Limpiar filtro
+          </button>
+        </div>
+
        <!-- Contenedor Principal de Filtros -->
        <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
          <!-- Filtros Avanzados -->
@@ -44,7 +62,7 @@ import { UiService } from '../../core/services/ui.service';
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="PARCIAL">Parcial</option>
                 <option value="VENCIDA">Vencida</option>
-                <option value="PAGADA">Pagada</option>
+                <option value="PAGADO">Pagado</option>
                 <option value="ANULADA">Anulada</option>
              </select>
           </div>
@@ -59,29 +77,29 @@ import { UiService } from '../../core/services/ui.service';
         </div>
 
         <!-- Filtro Rango de Fechas -->
-        <div class="mb-4 flex flex-wrap items-center gap-3">
-           <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-muted uppercase tracking-wider whitespace-nowrap">Desde</label>
+        <div class="mb-4 flex flex-wrap items-start gap-3">
+           <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+              <label class="text-xs font-bold text-muted uppercase tracking-wider">Desde</label>
               <input type="date" [(ngModel)]="fechaInicio"
-                     class="h-10 px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+                     class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
            </div>
-           <div class="flex items-center gap-2">
-              <label class="text-xs font-bold text-muted uppercase tracking-wider whitespace-nowrap">Hasta</label>
+           <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+              <label class="text-xs font-bold text-muted uppercase tracking-wider">Hasta</label>
               <input type="date" [(ngModel)]="fechaFin"
-                     class="h-10 px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+                     class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
            </div>
-           <div class="flex gap-2">
-           <button (click)="exportarCartera()" class="h-10 px-4 border border-slate-200 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center gap-2">
+           <div class="flex gap-2 items-end pt-5 flex-wrap">
+           <button (click)="exportarCartera()" class="h-10 px-3 border border-slate-200 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center gap-2 whitespace-nowrap">
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-             Exportar cartera
+             Exportar
            </button>
            <button (click)="filtrarPorFecha()"
                    [disabled]="!fechaInicio || !fechaFin"
-                   class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all">
+                   class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all whitespace-nowrap">
               Filtrar
            </button>
            <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
-                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white">
+                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white whitespace-nowrap">
               Limpiar
            </button>
         </div>
@@ -100,18 +118,20 @@ import { UiService } from '../../core/services/ui.service';
        </div>
 
        <!-- Tabla de Resultados -->
-       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-           <table class="w-full text-left border-collapse">
+       <div class="bg-white rounded-xl border border-slate-200 shadow-sm" style="overflow: hidden;">
+           <!-- Scroll horizontal en móvil -->
+           <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+           <table style="min-width: 680px;" class="w-full text-left border-collapse">
               <thead>
                  <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
-                    <th class="p-4 border-b border-slate-200">Factura</th>
-                    <th class="p-4 border-b border-slate-200">Cliente</th>
-                    <th class="p-4 border-b border-slate-200">Fecha</th>
-                    <th class="p-4 border-b border-slate-200 text-right">TOTAL</th>
-                    <th class="p-4 border-b border-slate-200 text-right">SALDO</th>
-                    <th class="p-4 border-b border-slate-200 w-[140px] text-center">Vencimiento</th>
-                    <th class="p-4 border-b border-slate-200 text-center">Estado</th>
-                    <th class="p-4 border-b border-slate-200 text-right">Acciones</th>
+                    <th class="p-4 border-b border-slate-200 whitespace-nowrap">Factura</th>
+                    <th class="p-4 border-b border-slate-200" style="min-width:130px">Cliente</th>
+                    <th class="p-4 border-b border-slate-200 whitespace-nowrap">Fecha</th>
+                    <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">TOTAL</th>
+                    <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">SALDO</th>
+                    <th class="p-4 border-b border-slate-200 w-[130px] text-center whitespace-nowrap">Vencimiento</th>
+                    <th class="p-4 border-b border-slate-200 text-center whitespace-nowrap">Estado</th>
+                    <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">Acciones</th>
                  </tr>
               </thead>
               <tbody class="relative">
@@ -119,21 +139,24 @@ import { UiService } from '../../core/services/ui.service';
                  <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
 
                  <tr *ngFor="let item of carteras" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                     <td class="p-4 font-mono text-sm font-bold text-indigo-600">
-                        {{ formatFactura(item.numero_factura) }}
+                     <td class="p-4 font-mono text-sm font-bold text-indigo-600 whitespace-nowrap">
+                        <button (click)="verOrden(item)" class="hover:underline hover:text-indigo-800 transition-all">
+                          {{ formatFactura(item.numero_factura) }}
+                        </button>
                     </td>
-                    <td class="p-4">
-                        <div class="text-sm font-medium text-slate-900">{{ item.cliente }}</div>
+                    <td class="p-4" style="max-width: 160px;">
+                        <div class="text-sm font-medium text-slate-900" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" [title]="item.cliente">{{ item.cliente }}</div>
                     </td>
-                    <td class="p-4 text-sm text-slate-800">
+                    <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
                         {{ formatFechaColombia(item.fecha) }}
                     </td>
-                    <td class="p-4 text-right font-medium">
+                    <td class="p-4 text-right font-medium whitespace-nowrap">
                         {{ item.total_factura | currency:'COP':'symbol':'1.0-0' }}
                     </td>
-                    <td class="p-4 text-right font-semibold text-red-600">
+                    <td class="p-4 text-right font-semibold text-red-600 whitespace-nowrap">
                         {{ item.saldo_pendiente | currency:'COP':'symbol':'1.0-0' }}
-                    </td>                     <td class="p-4 text-sm text-slate-800 text-center">
+                    </td>
+                    <td class="p-4 text-sm text-slate-800 text-center whitespace-nowrap">
                         {{ item.fecha_vencimiento | date:'dd-MMM-yyyy' | lowercase }}
                     </td>
                     <td class="p-4 text-center">
@@ -148,21 +171,29 @@ import { UiService } from '../../core/services/ui.service';
                     </td>
                     <td class="p-4 text-right">
                         <div class="flex justify-end gap-2">
-                            <!-- Registrar Pago (Solo Admins/Distribuidores) -->
-                            <button *ngIf="isAdmin"
+                            <!-- Registrar Pago (Admins o Asesores autorizados como Medellín) -->
+                                <button *ngIf="canRegisterPayment"
                                     (click)="registrarPago(item)"
                                     [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADO'"
-                                    class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                    class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap" 
                                     title="Registrar Pago">
                                 Registrar pago
                             </button>
                             
-                            <!-- Ver Pagos -->
-                            <button (click)="openPagosModal(item)"
-                                    class="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-100 transition-all border border-slate-200" 
-                                    title="Ver Historial de Pagos">
-                                Ver pagos
+                            <!-- Editar (Solo Admins y Migraciones) -->
+                            <button *ngIf="isAdmin && esMigracion(item)"
+                                    (click)="editarMigracion(item)"
+                                    class="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-all border border-blue-200 whitespace-nowrap flex items-center gap-1" 
+                                    title="Editar Carga Inicial">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                Editar
                             </button>
+                                                        <!-- Ver Pagos -->
+                             <button (click)="openPagosModal(item)"
+                                     class="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-100 transition-all border border-slate-200 whitespace-nowrap" 
+                                     title="Ver Historial de Pagos">
+                                 Ver pagos
+                             </button>
                         </div>
                     </td>
                  </tr>
@@ -173,7 +204,169 @@ import { UiService } from '../../core/services/ui.service';
                  </tr>
               </tbody>
            </table>
+           </div>
        </div>
+    </div>
+
+    <!-- Modal Carga Inicial / Migración -->
+    <div *ngIf="showMigracionModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-800 text-white">
+                <div>
+                    <h3 class="text-lg font-bold">{{ editandoVentaId ? 'Editar' : 'Migración de' }} Cartera Antigua</h3>
+                    <p class="text-xs text-slate-300">Este proceso NO afecta el inventario físico ni los reportes de ventas actuales.</p>
+                </div>
+                <button (click)="cerrarModalMigracion()" class="text-slate-300 hover:text-white transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- Información General -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Cliente</label>
+                        <div class="relative">
+                            <input type="text" [formControl]="clientSearchControl" 
+                                (focus)="showClientResults = true"
+                                (blur)="hideClientResults()"
+                                placeholder="Buscar por nombre o código..." 
+                                class="input-premium w-full text-xs pr-10">
+                            
+                            <!-- Resultados de búsqueda -->
+                            <div *ngIf="showClientResults && filteredClientes.length > 0" 
+                                class="absolute z-[60] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto shadow-indigo-500/10 mb-4">
+                                <div *ngFor="let c of filteredClientes" 
+                                    (click)="seleccionarCliente(c)"
+                                    class="px-4 py-2 hover:bg-indigo-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
+                                    <div class="text-[10px] font-bold text-indigo-600 uppercase">{{ c.codigo || 'S/C' }}</div>
+                                    <div class="text-xs text-slate-900 font-semibold">{{ c.razon_social }}</div>
+                                </div>
+                            </div>
+                            <!-- Botón limpiar -->
+                            <button *ngIf="clientSearchControl.value" (click)="clientSearchControl.setValue(''); migracionForm.cliente_id = ''; showClientResults = false" 
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Factura Manual #</label>
+                        <input type="text" [(ngModel)]="migracionForm.numero_factura_manual" placeholder="Ej: 4501" class="input-premium w-full text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Fecha de Factura</label>
+                        <input type="date" [(ngModel)]="migracionForm.fecha" class="input-premium w-full text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Plazo (Días)</label>
+                        <select [(ngModel)]="migracionForm.dias_credito" class="input-premium w-full text-xs">
+                            <option [ngValue]="8">8 Días</option>
+                            <option [ngValue]="15">15 Días</option>
+                            <option [ngValue]="30">30 Días</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Detalle de Productos -->
+                <div class="mb-4">
+                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        Productos en la Factura (Informativo)
+                    </h4>
+                    
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <!-- Buscador Inteligente de Productos -->
+                        <div class="relative mb-4">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">Añadir Producto</label>
+                            <div class="relative">
+                                <input type="text" [formControl]="productSearchControl" 
+                                    (focus)="showProductResults = true"
+                                    (blur)="hideProductResults()"
+                                    placeholder="Escribe nombre o referencia (SKU)..." 
+                                    class="input-premium w-full text-xs pr-10 h-10">
+                                
+                                <!-- Resultados de búsqueda -->
+                                <div *ngIf="showProductResults && filteredProductos.length > 0" 
+                                    class="absolute z-[60] left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto shadow-indigo-500/10">
+                                    <div *ngFor="let p of filteredProductos" 
+                                        (click)="seleccionarProducto(p)"
+                                        class="px-4 py-2 hover:bg-indigo-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
+                                        <div class="flex justify-between items-center mb-0.5">
+                                            <span class="text-[10px] font-bold text-indigo-600 uppercase">{{ p.sku }}</span>
+                                            <span class="text-[10px] font-bold text-slate-400">{{ p.precio_base | currency:'COP':'symbol':'1.0-0' }}</span>
+                                        </div>
+                                        <div class="text-xs text-slate-900 font-semibold">{{ p.nombre }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Items -->
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="text-slate-500 font-bold border-b border-slate-200">
+                                    <th class="py-2 text-left">Producto</th>
+                                    <th class="py-2 text-center w-24">Cant.</th>
+                                    <th class="py-2 text-right w-32">Precio Unit.</th>
+                                    <th class="py-2 text-right w-32">Subtotal</th>
+                                    <th class="py-2 text-center w-12"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let item of migracionForm.items; let i = index" class="border-b border-slate-100 italic">
+                                    <td class="py-2">{{ item.nombre }}</td>
+                                    <td class="py-2 text-center">
+                                        <input type="number" [(ngModel)]="item.cantidad" (change)="calcularFilaMigracion(i)" class="w-16 h-8 border border-slate-200 rounded text-center">
+                                    </td>
+                                    <td class="py-2 text-right">
+                                        <input type="number" [(ngModel)]="item.precio" (change)="calcularFilaMigracion(i)" class="w-24 h-8 border border-slate-200 rounded text-right px-2">
+                                    </td>
+                                    <td class="py-2 text-right font-bold">{{ item.subtotal | currency:'COP':'symbol':'1.0-0' }}</td>
+                                    <td class="py-2 text-center">
+                                        <button (click)="eliminarItemMigracion(i)" class="text-red-400 hover:text-red-600">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="migracionForm.items.length === 0">
+                                    <td colspan="5" class="py-8 text-center text-slate-400 italic">No has añadido productos aún.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-indigo-50/50 font-bold text-sm">
+                                    <td colspan="3" class="py-3 px-4 text-right uppercase">TOTAL DEUDA</td>
+                                    <td class="py-3 text-right text-indigo-700">{{ calcularTotalMigracion() | currency:'COP':'symbol':'1.0-0' }}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Observaciones Adicionales</label>
+                    <textarea [(ngModel)]="migracionForm.observaciones" rows="2" class="input-premium w-full text-xs resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button (click)="cerrarModalMigracion()" class="px-6 py-2 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-100 transition-colors">
+                    Cancelar
+                </button>
+                <button (click)="guardarMigracion()" [disabled]="!migracionForm.cliente_id || !migracionForm.numero_factura_manual || migracionForm.items.length === 0 || guardandoMigracion" 
+                        class="px-8 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50 flex items-center gap-2">
+                    <span *ngIf="guardandoMigracion" class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    {{ guardandoMigracion ? 'Guardando...' : (editandoVentaId ? 'Actualizar Cambios' : 'Confirmar Carga') }}
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal Registrar Pago -->
@@ -390,6 +583,7 @@ export class CarteraComponent implements OnInit {
     asesores: any[] = [];
     fechaInicio: string = '';
     fechaFin: string = '';
+    vieneDeRecaudos: boolean = false;
 
     // Variables Modal Pago
     showPagoModal = false;
@@ -404,16 +598,53 @@ export class CarteraComponent implements OnInit {
     pagos: any[] = [];
     cargandoPagos = false;
     errorPagos = '';
+ 
+    // Variables Modal Migración
+    showMigracionModal = false;
+    editandoVentaId: string | null = null;
+    clientes: any[] = [];
+    filteredClientes: any[] = [];
+    showClientResults = false;
+    clientSearchControl = new FormControl('');
+    productos: any[] = [];
+    filteredProductos: any[] = [];
+    showProductResults = false;
+    productSearchControl = new FormControl('');
+    migracionForm = {
+        cliente_id: '',
+        numero_factura_manual: '',
+        fecha: '',
+        dias_credito: 30,
+        observaciones: 'Migración inicial de cartera',
+        items: [] as any[]
+    };
+    guardandoMigracion = false;
 
      constructor(
         private carteraService: CarteraService,
         private supabase: SupabaseService,
         private authService: AuthService,
-        private uiService: UiService
+        private uiService: UiService,
+        private route: ActivatedRoute,
+        private router: Router
     ) { }
 
     get isAdmin(): boolean {
-        return this.authService.currentUserValue?.role === 'ADMIN';
+        return this.authService.currentUserValue?.role === 'admin_distribuidor';
+    }
+
+    get canRegisterPayment(): boolean {
+        const user = this.authService.currentUserValue;
+        if (!user) return false;
+        if (user.role === 'admin_distribuidor') return true;
+        
+        // Asesores: Permitir si NO son del distribuidor de Santa Marta (Guzman)
+        const SANTA_MARTA_ID = 'e9855cef-e734-4b56-8737-c86c581342cc';
+        return user.role === 'asesor' && user.distribuidor_id !== SANTA_MARTA_ID;
+    }
+
+    verOrden(item: CarteraItem) {
+        this.router.navigate(['/sales', item.venta_id, 'invoice']);
     }
 
     async ngOnInit() {
@@ -431,7 +662,49 @@ export class CarteraComponent implements OnInit {
                     this.loadCartera();
                 });
 
-            await this.loadCartera();
+            // Buscador de clientes para migración
+            this.clientSearchControl.valueChanges.subscribe(val => {
+                if (typeof val === 'string') {
+                    this.filtrarClientes(val);
+                }
+            });
+
+            // Buscador de productos para migración
+            this.productSearchControl.valueChanges.subscribe(val => {
+                if (typeof val === 'string') {
+                    this.filtrarProductos(val);
+                }
+            });
+
+            // Leer parámetro de búsqueda de la URL (para redirección desde notificaciones)
+            const searchParam = this.route.snapshot.queryParamMap.get('search');
+            if (searchParam) {
+                this.searchControl.setValue(searchParam);
+            }
+
+            // Leer params de redirección desde Dashboard (Recaudos Diarios)
+            const asesorIdParam = this.route.snapshot.queryParamMap.get('asesorId');
+            const fechaDesdeParam = this.route.snapshot.queryParamMap.get('fechaDesde');
+            const fechaHastaParam = this.route.snapshot.queryParamMap.get('fechaHasta');
+
+            if (asesorIdParam) {
+                this.filters.asesorId = asesorIdParam;
+                this.vieneDeRecaudos = true;
+            }
+            if (fechaDesdeParam) {
+                this.fechaInicio = fechaDesdeParam;
+                this.filters.fechaDesde = fechaDesdeParam;
+            }
+            if (fechaHastaParam) {
+                this.fechaFin = fechaHastaParam;
+                this.filters.fechaHasta = fechaHastaParam;
+            }
+
+            if (this.vieneDeRecaudos && this.filters.asesorId) {
+                await this.loadCarteraDesdeRecaudos();
+            } else {
+                await this.loadCartera();
+            }
         } catch (err) {
             console.error('Error inicializando cartera', err);
             this.uiService.setLoading(false);
@@ -514,6 +787,36 @@ export class CarteraComponent implements OnInit {
     }
 
     /**
+     * Carga las facturas que tuvieron PAGOS en el periodo seleccionado
+     * para el asesor indicado. Exclusivo para el drill-down desde Recaudos Diarios.
+     * NO modifica ni reemplaza loadCartera().
+     */
+    async loadCarteraDesdeRecaudos() {
+        this.loading = true;
+        this.uiService.setLoading(true);
+        try {
+            const results = await this.carteraService.getFacturasConPagosPeriodo(
+                this.filters.asesorId,
+                this.filters.fechaDesde,
+                this.filters.fechaHasta
+            );
+            this.carteras = results;
+            this.totalCarteraFiltrada = this.carteras.reduce(
+                (sum: number, item: CarteraItem) => sum + Number(item.saldo_pendiente || 0), 0
+            );
+            this.documentosPendientes = this.carteras.filter(
+                (item: CarteraItem) => Number(item.saldo_pendiente || 0) > 0
+            ).length;
+        } catch (error) {
+            console.error('Error loading cartera desde recaudos', error);
+            this.carteras = [];
+        } finally {
+            this.loading = false;
+            this.uiService.setLoading(false);
+        }
+    }
+
+    /**
      * Calcula el estado visual dinámico (VENCIDA)
      */
     getDisplayEstado(item: CarteraItem): string {
@@ -561,6 +864,16 @@ export class CarteraComponent implements OnInit {
         this.loadCartera();
     }
 
+    limpiarFiltroRecaudos() {
+        this.vieneDeRecaudos = false;
+        this.filters.asesorId = '';
+        this.fechaInicio = '';
+        this.fechaFin = '';
+        this.filters.fechaDesde = '';
+        this.filters.fechaHasta = '';
+        this.loadCartera();
+    }
+
     formatFactura(num: number | null | undefined) {
         return num ? `#${num.toString().padStart(6, '0')}` : '—';
     }
@@ -575,12 +888,23 @@ export class CarteraComponent implements OnInit {
         try {
             // Si llega un string de fecha sin zona, forzarlo a UTC para que Intl lo mueva a Bogota
             let valueToParse = fecha;
-            if (typeof fecha === 'string' && fecha.includes('T') && !fecha.endsWith('Z') && !fecha.includes('+')) {
-                valueToParse = fecha + 'Z';
+            
+            // Si la fecha es YYYY-MM-DD (10 caracteres), la tratamos como fecha local pura
+            // para que no importe en qué zona horaria esté el navegador.
+            if (typeof fecha === 'string' && (fecha.length === 10 || fecha.includes('T00:00:00'))) {
+                const datePart = fecha.substring(0, 10);
+                const [year, month, day] = datePart.split('-').map(Number);
+                // Mes 0-indexed en JS
+                const localDate = new Date(year, month - 1, day);
+                return new Intl.DateTimeFormat('es-CO', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(localDate);
             }
 
+            // Para fechas con hora real (ventas nuevas), usamos el formateador normal
             const dateObj = new Date(valueToParse);
-
             return new Intl.DateTimeFormat('es-CO', {
                 timeZone: 'America/Bogota',
                 year: 'numeric',
@@ -723,6 +1047,250 @@ export class CarteraComponent implements OnInit {
             console.error('Error al reversar pago:', err);
             alert('Error al reversar el pago: ' + (err.message || err));
         }
+    }
+
+    // Lógica de Migración
+    esMigracion(item: CarteraItem): boolean {
+        // Las facturas de migración suelen tener el vendedor "Sistema" 
+        // y una observación específica o no tener fecha de autorización.
+        return item.vendedor === 'Sistema' || 
+               item.observaciones?.includes('Migración') === true;
+    }
+
+    async editarMigracion(item: CarteraItem) {
+        this.uiService.setLoading(true);
+        try {
+            this.editandoVentaId = item.venta_id;
+            
+            // Cargar datos completos del producto (necesitamos los items)
+            // Reutilizamos el servicio de ventas que ya tiene getById con items
+            const { data: venta, error } = await this.supabase
+                .from('ventas')
+                .select(`
+                    id, 
+                    cliente_id, 
+                    numero_factura, 
+                    fecha, 
+                    dias_credito, 
+                    observaciones,
+                    clientes(razon_social),
+                    detalle_ventas(
+                        id,
+                        producto_id,
+                        cantidad,
+                        precio_unitario,
+                        subtotal,
+                        productos(nombre)
+                    )
+                `)
+                .eq('id', item.venta_id)
+                .single();
+
+            if (error) throw error;
+
+            // Poblar el formulario
+            this.migracionForm = {
+                cliente_id: venta.cliente_id,
+                numero_factura_manual: venta.numero_factura?.toString() || '',
+                fecha: venta.fecha,
+                dias_credito: venta.dias_credito || 30,
+                observaciones: venta.observaciones || '',
+                items: (venta.detalle_ventas || []).map((d: any) => {
+                    const prodObj: any = d.productos;
+                    const prodNombre = Array.isArray(prodObj) ? prodObj[0]?.nombre : prodObj?.nombre;
+                    return {
+                        producto_id: d.producto_id,
+                        nombre: prodNombre || 'Producto',
+                        cantidad: d.cantidad,
+                        precio: d.precio_unitario,
+                        subtotal: d.subtotal
+                    };
+                })
+            };
+
+            // Preparar buscadores
+            await this.abrirModalMigracion(); // Esto carga clis/prods y abre el modal
+            
+            // Ajustar el nombre del cliente en el buscador
+            const clienteObj: any = venta.clientes;
+            const nombreCliente = Array.isArray(clienteObj) ? clienteObj[0]?.razon_social : clienteObj?.razon_social;
+            this.clientSearchControl.setValue(nombreCliente || '', { emitEvent: false });
+            
+        } catch (err) {
+            console.error('Error cargando para editar:', err);
+            alert('No se pudo cargar la información para editar.');
+        } finally {
+            this.uiService.setLoading(false);
+        }
+    }
+
+    async abrirModalMigracion() {
+        this.showMigracionModal = true;
+        
+        // Si no estamos editando, resetear el formulario
+        if (!this.editandoVentaId) {
+            this.migracionForm.fecha = new Date().toISOString().split('T')[0];
+        }
+
+        this.uiService.setLoading(true);
+        try {
+            // Cargar clientes y productos para el selector si no están cargados
+            if (this.clientes.length === 0 || this.productos.length === 0) {
+                const [{ data: clis }, { data: prods }] = await Promise.all([
+                    this.supabase.from('clientes').select('id, codigo, razon_social').order('razon_social'),
+                    this.supabase.from('productos').select('id, nombre, sku, precio_base').eq('activo', true).order('nombre')
+                ]);
+                this.clientes = clis || [];
+                this.filteredClientes = this.clientes;
+                this.productos = prods || [];
+                this.filteredProductos = this.productos;
+            }
+        } catch (err) {
+            console.error('Error loading migration data', err);
+        } finally {
+            this.uiService.setLoading(false);
+        }
+    }
+
+    filtrarClientes(term: string) {
+        if (!term) {
+            this.filteredClientes = this.clientes;
+            return;
+        }
+        const s = term.toLowerCase();
+        this.filteredClientes = this.clientes.filter(c => 
+            (c.razon_social?.toLowerCase().includes(s)) || (c.codigo?.toLowerCase().includes(s))
+        );
+        this.showClientResults = true;
+    }
+
+    seleccionarCliente(cliente: any) {
+        this.migracionForm.cliente_id = cliente.id;
+        this.clientSearchControl.setValue(cliente.razon_social, { emitEvent: false });
+        this.showClientResults = false;
+    }
+
+    filtrarProductos(term: string) {
+        if (!term) {
+            this.filteredProductos = this.productos;
+            return;
+        }
+        const s = term.toLowerCase();
+        this.filteredProductos = this.productos.filter(p => 
+            (p.nombre?.toLowerCase().includes(s)) || (p.sku?.toLowerCase().includes(s))
+        );
+        this.showProductResults = true;
+    }
+
+    seleccionarProducto(producto: any) {
+        // Evitar duplicados
+        const exists = this.migracionForm.items.find(i => i.producto_id === producto.id);
+        if (exists) {
+            exists.cantidad++;
+            exists.subtotal = exists.cantidad * exists.precio;
+        } else {
+            this.migracionForm.items.push({
+                producto_id: producto.id,
+                nombre: producto.nombre,
+                cantidad: 1,
+                precio: Number(producto.precio_base || 0),
+                subtotal: Number(producto.precio_base || 0)
+            });
+        }
+        
+        this.productSearchControl.setValue('', { emitEvent: false });
+        this.showProductResults = false;
+    }
+
+    hideClientResults() {
+        // Pequeño delay para permitir que el click en la lista se procese antes de ocultarla
+        setTimeout(() => this.showClientResults = false, 200);
+    }
+
+    hideProductResults() {
+        setTimeout(() => this.showProductResults = false, 200);
+    }
+
+    cerrarModalMigracion() {
+        if (this.guardandoMigracion) return;
+        this.showMigracionModal = false;
+        this.editandoVentaId = null;
+        this.clientSearchControl.setValue('');
+        this.productSearchControl.setValue('');
+        this.showClientResults = false;
+        this.showProductResults = false;
+        this.migracionForm = {
+            cliente_id: '',
+            numero_factura_manual: '',
+            fecha: new Date().toISOString().split('T')[0],
+            dias_credito: 30,
+            observaciones: 'Migración inicial de cartera',
+            items: []
+        };
+    }
+
+
+    calcularFilaMigracion(index: number) {
+        const item = this.migracionForm.items[index];
+        item.subtotal = item.cantidad * item.precio;
+    }
+
+    eliminarItemMigracion(index: number) {
+        this.migracionForm.items.splice(index, 1);
+    }
+
+    calcularTotalMigracion() {
+        return this.migracionForm.items.reduce((sum, i) => sum + i.subtotal, 0);
+    }
+
+    async guardarMigracion() {
+        if (this.guardandoMigracion) return;
+        const total = this.calcularTotalMigracion();
+        if (total <= 0) return;
+
+        this.guardandoMigracion = true;
+        try {
+            if (this.editandoVentaId) {
+                // Modo Edición
+                await this.carteraService.actualizarFacturaAntigua(this.editandoVentaId, {
+                    ...this.migracionForm,
+                    total: total
+                });
+            } else {
+                // Modo Creación
+                await this.carteraService.cargarFacturaAntigua({
+                    ...this.migracionForm,
+                    total: total
+                });
+            }
+
+            // 1. Resetear el estado de carga y cerrar visualmente de inmediato
+            this.guardandoMigracion = false;
+            this.showMigracionModal = false;
+            
+            // 2. Limpiar el formulario manualmente
+            this.migracionForm = {
+                cliente_id: '',
+                numero_factura_manual: '',
+                fecha: new Date().toISOString().split('T')[0],
+                dias_credito: 30,
+                observaciones: 'Migración inicial de cartera',
+                items: []
+            };
+
+            // 3. Notificar y refrescar
+            const wasEditing = !!this.editandoVentaId;
+            this.editandoVentaId = null;
+            
+            setTimeout(() => {
+                alert(wasEditing ? 'Migración actualizada correctamente.' : 'Carga de cartera histórica completada.');
+                this.loadCartera();
+            }, 100);
+        } catch (err: any) {
+            console.error('Error en migración:', err);
+            this.guardandoMigracion = false;
+            alert('Error al procesar: ' + (err.message || 'Error desconocido'));
+        } 
     }
 
     cerrarModalVerPagos() {

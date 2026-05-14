@@ -80,6 +80,22 @@
   }
 }
 
+.btn-dark {
+  padding: 0.45rem 1rem;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  background: #111827;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #1f2937;
+  }
+}
+
 .btn-success {
   padding: 0.45rem 1rem;
   border: 1px solid #059669;
@@ -154,7 +170,7 @@
     gap: 4px;
   }
 
-  .btn-print, .btn-pdf, .btn-success, .btn-anular {
+  .btn-print, .btn-pdf, .btn-dark, .btn-success, .btn-anular {
     font-size: 0.72rem;
     padding: 0.3rem 0.6rem;
   }
@@ -241,6 +257,10 @@
     font-weight: 700;
     color: #1f2937;
     margin: 0;
+
+    .suffix-highlight {
+      color: #ea580c; // Deep orange-600 para resaltar el "-1" de Factura Electrónica
+    }
   }
 }
 
@@ -463,26 +483,98 @@
 }
 
 /* =====================================
+/* =====================================
    PRINT
 ===================================== */
 @media print {
+  /* Reset radical para evitar desbordamientos */
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Forzar reseteo de los contenedores globales del layout de la app */
+  .layout-wrapper, 
+  .layout-main, 
+  .layout-content, 
+  .page-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
   .no-print {
     display: none !important;
   }
 
-  .page-wrapper {
-    background: white;
-    padding: 0;
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .invoice-zoom-wrapper {
+    display: block !important;
+    zoom: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .invoice {
-    width: 100%;
-    border: none;
-    box-shadow: none;
+    width: 100% !important;
+    max-width: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    position: relative !important;
+    page-break-after: avoid !important; /* Evita forzar página después */
   }
 
-  @page {
-    margin: 1cm;
-    size: A4;
+  .client-table, 
+  .dates-table, 
+  .products-table, 
+  .totals-table {
+    border: 1pt solid #e2e8f0 !important;
+    border-collapse: collapse !important;
+  }
+
+  .client-table td, 
+  .dates-table td, 
+  .products-table td, 
+  .products-table th,
+  .totals-table td {
+    border: 1pt solid #e2e8f0 !important;
+    padding: 6px !important;
+  }
+
+  .products-table thead th {
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Añadimos el margen real del papel aquí para que no salgan los textos del navegador */
+  .page-wrapper {
+    padding: 1.5cm !important;
+    background: white !important;
   }
 }

@@ -1,9 +1,10 @@
-import { Component, OnInit, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, HostListener, inject } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SalesService } from './services/sales.service';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-sales-invoice',
@@ -14,7 +15,6 @@ import jsPDF from 'jspdf';
 })
 export class SalesInvoiceComponent implements OnInit {
   sale: any;
-  currentUser: { id: string; rol: string } | null = null;
   isLoading = true;
   today = new Date();
   fillerRows: number[] = [];
@@ -37,15 +37,15 @@ export class SalesInvoiceComponent implements OnInit {
     }
   }
 
-  get isAdmin(): boolean {
-    return this.currentUser?.rol === 'admin_distribuidor';
-  }
+  private authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private salesService = inject(SalesService);
+  private location = inject(Location);
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private salesService: SalesService
-  ) { }
+  isAdmin = this.authService.isAdmin;
+
+  constructor() { }
 
   async ngOnInit() {
     this.updateScale();
@@ -61,18 +61,6 @@ export class SalesInvoiceComponent implements OnInit {
 
       // Forzar detección de cambios con nueva referencia
       this.sale = { ...this.sale };
-
-      // Cargar rol del usuario autenticado desde la sesión de Supabase
-      const { data: authData } = await (this.salesService as any)['supabase'].auth.getUser();
-      const userId = authData?.user?.id;
-      if (userId) {
-        const { data: profile } = await (this.salesService as any)['supabase']
-          .from('usuarios')
-          .select('id, rol')
-          .eq('id', userId)
-          .single();
-        this.currentUser = profile ?? null;
-      }
 
       const itemCount = this.sale?.detalle_ventas?.length || 0;
       const fill = Math.max(0, 8 - itemCount);
@@ -90,11 +78,25 @@ export class SalesInvoiceComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/sales']);
+    this.location.back();
   }
 
   async editarOrden() {
-    if (this.sale?.estado === 'CONFIRMADA') {
+    if (this.sale?.estado === 'AUTORIZADO') {
+      const ok = confirm('Esta orden ya está autorizada. Al editarla, se devolverá automáticamente el stock a la bodega y se cancelará la deuda en cartera. ¿Desea continuar?');
+      if (!ok) return;
+      
+      this.isLoading = true;
+      try {
+        await this.salesService.revertirVenta(this.sale.id);
+      } catch (err) {
+        console.error('[Invoice] Error al revertir venta autorizada:', err);
+        this.isLoading = false;
+        alert('Error al procesar la reversión de la orden.');
+        return;
+      }
+      this.isLoading = false;
+    } else if (this.sale?.estado === 'CONFIRMADA') {
       try {
         await this.salesService.revertirVenta(this.sale.id);
       } catch (err) {
@@ -142,20 +144,32 @@ export class SalesInvoiceComponent implements OnInit {
     pdf.save(fileName);
   }
 
-  async anularVenta() {
-    if (!confirm('¿Está seguro de anular esta orden? Esta acción es irreversible.')) return;
+  imprimir() {
+    window.print();
+  }
 
+  async anularVenta() {
+    let msg = '¿Está seguro de anular esta orden? Esta acción es irreversible.';
+    if (this.sale?.estado === 'AUTORIZADO') {
+      msg = '¡ATENCIÓN! Esta orden ya está AUTORIZADA. Al anularla, el stock regresará automáticamente a la bodega y se cancelará la cuenta por cobrar. ¿Desea anularla?';
+    }
+
+    if (!confirm(msg)) return;
+
+    this.isLoading = true;
     try {
       await this.salesService.anularVenta(this.sale.id);
       this.router.navigate(['/sales']);
     } catch (error) {
       console.error('Error al anular la orden:', error);
       alert('Error al anular la orden.');
+    } finally {
+      this.isLoading = false;
     }
   }
 
   async autorizarOrden() {
-    if (!this.isAdmin || this.sale?.estado !== 'CONFIRMADA') return;
+    if (!this.isAdmin() || this.sale?.estado !== 'CONFIRMADA') return;
 
     const ok = confirm('¿Desea autorizar esta orden? Esto afectará el inventario.');
     if (!ok) return;

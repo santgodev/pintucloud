@@ -5,22 +5,25 @@
     <button (click)="goBack()" class="btn-back text-indigo-600 hover:text-indigo-800">← Volver</button>
     <div class="toolbar-right">
 
-      <!-- Admin only: Editar (BORRADOR o CONFIRMADA) -->
-      <button *ngIf="isAdmin && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA')" (click)="editarOrden()"
+      <!-- Admin only: Editar (BORRADOR, CONFIRMADA o AUTORIZADO) -->
+      <button *ngIf="isAdmin() && (sale?.estado === 'BORRADOR' || sale?.estado === 'CONFIRMADA' || sale?.estado === 'AUTORIZADO')" (click)="editarOrden()"
         class="btn-print">
         ✏ Editar Orden
       </button>
+
+      <!-- Todos: Imprimir -->
+      <button *ngIf="sale" (click)="imprimir()" class="btn-dark">🖨 Imprimir</button>
 
       <!-- Todos: Descargar PDF -->
       <button *ngIf="sale" (click)="descargarPDF()" class="btn-pdf">⬇ Descargar PDF</button>
 
       <!-- Admin only: Autorizar (solo si CONFIRMADA) -->
-      <button *ngIf="isAdmin && sale?.estado === 'CONFIRMADA'" (click)="autorizarOrden()" class="btn-success">
+      <button *ngIf="isAdmin() && sale?.estado === 'CONFIRMADA'" (click)="autorizarOrden()" class="btn-success">
         ✅ Autorizar Orden
       </button>
 
-      <!-- Admin only: Anular (solo si CONFIRMADA) -->
-      <button *ngIf="isAdmin && sale?.estado === 'CONFIRMADA'" (click)="anularVenta()" class="btn-anular">
+      <!-- Admin only: Anular (CONFIRMADA o AUTORIZADO) -->
+      <button *ngIf="isAdmin() && (sale?.estado === 'CONFIRMADA' || sale?.estado === 'AUTORIZADO')" (click)="anularVenta()" class="btn-anular">
         ✕ Anular Orden
       </button>
 
@@ -46,8 +49,8 @@
 
       <!-- Emisor -->
       <div class="emisor">
-        <div class="logo-box">
-          <img src="logo_superior.png" alt="Brochas y Rodillos Superior"
+        <div *ngIf="sale?.logoUrl" class="logo-box">
+          <img [src]="sale.logoUrl" alt="Logo Distribuidor"
             style="height:150px; width:auto; max-width:none; object-fit:contain; display:block;">
         </div>
       </div>
@@ -58,8 +61,9 @@
       <!-- Título factura -->
       <div class="inv-title">
         <p class="inv-type">ORDEN DE PEDIDO</p>
-        <p class="inv-number font-bold text-lg">No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}-{{
-          sale?.tipo_documento }}</p>
+        <p class="inv-number font-bold text-lg">
+          No. {{ sale?.numero_factura?.toString().padStart(6, '0') }}<span [class.suffix-highlight]="sale?.tipo_documento === 1">-{{ sale?.tipo_documento }}</span>
+        </p>
       </div>
 
     </div>
@@ -93,11 +97,24 @@
           </tr>
           <tr>
             <td class="label">Bodega Despacho</td>
-            <td class="value text-slate-900 font-semibold" colspan="3">{{ sale?.bodegas?.nombre || '—' }}</td>
+            <td class="value text-slate-900 font-semibold">{{ sale?.bodegas?.nombre || '—' }}</td>
+            <td class="label">Entrega</td>
+            <td class="value text-slate-900 font-semibold">
+              <span *ngIf="sale?.entrega_transportadora" class="text-indigo-700 font-bold">🚚 TRANSPORTADORA</span>
+              <span *ngIf="!sale?.entrega_transportadora" class="text-slate-500">PROPIA</span>
+            </td>
           </tr>
           <tr>
             <td class="label">Asesor</td>
-            <td class="value text-slate-900 font-semibold" colspan="3">Jose R Guzman G - 313 8643696</td>
+            <td class="value text-slate-900 font-semibold" colspan="3">
+              <ng-container *ngIf="sale?.distribuidorName?.toString()?.toUpperCase()?.includes('SANTA MARTA'); else advisorDynamic">
+                Jose R Guzman G - 313 8643696
+              </ng-container>
+              <ng-template #advisorDynamic>
+                {{ sale?.vendedorName || 'Asesor Comercial' }}
+                {{ sale?.vendedorPhone ? ' - ' + sale?.vendedorPhone : '' }}
+              </ng-template>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -143,12 +160,6 @@
         </tr>
       </thead>
       <tbody>
-        <!-- 🔍 DEBUG TEMPORAL - eliminar después -->
-        <tr *ngIf="(sale?.detalle_ventas?.length || 0) === 0" style="background:#fff3cd;">
-          <td colspan="5" style="padding:8px; color:#856404; font-size:11px;">
-            ⚠ DEBUG: detalle_ventas = {{ sale?.detalle_ventas | json }}
-          </td>
-        </tr>
         <tr *ngFor="let item of (sale?.detalle_ventas || []); let i = index">
           <td class="center">{{ i + 1 }}</td>
           <td>{{ item.productos?.nombre || item.producto_id || 'SIN NOMBRE' }}</td>
@@ -182,17 +193,13 @@
       <!-- Right totals box -->
       <table class="totals-table">
         <tbody>
-          <tr>
-            <td class="tot-label">Subtotal bruto</td>
+          <tr *ngIf="sale?.descuento_porcentaje > 0">
+            <td class="tot-label">Subtotal</td>
             <td class="tot-value">$ {{ (sale?.total + (sale?.descuento_valor || 0)) | number:'1.2-2' }}</td>
           </tr>
           <tr *ngIf="sale?.descuento_porcentaje > 0">
             <td class="tot-label">Descuento ({{ sale?.descuento_porcentaje }}%)</td>
             <td class="tot-value" style="color:#dc2626;">- $ {{ sale?.descuento_valor | number:'1.2-2' }}</td>
-          </tr>
-          <tr>
-            <td class="tot-label">IVA (0%)</td>
-            <td class="tot-value">$ 0.00</td>
           </tr>
           <tr class="total-row text-xl font-bold text-indigo-600">
             <td class="tot-label">Total a Pagar</td>

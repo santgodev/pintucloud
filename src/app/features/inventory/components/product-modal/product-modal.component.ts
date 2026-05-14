@@ -8,18 +8,20 @@ import { InventoryService } from '../../services/inventory.service';
    standalone: true,
    imports: [CommonModule, ReactiveFormsModule],
    template: `
-    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-       <div class="bg-white border border-slate-200 rounded-xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200">
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+       <div class="bg-white border border-slate-200 rounded-t-2xl sm:rounded-xl w-full max-w-lg shadow-2xl animate-in fade-in slide-in-from-bottom-4 sm:zoom-in duration-200 flex flex-col" style="max-height: 92vh;">
           
-          <div class="p-5 border-b border-slate-200 flex justify-between items-center">
-             <h2 class="text-xl font-bold text-main">{{ product ? 'Editar Producto' : 'Nuevo Producto' }}</h2>
-             <button (click)="onClose.emit()" class="text-muted hover:text-main">
+          <!-- Header -->
+          <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center flex-shrink-0">
+             <h2 class="text-lg sm:text-xl font-bold text-main">{{ product ? 'Editar Producto' : 'Nuevo Producto' }}</h2>
+             <button (click)="onClose.emit()" class="text-muted hover:text-main p-1">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
              </button>
           </div>
 
-          <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="p-6">
-             <div class="space-y-5">
+          <!-- Body scrollable -->
+          <form [formGroup]="productForm" (ngSubmit)="onSubmit()" class="flex flex-col flex-1 min-h-0">
+             <div class="space-y-4 p-4 sm:p-6 overflow-y-auto flex-1">
                 <!-- Bodega Selection (Mandatory for distribution) -->
                 <div *ngIf="!product" class="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <label class="block text-sm font-bold text-main mb-2 flex items-center gap-2">
@@ -87,11 +89,18 @@ import { InventoryService } from '../../services/inventory.service';
                    <textarea formControlName="description" class="input-premium w-full h-20" placeholder="Detalles técnicos, dimensiones, etc..."></textarea>
                 </div>
 
-                <div class="grid-form">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                         <label class="block text-sm font-medium text-main mb-1">Valor de Compra</label>
+                         <div class="relative">
+                            <span class="absolute left-3 top-2.5 text-muted text-xs">$</span>
+                            <input formControlName="cost_price" type="number" class="input-premium w-full pl-6" placeholder="0" min="0">
+                         </div>
+                    </div>
                     <div>
                          <label class="block text-sm font-medium text-main mb-1">Precio de Venta</label>
                          <div class="relative">
-                            <span class="absolute left-3 top-2 text-muted">$</span>
+                            <span class="absolute left-3 top-2.5 text-muted text-xs">$</span>
                             <input formControlName="price" type="number" class="input-premium w-full pl-6" placeholder="0" min="0">
                          </div>
                     </div>
@@ -108,13 +117,15 @@ import { InventoryService } from '../../services/inventory.service';
                     </div>
                 </div>
 
-                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center" *ngIf="product">
-                    <div>
-                        <span class="block text-sm font-bold text-slate-700">Stock Actual</span>
-                        <span class="block text-xs text-slate-500">Utilice los ajustes de inventario para modificar</span>
-                    </div>
-                    <div class="text-xl font-bold text-slate-900">{{ product.stock }} unidades</div>
-                </div>
+                 <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg" *ngIf="product">
+                     <div class="flex flex-wrap justify-between items-center gap-2">
+                         <div>
+                             <span class="block text-sm font-bold text-slate-700">Stock Actual</span>
+                             <span class="block text-xs text-slate-500">Utilice los ajustes de inventario para modificar</span>
+                         </div>
+                         <div class="text-xl font-bold text-slate-900">{{ product.stock }} <span class="text-sm font-medium text-slate-500">unidades</span></div>
+                     </div>
+                 </div>
                 
                 <div class="pt-2">
                    <label class="block text-sm font-medium text-main mb-2">Imagen del Producto</label>
@@ -146,9 +157,10 @@ import { InventoryService } from '../../services/inventory.service';
                 </div>
              </div>
 
-             <div class="mt-8 pt-4 border-t border-slate-100 flex justify-end gap-3">
-                <button type="button" (click)="onClose.emit()" class="btn btn-outline min-w-[100px]">Cancelar</button>
-                <button type="submit" [disabled]="productForm.invalid || isLoading" class="btn btn-primary flex items-center gap-2 px-6">
+             <!-- Footer sticky -->
+             <div class="p-4 sm:p-5 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 flex-shrink-0">
+                <button type="button" (click)="onClose.emit()" class="btn btn-outline w-full sm:w-auto sm:min-w-[100px] order-2 sm:order-1">Cancelar</button>
+                <button type="submit" [disabled]="productForm.invalid || isLoading" class="btn btn-primary flex items-center justify-center gap-2 w-full sm:w-auto px-6 order-1 sm:order-2">
                    <span *ngIf="isLoading" class="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full"></span>
                    {{ product ? 'Guardar Cambios' : 'Confirmar e Ingresar' }}
                 </button>
@@ -190,7 +202,8 @@ export class ProductModalComponent implements OnInit {
          imageUrl: [''],
          bodegaId: [''],
          grupo: [''],
-         visible_catalogo: [false]
+         visible_catalogo: [false],
+         cost_price: [0, [Validators.required, Validators.min(0)]]
       });
    }
 
@@ -223,7 +236,8 @@ export class ProductModalComponent implements OnInit {
             category: this.product.category || 'general',
             imageUrl: this.product.imageUrl,
             grupo: this.product.grupo || '',
-            visible_catalogo: this.product.visible_catalogo ?? false
+            visible_catalogo: this.product.visible_catalogo ?? false,
+            cost_price: this.product.pricePurchase || 0
          });
          this.imagePreview = this.product.imageUrl;
       }
@@ -290,12 +304,11 @@ export class ProductModalComponent implements OnInit {
                productId: this.product.productId,
                inventoryId: this.product.id,
                name: formVal.name,
-               price: formVal.price,
-               description: formVal.description,
-               imageUrl: formVal.imageUrl, // Existing URL
                category: formVal.category,
+               price: formVal.price,
                stock_minimo: formVal.stock_minimo,
                stock: formVal.stock,
+               cost_price: formVal.cost_price,
                grupo: formVal.grupo || null,
                visible_catalogo: formVal.visible_catalogo ?? false
             }, this.selectedFile || undefined); // Only pass file if new one selected
@@ -316,7 +329,8 @@ export class ProductModalComponent implements OnInit {
                stock_minimo: formVal.stock_minimo,
                category: formVal.category || 'general',
                grupo: formVal.grupo || null,
-               visible_catalogo: formVal.visible_catalogo ?? false
+               visible_catalogo: formVal.visible_catalogo ?? false,
+               precio_compra: formVal.cost_price
             }, formVal.stock, formVal.bodegaId);
          }
 

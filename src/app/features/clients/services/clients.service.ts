@@ -210,4 +210,18 @@ export class ClientsService {
 
         if (error) throw error;
     }
+
+    async deleteClient(id: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('clientes')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            if (error.code === '23503') {
+                throw new Error('No se puede eliminar este cliente porque ya tiene historial de ventas o cartera. Para "borrarlo" debe estar sin movimientos.');
+            }
+            throw error;
+        }
+    }
 }

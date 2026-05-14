@@ -346,6 +346,7 @@ export class PurchasesService {
         const { data, error } = await this.supabase
             .from('productos')
             .select('id, nombre, sku, precio_base')
+            .eq('activo', true)
             .order('nombre');
 
         if (error) throw new Error(error.message);

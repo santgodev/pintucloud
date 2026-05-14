@@ -83,7 +83,7 @@ export class ClientsComponent implements OnInit {
 
    get isAdmin(): boolean {
       const role = this.authService.currentUserValue?.role;
-      return role === 'ADMIN';
+      return role === 'admin_distribuidor';
    }
 
    formatCurrency(valor: number): string {
@@ -180,5 +180,23 @@ export class ClientsComponent implements OnInit {
    openEditModal(client: Client) {
       this.selectedClient = null;
       this.editarCliente(client);
+   }
+
+   async eliminarCliente(client: Client) {
+      const msg = `¿Estás seguro de eliminar el cliente "${client.razon_social}"? Esta acción no se puede deshacer.`;
+      
+      if (confirm(msg)) {
+         try {
+            this.uiService.setLoading(true);
+            await this.clientsService.deleteClient(client.id);
+            alert('Cliente eliminado correctamente.');
+            this.refreshClients();
+         } catch (err: any) {
+            console.error(err);
+            alert('Error al eliminar: ' + (err.message || err));
+         } finally {
+            this.uiService.setLoading(false);
+         }
+      }
    }
 }

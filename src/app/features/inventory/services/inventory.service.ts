@@ -39,10 +39,20 @@ export class InventoryService {
         return data || [];
     }
 
+    async getBodegasByDistribuidor(distribuidorId: string): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('bodegas')
+            .select('*')
+            .eq('distribuidor_id', distribuidorId);
+        if (error) { console.error(error); return []; }
+        return data || [];
+    }
+
     async getCategories(): Promise<string[]> {
         const { data, error } = await this.supabase
             .from('productos')
             .select('categoria')
+            .eq('activo', true)
             .order('categoria');
 
         if (error) {
@@ -57,7 +67,8 @@ export class InventoryService {
     async getGrupos(): Promise<string[]> {
         const { data, error } = await this.supabase
             .from('productos')
-            .select('grupo');
+            .select('grupo')
+            .eq('activo', true);
 
         if (error) {
             console.error('Error fetching grupos:', error);
@@ -97,18 +108,12 @@ export class InventoryService {
                 stock_minimo,
                 grupo,
                 visible_catalogo,
-                inventario_bodega (id, cantidad, bodega_id, bodegas(id, nombre))
+                activo,
+                inventario_bodega (id, cantidad, bodega_id, bodegas(id, nombre, maneja_inventario))
             `);
 
-        // If a specific warehouse is requested, we filter the nested inventory_bodega relation
-        // Note: Supabase doesn't support full LEFT JOIN filtering in a single select easily, 
-        // but we can map it in frontend to show stock 0.
-        // However, we apply the filter to the joined table to only get relevant records for that product.
-        if (bodegaId) {
-            query = query.filter('inventario_bodega.bodega_id', 'eq', bodegaId);
-        } else if (profile?.rol === 'asesor' && profile?.bodega_asignada_id) {
-            query = query.filter('inventario_bodega.bodega_id', 'eq', profile.bodega_asignada_id);
-        }
+        // Filter active only for non-admins or as default
+        query = query.eq('activo', true);
 
         // Apply commercial ordering
         query = query.order('orden', { ascending: true });
@@ -122,22 +127,35 @@ export class InventoryService {
                 }
 
                 const resultItems: InventoryItem[] = [];
+                const targetBodegaId = bodegaId || (profile?.rol === 'asesor' ? profile?.bodega_asignada_id : null);
 
                 (data || []).forEach((prod: any) => {
                     const priceSale = prod.precio_base || 0;
-                    const pricePurchase = prod.precio_compra || 0;
-                    const invRecords = prod.inventario_bodega || [];
+                    
+                    // 🛡️ SECURITY: Mask buy price for advisors
+                    const isAsesor = profile?.rol === 'asesor';
+                    const pricePurchase = isAsesor ? 0 : (prod.precio_compra || 0);
+
+                    let invRecords = prod.inventario_bodega || [];
+
+                    // Filter by target bodega OR by managed inventories
+                    if (targetBodegaId) {
+                        invRecords = invRecords.filter((inv: any) => inv.bodega_id === targetBodegaId);
+                    } else {
+                        // Only consider warehouses that handle physical inventory
+                        invRecords = invRecords.filter((inv: any) => inv.bodegas?.maneja_inventario === true);
+                    }
 
                     if (invRecords.length === 0) {
-                        // Product exists but has NO record in this bodega (or any if no bodegaId)
+                        // Product exists but NOT matching the targeted bodega (or no record at all)
                         // Interpretation: stock = 0
                         resultItems.push({
-                            id: '', // No inventory record ID
+                            id: '', 
                             productId: prod.id,
                             productName: prod.nombre,
                             sku: prod.sku,
-                            bodegaId: bodegaId || profile?.bodega_asignada_id || '',
-                            bodegaName: bodegaId ? 'Carga Inicial' : 'Falta Inventario Inicial',
+                            bodegaId: targetBodegaId || '',
+                            bodegaName: targetBodegaId ? 'Sin Stock' : 'Sin Bodega',
                             stock: 0,
                             price: priceSale,
                             priceSale,
@@ -173,7 +191,7 @@ export class InventoryService {
                                 price: priceSale,
                                 priceSale,
                                 pricePurchase,
-                                inventoryValue: quantity * pricePurchase,
+                                inventoryValue: isAsesor ? 0 : (quantity * pricePurchase),
                                 stockMinimo: prod.stock_minimo,
                                 imageUrl: prod.imagen_url,
                                 description: prod.descripcion,
@@ -217,6 +235,7 @@ export class InventoryService {
         imageUrl?: string;
         grupo?: string;
         visible_catalogo?: boolean;
+        precio_compra?: number;
     }, initialStock: number, targetBodegaId?: string): Promise<string> {
 
         const userResponse = await this.supabase.auth.getUser();
@@ -254,7 +273,8 @@ export class InventoryService {
             categoria: product.category,
             distribuidor_id: userData.distribuidor_id,
             grupo: product.grupo || null,
-            visible_catalogo: product.visible_catalogo ?? false
+            visible_catalogo: product.visible_catalogo ?? false,
+            precio_compra: product.precio_compra || 0
         };
 
         const { data: prodData, error: prodError } = await this.supabase
@@ -310,7 +330,8 @@ export class InventoryService {
                 imagen_url: finalImageUrl,
                 categoria: productData.category,
                 grupo: productData.grupo || null,
-                visible_catalogo: productData.visible_catalogo ?? false
+                visible_catalogo: productData.visible_catalogo ?? false,
+                precio_compra: productData.cost_price || 0
             })
             .eq('id', productData.productId);
 
@@ -360,5 +381,42 @@ export class InventoryService {
             console.error('Error registrando inventario inicial:', error);
             throw error;
         }
+    }
+
+    async deleteProduct(productId: string): Promise<{ success: boolean, method: 'deleted' | 'inactivated' }> {
+        // 1. Check if there is stock in any warehouse
+        const { data: invData, error: invError } = await this.supabase
+            .from('inventario_bodega')
+            .select('cantidad')
+            .eq('producto_id', productId);
+
+        if (invError) throw invError;
+
+        const totalStock = (invData || []).reduce((acc: number, curr: any) => acc + (Number(curr.cantidad) || 0), 0);
+
+        if (totalStock > 0) {
+            throw new Error(`No se puede eliminar ni inactivar el producto porque aún tiene ${totalStock} unidades en inventario. Por favor agote el stock o realice un ajuste de salida primero.`);
+        }
+
+        // 2. First, try hard delete. If it has transactions, it will fail due to FK constraints.
+        const { error: deleteError } = await this.supabase
+            .from('productos')
+            .delete()
+            .eq('id', productId);
+
+        if (!deleteError) {
+            return { success: true, method: 'deleted' };
+        }
+
+        // 3. If it failed due to FK, it's likely code 23503 (Foreign Key Violation)
+        // In that case, we "soft delete" by setting activo = false
+        const { error: updateError } = await this.supabase
+            .from('productos')
+            .update({ activo: false })
+            .eq('id', productId);
+
+        if (updateError) throw updateError;
+
+        return { success: true, method: 'inactivated' };
     }
 }

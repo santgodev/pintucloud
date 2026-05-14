@@ -19,8 +19,15 @@ export interface Sale {
     fecha_autorizacion: string | null;
     total: number;
     created_at: string;
+    metodo_pago?: string | null;
+    tipo_documento?: number | null;
+    descuento_porcentaje?: number | null;
+    descuento_valor?: number | null;
+    observaciones?: string | null;
+    entrega_transportadora?: boolean;
     clientName?: string; // Virtual para UI
     vendedorName?: string; // Virtual para UI
+    distribuidorName?: string; // Virtual para UI
 }
 
 export interface SaleItemInput {
@@ -42,13 +49,14 @@ export interface CreateSaleDraftPayload {
     tipo_documento: number; // 1 = Facturación electrónica, 2 = Orden de venta
     descuento_porcentaje?: number; // 0, 3, 5, 10... (default: 0)
     observaciones?: string | null;
+    entrega_transportadora?: boolean;
 }
 
 export interface SalesQueryParams {
     page: number;
     pageSize: number;
     search?: string;
-    estado?: 'BORRADOR' | 'CONFIRMADA' | 'ANULADA' | '';
+    estado?: 'BORRADOR' | 'CONFIRMADA' | 'AUTORIZADO' | 'ANULADA' | '';
     fechaDesde?: string;
     fechaHasta?: string;
     asesorId?: string;
@@ -64,7 +72,6 @@ export class SalesService {
 
     constructor(private supabase: SupabaseService) { }
 
-    /** Versión Profesional con Paginación y Filtros Reales */
     async anularVenta(id: string) {
         const { data, error } = await this.supabase
             .rpc('anular_venta', { p_venta_id: id });
@@ -88,6 +95,9 @@ export class SalesService {
                 estado,
                 bodega_id,
                 usuario_id,
+                entrega_transportadora,
+                tipo_documento,
+                fecha_entrega,
                 bodegas(nombre),
                 clientes(razon_social, codigo),
                 usuarios(nombre_completo, rol)
@@ -100,7 +110,6 @@ export class SalesService {
             if (isNumber) {
                 query = query.eq('numero_factura', Number(value));
             } else {
-                // Re-inicializamos con !inner solo para búsqueda de texto
                 query = this.supabase
                     .from('ventas')
                     .select(`
@@ -111,6 +120,8 @@ export class SalesService {
                         estado,
                         bodega_id,
                         usuario_id,
+                        tipo_documento,
+                        fecha_entrega,
                         bodegas(nombre),
                         clientes!inner(razon_social, codigo),
                         usuarios(nombre_completo, rol)
@@ -119,7 +130,6 @@ export class SalesService {
             }
         }
 
-        /* filtros normales */
         if (params.estado) {
             query = query.eq('estado', params.estado);
         }
@@ -140,7 +150,6 @@ export class SalesService {
             query = query.eq('bodega_id', params.bodegaId);
         }
 
-        /* 🔥 ORDER Y RANGE SIEMPRE AL FINAL */
         if (params.sortField) {
             if (params.sortField === 'clientName') {
                 query = query.order('razon_social', { foreignTable: 'clientes', ascending: params.sortDirection === 'asc' });
@@ -184,7 +193,6 @@ export class SalesService {
         );
     }
 
-    /** Obtener ventas por rango de fechas (sin paginación) */
     getSalesByDateRange(start: string, end: string) {
         return this.supabase
             .from('ventas')
@@ -202,14 +210,11 @@ export class SalesService {
             .order('fecha', { ascending: false });
     }
 
-
-    /** 1. Crear Venta en estado BORRADOR */
     async createDraft(payload: CreateSaleDraftPayload): Promise<string> {
-        const { cliente_id, metodo_pago, condicion_pago, dias_credito, fecha, bodega_id, tipo_documento, descuento_porcentaje, observaciones } = payload;
+        const { cliente_id, metodo_pago, condicion_pago, dias_credito, fecha, bodega_id, tipo_documento, descuento_porcentaje, observaciones, entrega_transportadora } = payload;
 
-        // Validación defensiva
         if (![1, 2].includes(tipo_documento)) {
-            throw new Error('Tipo de documento inválido. Debe ser 1 (Facturación electrónica) o 2 (Orden de venta).');
+            throw new Error('Tipo de documento inválido.');
         }
 
         const { data, error } = await this.supabase.rpc(
@@ -223,41 +228,29 @@ export class SalesService {
                 p_bodega_id: bodega_id,
                 p_tipo_documento: tipo_documento,
                 p_descuento_porcentaje: descuento_porcentaje ?? 0,
-                p_observaciones: observaciones || null
+                p_observaciones: observaciones || null,
+                p_entrega_transportadora: entrega_transportadora || false
             }
         );
 
         if (error) throw error;
-
-        const ventaId = data;
-        return ventaId;
+        return data;
     }
 
-    /** 2. Insertar Detalle */
     async addDetails(items: SaleItemInput[]): Promise<void> {
         const { error } = await this.supabase
             .from('detalle_ventas')
             .insert(items);
-
         if (error) throw error;
     }
 
-    /** 3. Confirmar Venta (RPC) */
     async confirmSale(ventaId: string): Promise<void> {
         const { error } = await this.supabase.rpc('confirmar_venta', {
             p_venta_id: ventaId
         });
-
-        if (error) {
-            // Manejo específico de stock insuficiente u otros errores de negocio del RPC
-            if (error.message.includes('stock_insuficiente')) {
-                throw new Error('Stock insuficiente para completar la venta.');
-            }
-            throw error;
-        }
+        if (error) throw error;
     }
 
-    /** Revertir venta confirmada a BORRADOR para permitir edición */
     async revertirVenta(id: string): Promise<void> {
         const { error } = await this.supabase.rpc('revertir_venta_a_borrador', {
             p_venta_id: id
@@ -265,7 +258,16 @@ export class SalesService {
         if (error) throw error;
     }
 
-    /** 4. Autorizar Venta (Cambio de estado) */
+    async updateSaleHeader(id: string, data: any): Promise<void> {
+        const { error } = await this.supabase.from('ventas').update(data).eq('id', id);
+        if (error) throw error;
+    }
+
+    async deleteDetails(ventaId: string): Promise<void> {
+        const { error } = await this.supabase.from('detalle_ventas').delete().eq('venta_id', ventaId);
+        if (error) throw error;
+    }
+
     async authorizeSale(ventaId: string): Promise<void> {
         const { error } = await this.supabase
             .from('ventas')
@@ -274,12 +276,10 @@ export class SalesService {
                 fecha_autorizacion: new Date().toISOString()
             })
             .eq('id', ventaId);
-
         if (error) throw error;
     }
 
-  /** 5. Obtener Venta Completa (para el recibo) */
-    async getById(id: string): Promise<Sale> {
+    async getById(id: string): Promise<any> {
         const { data, error } = await this.supabase
             .from('ventas')
             .select(`
@@ -301,9 +301,12 @@ export class SalesService {
                 descuento_porcentaje,
                 descuento_valor,
                 observaciones,
+                entrega_transportadora,
+                fecha_entrega,
                 clientes (razon_social, telefono, direccion, ciudad, email, codigo),
                 usuarios (nombre_completo),
                 bodegas (nombre, codigo, direccion),
+                distribuidores (nombre_comercial, nit, logo_url),
                 cuentas_por_cobrar (fecha_vencimiento),
                 detalle_ventas (
                     *,
@@ -315,12 +318,18 @@ export class SalesService {
 
         if (error) throw error;
         const raw = data as any;
-        raw.clientName = raw.clientes?.razon_social;
-        raw.vendedorName = raw.usuarios?.nombre_completo;
         
-        // Si el campo directo de ventas viene nulo (viejas ventas?), intentar sacarlo de cartera
+        // Mapeos con safe navigation y extracción de arrays por si acaso Supabase los trae así
+        const usuarios = Array.isArray(raw.usuarios) ? raw.usuarios[0] : raw.usuarios;
+        const distribuidores = Array.isArray(raw.distribuidores) ? raw.distribuidores[0] : raw.distribuidores;
+        const clientes = Array.isArray(raw.clientes) ? raw.clientes[0] : raw.clientes;
+
+        raw.vendedorName = usuarios?.nombre_completo || 'No asignado';
+        raw.distribuidorName = distribuidores?.nombre_comercial || 'General';
+        raw.logoUrl = distribuidores?.logo_url || null;
+        raw.clientName = clientes?.razon_social || 'Cliente sin nombre';
+        
         if (!raw.fecha_vencimiento && raw.cuentas_por_cobrar) {
-            // Manejar si viene como array o objeto dependiendo del tipo de relación en Supabase
             const cxc = Array.isArray(raw.cuentas_por_cobrar) ? raw.cuentas_por_cobrar[0] : raw.cuentas_por_cobrar;
             raw.fecha_vencimiento = cxc?.fecha_vencimiento;
         }
@@ -328,6 +337,14 @@ export class SalesService {
         return raw;
     }
 
-    // Creating a sale would be a transaction (header + details)
-    // For now, we focus on reading.
+    async updateDeliveryStatus(ventaId: string, delivered: boolean): Promise<void> {
+        const { error } = await this.supabase
+            .from('ventas')
+            .update({ 
+                fecha_entrega: delivered ? new Date().toISOString() : null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', ventaId);
+        if (error) throw error;
+    }
 }

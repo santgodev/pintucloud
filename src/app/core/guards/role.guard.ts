@@ -29,7 +29,11 @@ export class RoleGuard implements CanActivate {
                             return this.router.createUrlTree(['/auth/login']);
                         }
 
-                        if (expectedRoles && expectedRoles.includes(user.role)) {
+                        const userRole = user.role;
+                        const hasAccess = expectedRoles?.includes(userRole) || 
+                                        (expectedRoles?.includes('admin_distribuidor') && userRole === 'admin_distribuidor');
+
+                        if (hasAccess) {
                             return true;
                         }
 

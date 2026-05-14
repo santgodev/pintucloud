@@ -4,6 +4,13 @@ import { unsavedChangesGuard } from './guards/unsaved-changes.guard';
 
 export const SALES_ROUTES: Routes = [
     { path: '', component: SalesComponent },
+    {
+        path: 'new',
+        canDeactivate: [unsavedChangesGuard],
+        loadComponent: () =>
+            import('./components/sales-capture/sales-capture.component')
+                .then(m => m.SalesCaptureComponent)
+    },
 
 
     // 🔴 Rutas específicas primero
@@ -18,8 +25,8 @@ export const SALES_ROUTES: Routes = [
         path: ':id/edit',
         canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
-            import('./sales-edit.component')
-                .then(m => m.SalesEditComponent)
+            import('./components/sales-capture/sales-capture.component')
+                .then(m => m.SalesCaptureComponent)
     },
 
     // 🔵 Ruta genérica al final

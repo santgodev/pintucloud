@@ -1,18 +1,18 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
 import { SalesService, Sale } from './services/sales.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { SalesCaptureComponent } from './components/sales-capture/sales-capture.component';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { UiService } from '../../core/services/ui.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
    selector: 'app-sales',
    standalone: true,
-   imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedModule, SalesCaptureComponent],
+   imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedModule],
    providers: [DatePipe],
    template: `
     <div class="sales-container p-6 animate-in fade-in duration-500">
@@ -26,11 +26,8 @@ import { UiService } from '../../core/services/ui.service';
             Nueva Venta
           </button>
        </div>
-       <!-- VISTA DE NUEVA VENTA -->
-       <app-sales-capture *ngIf="showNewSaleModal" (onClose)="toggleNewSaleModal()" (saleCompleted)="onSaleCompleted()"></app-sales-capture>
-       
-       <!-- VISTA DE LISTADO (Solo si no hay Nueva Venta) -->
-       <div *ngIf="!showNewSaleModal" class="animate-in fade-in duration-500">
+       <!-- VISTA DE LISTADO -->
+       <div class="animate-in fade-in duration-500">
           <!-- Contenedor Principal de Filtros -->
           <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
             <!-- Filtros Avanzados -->
@@ -55,6 +52,7 @@ import { UiService } from '../../core/services/ui.service';
                    <option value="">Todos los estados</option>
                    <option value="BORRADOR">Borrador</option>
                    <option value="CONFIRMADA">Confirmada</option>
+                   <option value="AUTORIZADO">Autorizado</option>
                    <option value="ANULADA">Anulada</option>
                 </select>
              </div>
@@ -68,7 +66,7 @@ import { UiService } from '../../core/services/ui.service';
              </div>
 
              <!-- Filtro Asesor (Si es Admin) -->
-             <div *ngIf="isAdmin">
+           <div *ngIf="isAdmin()">
                 <select [(ngModel)]="filters.asesorId" (change)="onFilterChange()" class="input-premium w-full">
                    <option value="">Todos los asesores</option>
                    <option *ngFor="let u of asesores" [value]="u.id">{{ u.nombre_completo }}</option>
@@ -115,10 +113,8 @@ import { UiService } from '../../core/services/ui.service';
              </div>
            </div>
            <!-- Tabla de Resultados -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm" style="overflow: hidden;">
-              <!-- Scroll horizontal en móvil -->
-              <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-              <table style="min-width: 700px;" class="w-full text-left border-collapse">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm table-responsive">
+              <table class="w-full text-left border-collapse">
                  <thead>
                     <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
                        <th class="p-4 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors whitespace-nowrap" (click)="sortBy('numero_factura')">
@@ -144,8 +140,12 @@ import { UiService } from '../../core/services/ui.service';
                     <tr *ngIf="loading" class="absolute inset-x-0 top-0 h-1 bg-indigo-500/20 animate-pulse"></tr>
 
                     <tr *ngFor="let sale of paginatedSales" class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                        <td class="p-4 font-mono text-sm font-bold text-indigo-600 cursor-pointer hover:underline whitespace-nowrap" (click)="verDetalle(sale.id)">
-                           {{ formatFactura(sale.numero_factura) }}
+                        <td class="p-4 font-mono text-sm font-bold cursor-pointer hover:underline whitespace-nowrap" 
+                            [class.text-emerald-600]="sale.bodegaName?.toUpperCase()?.includes('BOGOTA')"
+                            [class.text-indigo-600]="!sale.bodegaName?.toUpperCase()?.includes('BOGOTA')"
+                            (click)="verDetalle(sale.id)">
+                           {{ formatFactura(sale.numero_factura) }}<span *ngIf="sale.tipo_documento === 1" class="text-orange-600 font-bold">-1</span>
+                           <span *ngIf="sale.entrega_transportadora" title="Despacho por Transportadora" class="ml-1 text-base">🚚</span>
                        </td>
                        <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
                            {{ sale.fecha | date:'dd/MM/yyyy' }}
@@ -175,8 +175,8 @@ import { UiService } from '../../core/services/ui.service';
                        </td>
                        <td class="p-4 text-right">
                            <div class="flex justify-end gap-2">
-                               <!-- EDITAR -->
-                                <button *ngIf="sale.estado !== 'ANULADA' && sale.estado !== 'AUTORIZADO' && isAdmin" 
+                                <!-- EDITAR -->
+                                <button *ngIf="sale.estado !== 'ANULADA' && isAdmin()" 
                                         (click)="editarVenta(sale)" 
                                        class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" 
                                         title="Editar">
@@ -187,7 +187,23 @@ import { UiService } from '../../core/services/ui.service';
                                </button>
                                
 
-                               <!-- VER (Siempre visible) -->
+                               <!-- ENTREGADO (Solo si AUTORIZADO) -->
+                                <button *ngIf="sale.estado === 'AUTORIZADO'" 
+                                        (click)="toggleDeliveryStatus(sale)" 
+                                        class="p-2 rounded-lg transition-all" 
+                                        [class.bg-emerald-100]="sale.fecha_entrega"
+                                        [class.text-emerald-600]="sale.fecha_entrega"
+                                        [class.bg-slate-50]="!sale.fecha_entrega"
+                                        [class.text-slate-400]="!sale.fecha_entrega"
+                                        [title]="sale.fecha_entrega ? 'Marcado como ENTREGADO' : 'Marcar como ENTREGADO'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                                        <path d="m3.3 7 8.7 5 8.7-5"></path>
+                                        <path d="M12 22V12"></path>
+                                    </svg>
+                                </button>
+
+                                <!-- VER (Siempre visible) -->
                                <button (click)="verDetalle(sale.id)" 
                                        class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all" 
                                        title="Ver Factura">
@@ -207,7 +223,6 @@ import { UiService } from '../../core/services/ui.service';
                     </tr>
                  </tbody>
               </table>
-              </div>
 
               <!-- Footer con Paginación -->
               <div class="bg-slate-50/80 p-4 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -280,6 +295,14 @@ export class SalesComponent implements OnInit {
    pageSize = 10;
    showNewSaleModal = false;
 
+   private authService = inject(AuthService);
+   isAdmin = this.authService.isAdmin;
+   private salesService = inject(SalesService);
+   private supabase = inject(SupabaseService);
+   private router = inject(Router);
+   private route = inject(ActivatedRoute);
+   private uiService = inject(UiService);
+
 
    searchControl = new FormControl('');
    filters = {
@@ -294,7 +317,6 @@ export class SalesComponent implements OnInit {
    // Para los dropdowns de filtros
    bodegas: any[] = [];
    asesores: any[] = [];
-   isAdmin = false;
    Math = Math; // Para usar en el template
 
    // Filtro por rango de fechas
@@ -305,16 +327,10 @@ export class SalesComponent implements OnInit {
    sortField: string = 'fecha';
    sortDirection: 'asc' | 'desc' = 'desc';
 
-   constructor(
-      private salesService: SalesService,
-      private supabase: SupabaseService,
-      private router: Router,
-      private route: ActivatedRoute,
-      private uiService: UiService
-   ) { }
+   constructor() { }
 
    toggleNewSaleModal() {
-      this.showNewSaleModal = !this.showNewSaleModal;
+      this.router.navigate(['/sales/new']);
    }
 
    onSaleCompleted() {
@@ -326,7 +342,7 @@ export class SalesComponent implements OnInit {
    async ngOnInit() {
       this.uiService.setLoading(true);
       try {
-         await this.checkUserRole();
+         // Ya no necesitamos checkUserRole manual, usamos el signal centralizado del AuthService
 
          const { data } = await this.supabase.auth.getUser();
          console.log('AUTH USER ID:', data?.user?.id);
@@ -352,6 +368,7 @@ export class SalesComponent implements OnInit {
 
                this.filters.fechaDesde = fechaLocal;
                this.filters.fechaHasta = fechaLocal;
+               this.filters.estado = ''; // Mostrar todos los estados al venir del dashboard
                this.fechaInicio = fechaLocal;
                this.fechaFin = fechaLocal;
                this.loadSales();
@@ -366,22 +383,33 @@ export class SalesComponent implements OnInit {
       }
    }
 
-   async checkUserRole() {
-      const user = await this.supabase.auth.getUser();
-      const userId = user.data.user?.id;
-      if (userId) {
-         const { data } = await this.supabase.from('usuarios').select('rol').eq('id', userId).single();
-         this.isAdmin = data?.rol === 'admin_distribuidor';
-      }
-   }
 
    async loadInitialData() {
-      if (this.isAdmin) {
-         const { data: bods } = await this.supabase.from('bodegas').select('*').order('nombre');
+      const user = this.authService.currentUserValue;
+      if (!user) return;
+
+      if (this.isAdmin()) {
+         const { data: bods } = await this.supabase
+            .from('bodegas')
+            .select('*')
+            .eq('distribuidor_id', user.distribuidor_id)
+            .order('nombre');
          this.bodegas = bods || [];
 
-         const { data: users } = await this.supabase.from('usuarios').select('*').order('nombre_completo');
+         const { data: users } = await this.supabase
+            .from('usuarios')
+            .select('*')
+            .eq('distribuidor_id', user.distribuidor_id)
+            .order('nombre_completo');
          this.asesores = users || [];
+      } else {
+         // Load only assigned bodegas for advisors
+         const { data: ubData } = await this.supabase
+            .from('usuarios_bodegas')
+            .select('bodega_id, bodegas(*)')
+            .eq('usuario_id', user.id);
+         
+         this.bodegas = (ubData || []).map(ub => ub.bodegas).filter(b => b);
       }
    }
 
@@ -403,15 +431,17 @@ export class SalesComponent implements OnInit {
          this.totalRecords = result.total;
 
          // Obtener el total global filtrado desde la base de datos
+         const currentUser = this.authService.currentUserValue;
          const { data: totalGlobal, error: errorTotal } = await this.supabase.rpc('ventas_total_filtrado', {
             p_estado: this.filters.estado || null,
             p_fecha_desde: this.filters.fechaDesde || null,
-            p_fecha_hasta: this.filters.fechaHasta || null
+            p_fecha_hasta: this.filters.fechaHasta || null,
+            p_usuario_id: this.isAdmin() ? (this.filters.asesorId || null) : currentUser?.id
          });
 
          if (errorTotal) {
             console.error('Error al obtener total filtrado:', errorTotal);
-            // Fallback al cálculo local si falla el RPC (aunque solo sume la página actual)
+            // Fallback al cálculo local si falla el RPC (sumamos los de la página actual)
             this.totalVentasFiltradas = result.data.reduce(
                (sum: number, sale: any) => sum + Number(sale.total || 0), 0
             );
@@ -504,16 +534,29 @@ export class SalesComponent implements OnInit {
          return;
       }
 
-      if (sale.estado === 'CONFIRMADA') {
-         if (!this.isAdmin) {
+      const isAutorizado = sale.estado === 'AUTORIZADO';
+      const isConfirmada = sale.estado === 'CONFIRMADA';
+
+      if (isAutorizado || isConfirmada) {
+         if (!this.isAdmin()) {
             this.router.navigate(['/sales', sale.id, 'invoice']);
             return;
          }
+
+         if (isAutorizado) {
+            const ok = confirm('Esta orden ya está autorizada. Al editarla, se devolverá automáticamente el stock a la bodega y se cancelará la deuda. ¿Desea continuar?');
+            if (!ok) return;
+         }
+
          try {
+            this.loading = true;
             await this.salesService.revertirVenta(sale.id);
             this.router.navigate(['/sales', sale.id, 'edit']);
          } catch (err) {
             console.error('[Sales] Error al revertir venta:', err);
+            alert('Error al procesar la reversión de la orden.');
+         } finally {
+            this.loading = false;
          }
          return;
       }
@@ -524,5 +567,26 @@ export class SalesComponent implements OnInit {
 
    verDetalle(id: string) {
       this.router.navigate(['/sales', id, 'invoice']);
+   }
+
+   async toggleDeliveryStatus(sale: any) {
+      const newStatus = !sale.fecha_entrega;
+      const msg = newStatus 
+         ? '¿Marcar esta orden como ENTREGADA?' 
+         : '¿Quitar la marca de ENTREGADA a esta orden?';
+      
+      if (!confirm(msg)) return;
+
+      try {
+         this.loading = true;
+         await this.salesService.updateDeliveryStatus(sale.id, newStatus);
+         // Actualizar localmente para feedback inmediato
+         sale.fecha_entrega = newStatus ? new Date().toISOString() : null;
+      } catch (err) {
+         console.error('[Sales] Error toggling delivery status:', err);
+         alert('Error al actualizar el estado de entrega.');
+      } finally {
+         this.loading = false;
+      }
    }
 }

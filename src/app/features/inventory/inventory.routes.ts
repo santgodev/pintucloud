@@ -7,6 +7,6 @@ export const INVENTORY_ROUTES: Routes = [
         path: '',
         component: InventoryComponent,
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] }
+        data: { roles: ['admin_distribuidor'] }
     }
 ];
