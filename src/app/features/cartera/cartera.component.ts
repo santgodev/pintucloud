@@ -62,7 +62,7 @@ import { UiService } from '../../core/services/ui.service';
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="PARCIAL">Parcial</option>
                 <option value="VENCIDA">Vencida</option>
-                <option value="PAGADA">Pagada</option>
+                <option value="PAGADO">Pagado</option>
                 <option value="ANULADA">Anulada</option>
              </select>
           </div>
