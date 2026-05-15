@@ -114,7 +114,23 @@ export class SalesInvoiceComponent implements OnInit {
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      windowWidth: this.INVOICE_WIDTH,
+      onclone: (clonedDoc) => {
+        const clonedElement = clonedDoc.getElementById('invoice-content');
+        if (clonedElement) {
+          // Forzar ancho estático A4 en el clon
+          clonedElement.style.width = `${this.INVOICE_WIDTH}px`;
+          clonedElement.style.minWidth = `${this.INVOICE_WIDTH}px`;
+          clonedElement.style.maxWidth = `${this.INVOICE_WIDTH}px`;
+          // Resetear cualquier zoom o restricción del contenedor padre
+          if (clonedElement.parentElement) {
+            clonedElement.parentElement.style.width = `${this.INVOICE_WIDTH}px`;
+            clonedElement.parentElement.style.zoom = '1';
+            clonedElement.parentElement.style.transform = 'none';
+          }
+        }
+      }
     });
 
     const imgData = canvas.toDataURL('image/png');
