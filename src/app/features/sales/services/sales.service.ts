@@ -61,6 +61,7 @@ export interface SalesQueryParams {
     fechaHasta?: string;
     asesorId?: string;
     bodegaId?: string;
+    despacho?: string;
     sortField?: string;
     sortDirection?: 'asc' | 'desc';
 }
@@ -150,6 +151,14 @@ export class SalesService {
             query = query.eq('bodega_id', params.bodegaId);
         }
 
+        if (params.despacho) {
+            if (params.despacho === 'transportadora') {
+                query = query.eq('entrega_transportadora', true);
+            } else if (params.despacho === 'directo') {
+                query = query.eq('entrega_transportadora', false);
+            }
+        }
+
         if (params.sortField) {
             if (params.sortField === 'clientName') {
                 query = query.order('razon_social', { foreignTable: 'clientes', ascending: params.sortDirection === 'asc' });
@@ -175,6 +184,62 @@ export class SalesService {
             })),
             total: count ?? 0
         };
+    }
+
+    async getTotalSales(params: SalesQueryParams): Promise<number> {
+        const search = params.search;
+
+        let query = this.supabase
+            .from('ventas')
+            .select('total');
+
+        if (search && search.trim() !== '') {
+            const value = search.trim();
+            const isNumber = !isNaN(Number(value));
+
+            if (isNumber) {
+                query = query.eq('numero_factura', Number(value));
+            } else {
+                query = this.supabase
+                    .from('ventas')
+                    .select('total, clientes!inner(razon_social)')
+                    .ilike('clientes.razon_social', `%${value}%`) as any;
+            }
+        }
+
+        if (params.estado) {
+            query = query.eq('estado', params.estado);
+        }
+
+        if (params.fechaDesde) {
+            query = query.gte('fecha', params.fechaDesde);
+        }
+
+        if (params.fechaHasta) {
+            query = query.lte('fecha', params.fechaHasta);
+        }
+
+        if (params.asesorId) {
+            query = query.eq('usuario_id', params.asesorId);
+        }
+
+        if (params.bodegaId) {
+            query = query.eq('bodega_id', params.bodegaId);
+        }
+
+        if (params.despacho) {
+            if (params.despacho === 'transportadora') {
+                query = query.eq('entrega_transportadora', true);
+            } else if (params.despacho === 'directo') {
+                query = query.eq('entrega_transportadora', false);
+            }
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        return (data || []).reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
     }
 
     getSalesToday(): Observable<number> {

@@ -57,6 +57,15 @@ import { AuthService } from '../../core/services/auth.service';
                 </select>
              </div>
 
+             <!-- Filtro Despacho -->
+             <div>
+                <select [(ngModel)]="filters.despacho" (change)="onFilterChange()" class="input-premium w-full">
+                   <option value="">Todos los despachos</option>
+                   <option value="transportadora">Por Transportadora</option>
+                   <option value="directo">Directo/Local</option>
+                </select>
+             </div>
+
              <!-- Filtro Bodega (Si hay varias) -->
              <div *ngIf="bodegas.length > 1">
                 <select [(ngModel)]="filters.bodegaId" (change)="onFilterChange()" class="input-premium w-full">
@@ -311,7 +320,8 @@ export class SalesComponent implements OnInit {
       fechaDesde: '',
       fechaHasta: '',
       asesorId: '',
-      bodegaId: ''
+      bodegaId: '',
+      despacho: ''
    };
 
    // Para los dropdowns de filtros
@@ -430,23 +440,23 @@ export class SalesComponent implements OnInit {
          this.sales = result.data as any;
          this.totalRecords = result.total;
 
-         // Obtener el total global filtrado desde la base de datos
-         const currentUser = this.authService.currentUserValue;
-         const { data: totalGlobal, error: errorTotal } = await this.supabase.rpc('ventas_total_filtrado', {
-            p_estado: this.filters.estado || null,
-            p_fecha_desde: this.filters.fechaDesde || null,
-            p_fecha_hasta: this.filters.fechaHasta || null,
-            p_usuario_id: this.isAdmin() ? (this.filters.asesorId || null) : currentUser?.id
-         });
-
-         if (errorTotal) {
-            console.error('Error al obtener total filtrado:', errorTotal);
-            // Fallback al cálculo local si falla el RPC (sumamos los de la página actual)
-            this.totalVentasFiltradas = result.data.reduce(
-               (sum: number, sale: any) => sum + Number(sale.total || 0), 0
-            );
-         } else {
-            this.totalVentasFiltradas = totalGlobal || 0;
+         // Obtener el total global filtrado desde la base de datos de forma dinámica
+         try {
+             // Forzamos el usuario si no somos admin
+             const currentUser = this.authService.currentUserValue;
+             const queryParams: any = { page: 0, pageSize: 0, ...this.filters };
+             if (!this.isAdmin()) {
+                 if (currentUser && currentUser.id) {
+                     queryParams.asesorId = currentUser.id;
+                 }
+             }
+             
+             this.totalVentasFiltradas = await this.salesService.getTotalSales(queryParams);
+         } catch (errorTotal) {
+             console.error('Error al obtener total filtrado:', errorTotal);
+             this.totalVentasFiltradas = result.data.reduce(
+                (sum: number, sale: any) => sum + Number(sale.total || 0), 0
+             );
          }
       } catch (err) {
          console.error('Error loading sales', err);
