@@ -5,11 +5,12 @@ import { SalesService } from './services/sales.service';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { AuthService } from '../../core/services/auth.service';
-
+import { SupabaseService } from '../../core/services/supabase.service';
+import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-sales-invoice',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './sales-invoice.component.html',
   styleUrls: ['./sales-invoice.component.scss']
 })
@@ -19,7 +20,17 @@ export class SalesInvoiceComponent implements OnInit {
   today = new Date();
   fillerRows: number[] = [];
   invoiceZoom: string = '1';
-
+  showGarantiaModal: boolean = false;
+  bodegas: any[] = [];
+  garantiaForm = {
+    producto_id: '',
+    bodega_id: '',
+    cantidad: 1,
+    motivo: ''
+  };
+  stockDisponible: number | null = null;
+  stockLoading = false;
+  isSavingGarantia = false;
   private readonly INVOICE_WIDTH = 820;
 
   @HostListener('window:resize')
@@ -42,6 +53,7 @@ export class SalesInvoiceComponent implements OnInit {
   private router = inject(Router);
   private salesService = inject(SalesService);
   private location = inject(Location);
+  private supabase = inject(SupabaseService);
 
   isAdmin = this.authService.isAdmin;
 
@@ -79,6 +91,180 @@ export class SalesInvoiceComponent implements OnInit {
 
   goBack() {
     this.location.back();
+  }
+
+  async abrirGarantia() {
+    this.showGarantiaModal = true;
+    this.isSavingGarantia = false;
+    this.stockDisponible = null;
+
+    const validProducts = this.getValidProducts();
+    const firstProduct = validProducts.length > 0 ? validProducts[0].producto_id : '';
+
+    this.garantiaForm = {
+      producto_id: firstProduct,
+      bodega_id: '',
+      cantidad: 1,
+      motivo: ''
+    };
+
+    await this.loadBodegas();
+    const saleBodega = this.bodegas.find(b => b.id === this.sale?.bodega_id);
+    this.garantiaForm.bodega_id = saleBodega ? saleBodega.id : (this.bodegas[0]?.id || '');
+
+    if (this.garantiaForm.producto_id && this.garantiaForm.bodega_id) {
+      await this.checkStock();
+    }
+  }
+
+  getValidProducts() {
+    return this.sale?.detalle_ventas?.filter((d: any) => !d.es_obsequio) || [];
+  }
+
+  getMaxCantidadPermitida(): number {
+    if (!this.garantiaForm.producto_id) return 0;
+
+    const detail = this.sale?.detalle_ventas?.find((d: any) => d.producto_id === this.garantiaForm.producto_id);
+    if (!detail) return 0;
+
+    const cantidadComprada = detail.cantidad || 0;
+    const bodega = this.bodegas.find(b => b.id === this.garantiaForm.bodega_id);
+
+    if (bodega && bodega.maneja_inventario === false) {
+      return cantidadComprada;
+    }
+
+    const stock = this.stockDisponible !== null ? this.stockDisponible : 0;
+    return Math.min(cantidadComprada, stock);
+  }
+
+  async loadBodegas() {
+    try {
+      if (!this.sale?.distribuidor_id) return;
+      const { data } = await this.supabase.client
+        .from('bodegas')
+        .select('id, nombre, maneja_inventario')
+        .eq('distribuidor_id', this.sale.distribuidor_id)
+        .order('nombre');
+      if (data) this.bodegas = data;
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  selectedBodegaManejaInventario(): boolean {
+    const bodega = this.bodegas.find(b => b.id === this.garantiaForm.bodega_id);
+    return bodega ? bodega.maneja_inventario !== false : true;
+  }
+
+  async checkStock() {
+    if (!this.garantiaForm.producto_id || !this.garantiaForm.bodega_id) {
+      this.stockDisponible = null;
+      return;
+    }
+
+    if (!this.selectedBodegaManejaInventario()) {
+      this.stockDisponible = null;
+      const max = this.getMaxCantidadPermitida();
+      if (this.garantiaForm.cantidad > max) {
+        this.garantiaForm.cantidad = Math.max(1, max);
+      }
+      return;
+    }
+
+    this.stockLoading = true;
+    try {
+      const { data } = await this.supabase.client
+        .from('inventario_bodega')
+        .select('cantidad')
+        .eq('bodega_id', this.garantiaForm.bodega_id)
+        .eq('producto_id', this.garantiaForm.producto_id)
+        .single();
+
+      this.stockDisponible = data ? data.cantidad : 0;
+
+      const max = this.getMaxCantidadPermitida();
+      if (this.garantiaForm.cantidad > max) {
+        this.garantiaForm.cantidad = Math.max(1, max);
+      }
+    } catch(err) {
+      this.stockDisponible = 0;
+    }
+    this.stockLoading = false;
+  }
+
+  isConfirmDisabled(): boolean {
+    if (this.isSavingGarantia) return true;
+    if (this.stockLoading) return true;
+
+    const manejaInventario = this.selectedBodegaManejaInventario();
+
+    if (manejaInventario && (this.stockDisponible === null || this.stockDisponible <= 0)) {
+      return true;
+    }
+
+    if (!this.garantiaForm.motivo || !this.garantiaForm.motivo.trim()) return true;
+    if (this.garantiaForm.cantidad < 1) return true;
+
+    const max = this.getMaxCantidadPermitida();
+    if (this.garantiaForm.cantidad > max) return true;
+
+    return false;
+  }
+
+  async confirmarGarantia() {
+    if (this.isConfirmDisabled()) return;
+
+    const user = this.authService.currentUserValue;
+    if (!user?.id) {
+      alert('Error de sesión: Usuario no encontrado.');
+      return;
+    }
+
+    this.isSavingGarantia = true;
+
+    try {
+      const { error } = await this.supabase.client.rpc('registrar_devolucion_garantia', {
+        p_venta_id: this.sale.id,
+        p_producto_id: this.garantiaForm.producto_id,
+        p_bodega_id: this.garantiaForm.bodega_id,
+        p_cantidad: this.garantiaForm.cantidad,
+        p_motivo: this.garantiaForm.motivo,
+        p_usuario_id: user.id
+      });
+
+      if (error) {
+        console.error('[Garantia] Error de Supabase al registrar devolución:', error);
+        alert('No se pudo registrar la garantía: ' + error.message);
+        this.isSavingGarantia = false;
+        return;
+      }
+    } catch (err: any) {
+      console.error('[Garantia] Excepción inesperada:', err);
+      alert('Error inesperado al registrar la garantía.');
+      this.isSavingGarantia = false;
+      return;
+    }
+
+    // Éxito en el registro
+    alert('Garantía registrada exitosamente.');
+    this.cerrarGarantia();
+    this.isSavingGarantia = false;
+
+    // Refresco de UI (separado para no falsear el resultado del registro si falla)
+    this.isLoading = true;
+    try {
+      this.sale = await this.salesService.getById(this.sale.id);
+      this.sale = { ...this.sale };
+    } catch (refreshErr) {
+      console.error('[Invoice] Error al refrescar la venta tras registrar garantía:', refreshErr);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  cerrarGarantia() {
+    this.showGarantiaModal = false;
   }
 
   async editarOrden() {
