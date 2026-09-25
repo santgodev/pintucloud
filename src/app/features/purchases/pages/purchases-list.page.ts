@@ -421,43 +421,37 @@ import { ActionButtonComponent } from '../../../shared/components/action-button/
                 </div>
               </div>
             </div>
-            <div class="mt-3 flex flex-wrap justify-end gap-2">
+            <div class="mt-3 flex flex-wrap justify-end gap-2" (click)="$event.stopPropagation()">
                 <!-- Pago Actions (Mobile) -->
                 <ng-container *ngIf="c.cuentas_por_pagar?.[0]; let cp">
-                  <button (click)="$event.stopPropagation(); openHistorialPagos(c.id!)"
-                    class="text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg">
-                    Ver pagos
-                  </button>
-                  <button (click)="$event.stopPropagation(); openRegistrarPago(c)"
-                    [disabled]="cp.estado === 'PAGADA'"
-                    class="text-xs font-semibold text-white bg-indigo-600 border border-indigo-700 px-3 py-1.5 rounded-lg disabled:opacity-50">
-                    Reg. Pago
-                  </button>
+                  <app-action-button
+                    variant="payment-history"
+                    tooltip="Ver pagos"
+                    [disabled]="!cp"
+                    (action)="openHistorialPagos(c.id!)">
+                  </app-action-button>
+                  <app-action-button
+                    variant="payment"
+                    tooltip="Registrar pago"
+                    [disabled]="!cp || cp.estado === 'PAGADA'"
+                    (action)="openRegistrarPago(c)">
+                  </app-action-button>
                 </ng-container>
 
-                <!-- Borrador -->
-                <button *ngIf="c.estado === 'BORRADOR'"
-                  (click)="$event.stopPropagation(); goToEdit(c.id!)"
-                  class="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-lg">
-                  Editar
-                </button>
+                <!-- Editar (Solo BORRADOR) -->
+                <app-action-button
+                  *ngIf="c.estado === 'BORRADOR'"
+                  variant="edit"
+                  tooltip="Editar"
+                  (action)="goToEdit(c.id!)">
+                </app-action-button>
                 
-                <!-- Confirmada -->
-                <ng-container *ngIf="c.estado === 'CONFIRMADA'">
-                  <button (click)="$event.stopPropagation(); goToDetail(c.id!)"
-                    class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    Ver Detalle / Anular
-                  </button>
-                </ng-container>
-
-                <!-- Anulada -->
-                <button *ngIf="c.estado === 'ANULADA'"
-                  (click)="$event.stopPropagation(); goToDetail(c.id!)"
-                  class="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  Ver Detalle
-                </button>
+                <!-- Ver Detalle -->
+                <app-action-button
+                  variant="view"
+                  tooltip="Ver"
+                  (action)="goToDetail(c.id!)">
+                </app-action-button>
             </div>
           </div>
         </div>
