@@ -10,11 +10,12 @@ import { ClientDetailModalComponent } from './components/client-detail-modal/cli
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { UiService } from '../../core/services/ui.service';
+import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
 
 @Component({
    selector: 'app-clients',
    standalone: true,
-   imports: [CommonModule, SharedModule, FormsModule, ReactiveFormsModule, ClientModalComponent, ClientDetailModalComponent],
+   imports: [CommonModule, SharedModule, FormsModule, ReactiveFormsModule, ClientModalComponent, ClientDetailModalComponent, ActionButtonComponent],
    templateUrl: './clients.component.html',
    styles: [`
     .btn-nav { 

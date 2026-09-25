@@ -184,32 +184,23 @@
                 </td>
                 <td class="p-4 text-right">
                     <div class="flex justify-end gap-2">
-                        <button *ngIf="isAdmin" (click)="editarCliente(client)"
-                            class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all"
-                            title="Editar">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        <button *ngIf="isAdmin" (click)="eliminarCliente(client)"
-                            class="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-all"
-                            title="Eliminar">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                        <button (click)="openDetail(client)"
-                            class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
-                            title="Ver Detalle">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
+                        <app-action-button
+                            *ngIf="isAdmin"
+                            variant="edit"
+                            tooltip="Editar"
+                            (action)="editarCliente(client)">
+                        </app-action-button>
+                        <app-action-button
+                            *ngIf="isAdmin"
+                            variant="delete"
+                            tooltip="Eliminar"
+                            (action)="eliminarCliente(client)">
+                        </app-action-button>
+                        <app-action-button
+                            variant="view"
+                            tooltip="Ver Detalle"
+                            (action)="openDetail(client)">
+                        </app-action-button>
                     </div>
                 </td>
             </tr>
