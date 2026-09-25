@@ -138,7 +138,7 @@ export class PurchaseCreatePage implements OnInit {
   // ── Lookup data ─────────────────────────────────────────────────────────────
   proveedores: Proveedor[] = [];
   bodegas: { id: string; nombre: string }[] = [];
-  productos = signal<{ id: string; nombre: string; sku: string; precio_base: number }[]>([]);
+  productos = signal<{ id: string; nombre: string; sku: string; precio_base: number; precio_compra: number }[]>([]);
 
   // Searchable dropdown logic
   readonly searchTerm = signal('');
@@ -154,6 +154,7 @@ export class PurchaseCreatePage implements OnInit {
   });
 
   readonly selectedProductLabel = computed(() => {
+    this._detalleValues();
     const id = this.detalleForm.get('producto_id')?.value;
     if (!id) return null;
     const p = this.productos().find(prod => prod.id === id);
@@ -400,7 +401,7 @@ export class PurchaseCreatePage implements OnInit {
   onProductoChange(): void {
     const id = this.detalleForm.get('producto_id')?.value;
     const producto = this.productos().find(p => p.id === id);
-    this.detalleForm.get('precio_unitario')?.patchValue(producto?.precio_base ?? null);
+    this.detalleForm.get('precio_unitario')?.patchValue(producto?.precio_compra ?? null);
   }
 
   // --- Searchable Dropdown Methods ---
@@ -411,7 +412,7 @@ export class PurchaseCreatePage implements OnInit {
     }
   }
 
-  selectProduct(p: { id: string; nombre: string; sku: string; precio_base: number }): void {
+  selectProduct(p: { id: string; nombre: string; sku: string; precio_base: number; precio_compra: number }): void {
     this.detalleForm.get('producto_id')?.setValue(p.id);
     this.onProductoChange();
     this.showDropdown.set(false);

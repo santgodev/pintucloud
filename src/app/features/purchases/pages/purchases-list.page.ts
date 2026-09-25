@@ -7,10 +7,11 @@ import { PurchasesService, Compra, PagoProveedor } from '../services/purchases.s
 import { PurchasePaymentModalComponent } from '../components/purchase-payment-modal/purchase-payment-modal.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { UiService } from '../../../core/services/ui.service';
+import { ActionButtonComponent } from '../../../shared/components/action-button/action-button.component';
 @Component({
   selector: 'app-purchases-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, CurrencyPipe, DatePipe, FormsModule, PurchasePaymentModalComponent],
+  imports: [CommonModule, RouterModule, CurrencyPipe, DatePipe, FormsModule, PurchasePaymentModalComponent, ActionButtonComponent],
   template: `
     <div class="p-4 md:p-6">
       
@@ -276,25 +277,26 @@ import { UiService } from '../../../core/services/ui.service';
                     {{ c.estado }}
                   </span>
                 </td>
-                <td class="p-4 text-center">
+                <td class="p-4 text-center"
+                    (click)="$event.stopPropagation()">
                   <div class="flex items-center justify-center gap-3">
                     
                     <!-- Grupo 1: Documento -->
                     <div class="flex items-center gap-1">
                       <!-- Ver -->
-                      <button (click)="$event.stopPropagation(); goToDetail(c.id!)"
-                        class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all" 
-                        title="Ver">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                      </button>
+                      <app-action-button
+                        variant="view"
+                        tooltip="Ver"
+                        (action)="goToDetail(c.id!)">
+                      </app-action-button>
                       
                       <!-- Editar -->
-                      <button (click)="$event.stopPropagation(); goToEdit(c.id!)"
+                      <app-action-button
+                        variant="edit"
                         [disabled]="c.estado !== 'BORRADOR'"
-                        class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-all" 
-                        [title]="c.estado === 'BORRADOR' ? 'Editar' : 'No se puede editar una compra confirmada o anulada'">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                      </button>
+                        [tooltip]="c.estado === 'BORRADOR' ? 'Editar' : 'No se puede editar una compra confirmada o anulada'"
+                        (action)="goToEdit(c.id!)">
+                      </app-action-button>
                     </div>
 
                     <!-- Separador -->
@@ -302,18 +304,19 @@ import { UiService } from '../../../core/services/ui.service';
 
                     <!-- Grupo 2: Financiero -->
                     <div class="flex items-center gap-1">
-                      <button (click)="$event.stopPropagation(); openHistorialPagos(c.id!)"
+                      <app-action-button
+                        variant="payment-history"
+                        tooltip="Ver pagos"
                         [disabled]="!cp"
-                        class="p-2 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-all" 
-                        title="Ver pagos">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20m10-10H2"></path></svg>
-                      </button>
-                      <button (click)="$event.stopPropagation(); openRegistrarPago(c)"
+                        (action)="openHistorialPagos(c.id!)">
+                      </app-action-button>
+                      
+                      <app-action-button
+                        variant="payment"
+                        tooltip="Registrar pago"
                         [disabled]="!cp || cp.estado === 'PAGADA'"
-                        class="p-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all shadow-sm" 
-                        title="Registrar pago">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                      </button>
+                        (action)="openRegistrarPago(c)">
+                      </app-action-button>
                     </div>
                   </div>
                 </td>

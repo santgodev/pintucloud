@@ -342,10 +342,10 @@ export class PurchasesService {
     }
 
     /** Trae productos con precio base */
-    async getProductos(): Promise<{ id: string; nombre: string; sku: string; precio_base: number }[]> {
+    async getProductos(): Promise<{ id: string; nombre: string; sku: string; precio_base: number; precio_compra: number }[]> {
         const { data, error } = await this.supabase
             .from('productos')
-            .select('id, nombre, sku, precio_base')
+            .select('id, nombre, sku, precio_base, precio_compra')
             .eq('activo', true)
             .order('nombre');
 

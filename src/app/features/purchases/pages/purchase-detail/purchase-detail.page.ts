@@ -201,6 +201,9 @@ export class PurchaseDetailPage implements OnInit {
             if (message.includes('stock_utilizado_en_ventas')) {
                 this.errorAnulacionTitle.set('No se puede anular la compra');
                 this.errorAnulacion.set('La compra no puede anularse porque uno o más productos ya fueron utilizados en ventas posteriores.');
+            } else if (message.includes('compra_tiene_pagos_activos')) {
+                this.errorAnulacionTitle.set('No se puede anular la compra');
+                this.errorAnulacion.set('No puede anular una compra que tiene pagos o abonos activos. Reverse primero los pagos registrados.');
             } else {
                 this.errorAnulacionTitle.set('No se pudo anular la compra');
                 this.errorAnulacion.set(e.message);
