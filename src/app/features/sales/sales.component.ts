@@ -9,6 +9,7 @@ import { SupabaseService } from '../../core/services/supabase.service';
 import { UiService } from '../../core/services/ui.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
+import * as XLSX from 'xlsx';
 
 @Component({
    selector: 'app-sales',
@@ -19,13 +20,29 @@ import { ActionButtonComponent } from '../../shared/components/action-button/act
     <div class="sales-container p-6 animate-in fade-in duration-500">
        <div class="flex justify-between items-center mb-6">
           <h1 class="text-2xl font-bold text-slate-900">Gestión de Ventas</h1>
-          <button *ngIf="!showNewSaleModal" class="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl shadow-sm hover:bg-indigo-700 flex items-center justify-center transition-all" (click)="toggleNewSaleModal()">
-            <svg class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Nueva Venta
-          </button>
+          <div class="flex gap-3">
+             <button class="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-xl shadow-sm hover:bg-emerald-700 flex items-center justify-center transition-all disabled:opacity-50" (click)="exportarExcel()" [disabled]="exportingExcel || loading">
+               <svg *ngIf="!exportingExcel" class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                   <polyline points="14 2 14 8 20 8"></polyline>
+                   <line x1="16" y1="13" x2="8" y2="13"></line>
+                   <line x1="16" y1="17" x2="8" y2="17"></line>
+                   <polyline points="10 9 9 9 8 9"></polyline>
+               </svg>
+               <svg *ngIf="exportingExcel" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+               </svg>
+               {{ exportingExcel ? 'Exportando...' : 'Exportar Excel' }}
+             </button>
+             <button *ngIf="!showNewSaleModal" class="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl shadow-sm hover:bg-indigo-700 flex items-center justify-center transition-all" (click)="toggleNewSaleModal()">
+               <svg class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                   <line x1="12" y1="5" x2="12" y2="19"></line>
+                   <line x1="5" y1="12" x2="19" y2="12"></line>
+               </svg>
+               Nueva Venta
+             </button>
+          </div>
        </div>
        <!-- VISTA DE LISTADO -->
        <div class="animate-in fade-in duration-500">
@@ -289,6 +306,7 @@ export class SalesComponent implements OnInit {
    page = 0;
    pageSize = 10;
    showNewSaleModal = false;
+   exportingExcel = false;
 
    private authService = inject(AuthService);
    isAdmin = this.authService.isAdmin;
@@ -583,6 +601,66 @@ export class SalesComponent implements OnInit {
          alert('Error al actualizar el estado de entrega.');
       } finally {
          this.loading = false;
+      }
+   }
+
+   async exportarExcel() {
+      if (this.exportingExcel) return;
+      this.exportingExcel = true;
+      try {
+         const data = await this.salesService.getSalesForExport(this.filters as any);
+         
+         if (!data || data.length === 0) {
+            alert('No hay resultados para exportar con los filtros actuales.');
+            return;
+         }
+
+         const rows = data.map(sale => {
+             let fechaFormat = sale.fecha;
+             if (sale.fecha && sale.fecha.includes('-')) {
+                 const parts = sale.fecha.split('T')[0].split('-');
+                 if (parts.length === 3) {
+                     fechaFormat = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                 }
+             }
+             return {
+                 'Factura': sale.numero_factura ? sale.numero_factura : '',
+                 'Fecha': fechaFormat,
+                 'Cliente': sale.clientName,
+                 'NIT': sale.clientNit,
+                 'Asesor': sale.vendedorName,
+                 'Bodega': sale.bodegaName,
+                 'Despacho': sale.entrega_transportadora === true ? 'Transportadora' : 'Local',
+                 'Estado': sale.estado,
+                 'Total': Number(sale.total || 0)
+             };
+         });
+
+         const ws = XLSX.utils.json_to_sheet(rows);
+         
+         ws['!cols'] = [
+             { wch: 14 }, // Factura
+             { wch: 12 }, // Fecha
+             { wch: 28 }, // Cliente
+             { wch: 18 }, // NIT
+             { wch: 24 }, // Asesor
+             { wch: 25 }, // Bodega
+             { wch: 16 }, // Despacho
+             { wch: 16 }, // Estado
+             { wch: 16 }  // Total
+         ];
+
+         const wb = XLSX.utils.book_new();
+         XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
+         
+         const today = new Date();
+         const dateString = today.toISOString().split('T')[0];
+         XLSX.writeFile(wb, `Facturas_${dateString}.xlsx`);
+      } catch (error) {
+         console.error('Error exportando excel:', error);
+         alert('Hubo un error al exportar el archivo.');
+      } finally {
+         this.exportingExcel = false;
       }
    }
 }
