@@ -13,6 +13,7 @@ export interface CarteraItem {
     vendedor: string;
     observaciones?: string;
     tipo_documento?: number;
+    nombre_bodega?: string;
 }
 
 export interface CarteraQueryParams {
@@ -21,6 +22,7 @@ export interface CarteraQueryParams {
     fechaDesde?: string;
     fechaHasta?: string;
     asesorId?: string;
+    bodegaId?: string;
 }
 
 @Injectable({
@@ -36,7 +38,8 @@ export class CarteraService {
             p_estado: params?.estado || '',
             p_fecha_desde: params?.fechaDesde || null,
             p_fecha_hasta: params?.fechaHasta || null,
-            p_asesor_id: params?.asesorId || null
+            p_asesor_id: params?.asesorId || null,
+            p_bodega_id: params?.bodegaId || null
         });
 
         if (error) {

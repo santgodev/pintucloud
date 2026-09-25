@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormControl, FormGroup, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SharedModule } from '../../shared/shared.module';
+import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
 import { CarteraService, CarteraItem } from './services/cartera.service';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import * as XLSX from 'xlsx';
@@ -13,7 +14,7 @@ import { UiService } from '../../core/services/ui.service';
 @Component({
     selector: 'app-cartera',
     standalone: true,
-    imports: [CommonModule, SharedModule, ReactiveFormsModule, FormsModule],
+    imports: [CommonModule, SharedModule, ReactiveFormsModule, FormsModule, ActionButtonComponent],
     template: `
     <div class="cartera-container p-4 md:p-6 animate-in fade-in duration-500">
        <div class="flex justify-between items-center mb-4 md:mb-6">
@@ -39,72 +40,79 @@ import { UiService } from '../../core/services/ui.service';
 
        <!-- Contenedor Principal de Filtros -->
        <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
-         <!-- Filtros Avanzados -->
-         <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <!-- Búsqueda Debounced -->
-          <div class="relative lg:col-span-2">
-             <div class="relative w-full">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m2.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input type="text" 
-                       class="w-full h-10 pl-10 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm" 
-                       [formControl]="searchControl" 
-                       placeholder="Buscar cliente o factura..." />
-             </div>
-          </div>
 
-          <!-- Filtro Estado -->
-          <div>
-             <select [(ngModel)]="filters.estado" (change)="onFilterChange()" class="input-premium w-full">
-                <option value="">Todos los estados</option>
-                <option value="PENDIENTE">Pendiente</option>
-                <option value="PARCIAL">Parcial</option>
-                <option value="VENCIDA">Vencida</option>
-                <option value="PAGADO">Pagado</option>
-                <option value="ANULADA">Anulada</option>
-             </select>
-          </div>
+         <!-- FILA 1: Búsqueda + Estado + Bodega + Asesor -->
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
 
-          <!-- Filtro Asesor -->
-          <div>
-             <select [(ngModel)]="filters.asesorId" (change)="onFilterChange()" class="input-premium w-full">
-                <option value="">Todos los asesores</option>
-                <option *ngFor="let u of asesores" [value]="u.id">{{ u.nombre_completo }}</option>
-             </select>
+           <!-- Búsqueda Debounced -->
+           <div class="relative">
+              <div class="relative w-full">
+                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m2.35-5.65a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                 </svg>
+                 <input type="text"
+                        class="w-full h-10 pl-10 pr-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all text-sm"
+                        [formControl]="searchControl"
+                        placeholder="Buscar cliente o factura..." />
+              </div>
            </div>
-        </div>
 
-        <!-- Filtro Rango de Fechas -->
-        <div class="mb-4 flex flex-wrap items-start gap-3">
-           <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
-              <label class="text-xs font-bold text-muted uppercase tracking-wider">Desde</label>
-              <input type="date" [(ngModel)]="fechaInicio"
-                     class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+           <!-- Filtro Estado -->
+           <div>
+              <select [(ngModel)]="filters.estado" (change)="onFilterChange()" class="input-premium w-full">
+                 <option value="">Todos los estados</option>
+                 <option value="PENDIENTE">Pendiente</option>
+                 <option value="PARCIAL">Parcial</option>
+                 <option value="VENCIDA">Vencida</option>
+                 <option value="PAGADO">Pagado</option>
+                 <option value="ANULADA">Anulada</option>
+              </select>
            </div>
-           <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
-              <label class="text-xs font-bold text-muted uppercase tracking-wider">Hasta</label>
-              <input type="date" [(ngModel)]="fechaFin"
-                     class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+
+           <!-- Filtro Bodega -->
+           <div *ngIf="bodegas.length > 1">
+              <select [(ngModel)]="filters.bodegaId" (change)="onFilterChange()" class="input-premium w-full">
+                 <option value="">Todas las bodegas</option>
+                 <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
+              </select>
            </div>
-           <div class="flex gap-2 items-end pt-5 flex-wrap">
-           <button (click)="exportarCartera()" class="h-10 px-3 border border-slate-200 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center gap-2 whitespace-nowrap">
-             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-             Exportar
-           </button>
-           <button (click)="filtrarPorFecha()"
-                   [disabled]="!fechaInicio || !fechaFin"
-                   class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all whitespace-nowrap">
-              Filtrar
-           </button>
-           <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
-                   class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white whitespace-nowrap">
-              Limpiar
-           </button>
-        </div>
+
+           <!-- Filtro Asesor -->
+           <div>
+              <select [(ngModel)]="filters.asesorId" (change)="onFilterChange()" class="input-premium w-full">
+                 <option value="">Todos los asesores</option>
+                 <option *ngFor="let u of asesores" [value]="u.id">{{ u.nombre_completo }}</option>
+              </select>
+            </div>
+         </div>
+
+         <!-- FILA 2: Desde + Hasta + Exportar + Filtrar -->
+         <div class="flex flex-wrap items-end gap-3">
+            <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+               <label class="text-xs font-bold text-muted uppercase tracking-wider">Desde</label>
+               <input type="date" [(ngModel)]="fechaInicio"
+                      class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+            </div>
+            <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
+               <label class="text-xs font-bold text-muted uppercase tracking-wider">Hasta</label>
+               <input type="date" [(ngModel)]="fechaFin"
+                      class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
+            </div>
+            <button (click)="exportarCartera()" class="h-10 px-3 border border-slate-200 text-sm font-medium text-slate-700 rounded-lg hover:bg-slate-50 transition-all bg-white flex items-center gap-2 whitespace-nowrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Exportar
+            </button>
+            <button (click)="filtrarPorFecha()"
+                    [disabled]="!fechaInicio || !fechaFin"
+                    class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all whitespace-nowrap">
+               Filtrar
+            </button>
+            <button *ngIf="fechaInicio || fechaFin" (click)="limpiarFiltro()"
+                    class="h-10 px-3 border border-slate-200 text-sm text-slate-500 rounded-lg hover:bg-slate-50 transition-all bg-white whitespace-nowrap">
+               Limpiar
+            </button>
+         </div>
        </div>
-
        <!-- Resumen de cartera filtradas -->
        <div class="flex flex-wrap gap-6 mb-4 px-1 text-sm text-slate-700">
          <div class="flex items-center gap-1.5">
@@ -126,6 +134,7 @@ import { UiService } from '../../core/services/ui.service';
                  <tr class="bg-slate-50 text-muted uppercase text-[10px] tracking-widest font-bold">
                     <th class="p-4 border-b border-slate-200 whitespace-nowrap">Factura</th>
                     <th class="p-4 border-b border-slate-200" style="min-width:130px">Cliente</th>
+                     <th class="p-4 border-b border-slate-200 whitespace-nowrap">Bodega</th>
                     <th class="p-4 border-b border-slate-200 whitespace-nowrap">Fecha</th>
                     <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">TOTAL</th>
                     <th class="p-4 border-b border-slate-200 text-right whitespace-nowrap">SALDO</th>
@@ -147,6 +156,9 @@ import { UiService } from '../../core/services/ui.service';
                     <td class="p-4" style="max-width: 160px;">
                         <div class="text-sm font-medium text-slate-900" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" [title]="item.cliente">{{ item.cliente }}</div>
                     </td>
+                     <td class="p-4 text-sm text-slate-600 whitespace-nowrap">
+                         {{ item.nombre_bodega || '—' }}
+                     </td>
                     <td class="p-4 text-sm text-slate-800 whitespace-nowrap">
                         {{ formatFechaColombia(item.fecha) }}
                     </td>
@@ -172,28 +184,27 @@ import { UiService } from '../../core/services/ui.service';
                     <td class="p-4 text-right">
                         <div class="flex justify-end gap-2">
                             <!-- Registrar Pago (Admins o Asesores autorizados como Medellín) -->
-                                <button *ngIf="canRegisterPayment"
-                                    (click)="registrarPago(item)"
-                                    [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADO'"
-                                    class="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap" 
-                                    title="Registrar Pago">
-                                Registrar pago
-                            </button>
+                            <app-action-button
+                                *ngIf="canRegisterPayment"
+                                variant="payment"
+                                tooltip="Registrar Pago"
+                                [disabled]="item.saldo_pendiente <= 0 || item.estado === 'PAGADO'"
+                                (action)="registrarPago(item)">
+                            </app-action-button>
                             
                             <!-- Editar (Solo Admins y Migraciones) -->
-                            <button *ngIf="isAdmin && esMigracion(item)"
-                                    (click)="editarMigracion(item)"
-                                    class="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-all border border-blue-200 whitespace-nowrap flex items-center gap-1" 
-                                    title="Editar Carga Inicial">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                Editar
-                            </button>
+                            <app-action-button
+                                *ngIf="isAdmin && esMigracion(item)"
+                                variant="edit"
+                                tooltip="Editar Carga Inicial"
+                                (action)="editarMigracion(item)">
+                            </app-action-button>
                                                         <!-- Ver Pagos -->
-                             <button (click)="openPagosModal(item)"
-                                     class="px-3 py-1.5 bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-100 transition-all border border-slate-200 whitespace-nowrap" 
-                                     title="Ver Historial de Pagos">
-                                 Ver pagos
-                             </button>
+                            <app-action-button
+                                variant="view"
+                                tooltip="Ver Historial de Pagos"
+                                (action)="openPagosModal(item)">
+                            </app-action-button>
                         </div>
                     </td>
                  </tr>
@@ -577,10 +588,12 @@ export class CarteraComponent implements OnInit {
         estado: '',
         fechaDesde: '',
         fechaHasta: '',
-        asesorId: ''
+        asesorId: '',
+        bodegaId: ''
     };
 
     asesores: any[] = [];
+    bodegas: any[] = [];
     fechaInicio: string = '';
     fechaFin: string = '';
     vieneDeRecaudos: boolean = false;
@@ -743,8 +756,28 @@ export class CarteraComponent implements OnInit {
     }
 
     async loadInitialData() {
+        const user = this.authService.currentUserValue;
+        if (!user) return;
+
+        // Cargar asesores del distribuidor
         const { data: users } = await this.supabase.from('usuarios').select('*').order('nombre_completo');
         this.asesores = users || [];
+
+        // Cargar bodegas: admin ve todas las del distribuidor; asesor ve las asignadas
+        if (this.isAdmin) {
+            const { data: bods } = await this.supabase
+                .from('bodegas')
+                .select('*')
+                .eq('distribuidor_id', user.distribuidor_id)
+                .order('nombre');
+            this.bodegas = bods || [];
+        } else {
+            const { data: ubData } = await this.supabase
+                .from('usuarios_bodegas')
+                .select('bodega_id, bodegas(*)')
+                .eq('usuario_id', user.id);
+            this.bodegas = (ubData || []).map((ub: any) => ub.bodegas).filter((b: any) => b);
+        }
     }
 
     async loadCartera() {
