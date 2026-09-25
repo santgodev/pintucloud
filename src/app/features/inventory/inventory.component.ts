@@ -12,11 +12,12 @@ import { InitialInventoryModalComponent } from './components/initial-inventory-m
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { UiService } from '../../core/services/ui.service';
+import { ActionButtonComponent } from '../../shared/components/action-button/action-button.component';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, InitialInventoryModalComponent, FormsModule],
+  imports: [CommonModule, SharedModule, ProductModalComponent, AdjustStockModalComponent, InitialInventoryModalComponent, FormsModule, ActionButtonComponent],
   templateUrl: './inventory.component.html',
   styles: [`
     .italic-none tr { font-style: normal !important; }
