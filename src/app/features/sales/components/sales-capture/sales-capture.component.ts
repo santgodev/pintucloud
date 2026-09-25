@@ -13,6 +13,7 @@ import { SupabaseService } from '../../../../core/services/supabase.service';
 interface CartItem {
    product: InventoryItem;
    quantity: number;
+   giftQuantity?: number;
    price: number;
    subtotal: number;
 }
@@ -160,7 +161,8 @@ interface CartItem {
                     <thead class="bg-slate-100 text-slate-700 text-xs uppercase tracking-wide font-semibold">
                       <tr>
                         <th class="p-3 text-left">Producto</th>
-                        <th class="p-3 text-center whitespace-nowrap">Cant.</th>
+                        <th class="p-3 text-center whitespace-nowrap">Cant. Venta</th>
+                        <th class="p-3 text-center whitespace-nowrap">CANT. OBSEQUIO</th>
                         <th class="p-3 text-right whitespace-nowrap">Precio</th>
                         <th class="p-3 text-right whitespace-nowrap">Subtotal</th>
                         <th class="p-3 text-center">&#x2715;</th>
@@ -178,17 +180,34 @@ interface CartItem {
                                <input
                                  type="number"
                                  [value]="item.quantity"
-                                 min="1"
+                                 min="0"
                                  (change)="onCantidadInput(i, $event)"
-                                 [class.border-red-400]="manejaInventario && item.quantity > item.product.stock"
-                                 [class.bg-red-50]="manejaInventario && item.quantity > item.product.stock"
+                                 [class.border-red-400]="manejaInventario && item.quantity + (item.giftQuantity || 0) > item.product.stock"
+                                 [class.bg-red-50]="manejaInventario && item.quantity + (item.giftQuantity || 0) > item.product.stock"
                                  class="w-14 text-center text-sm font-semibold text-slate-700 border border-slate-200 rounded-md py-1 focus:outline-none focus:ring-2 focus:ring-indigo-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                />
                                <button (click)="updateQuantity(i, 1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-100 hover:bg-slate-200 transition-colors text-slate-600 font-bold flex-shrink-0">+</button>
                              </div>
-                             <div *ngIf="manejaInventario && item.quantity > item.product.stock"
+                             <div *ngIf="manejaInventario && item.quantity + (item.giftQuantity || 0) > item.product.stock"
                                   class="text-[10px] font-semibold text-red-600 whitespace-nowrap">
                                Stock: {{ item.product.stock }}
+                             </div>
+                           </div>
+                         </td>
+                         <td class="p-3">
+                           <div class="flex flex-col items-center gap-1">
+                             <div class="flex items-center justify-center gap-1">
+                               <button (click)="updateGiftQuantity(i, -1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-50 hover:bg-emerald-100 transition-colors text-emerald-600 font-bold flex-shrink-0">-</button>
+                               <input
+                                 type="number"
+                                 [value]="item.giftQuantity || 0"
+                                 min="0"
+                                 (change)="onGiftCantidadInput(i, $event)"
+                                 [class.border-red-400]="manejaInventario && item.quantity + (item.giftQuantity || 0) > item.product.stock"
+                                 [class.bg-red-50]="manejaInventario && item.quantity + (item.giftQuantity || 0) > item.product.stock"
+                                 class="w-14 text-center text-sm font-semibold text-emerald-700 border border-emerald-200 rounded-md py-1 focus:outline-none focus:ring-2 focus:ring-emerald-300 bg-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                               />
+                               <button (click)="updateGiftQuantity(i, 1)" class="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-50 hover:bg-emerald-100 transition-colors text-emerald-600 font-bold flex-shrink-0">+</button>
                              </div>
                            </div>
                          </td>
@@ -215,7 +234,7 @@ interface CartItem {
                         </td>
                       </tr>
                       <tr *ngIf="cart.length === 0">
-                        <td colspan="5" class="p-12 text-center text-slate-300 italic bg-slate-50/30">
+                        <td colspan="6" class="p-12 text-center text-slate-300 italic bg-slate-50/30">
                           <div class="flex flex-col items-center gap-2">
                             <svg class="opacity-20" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                             <span>No hay productos añadidos</span>
@@ -548,18 +567,49 @@ export class SalesCaptureComponent implements OnInit {
    }
 
    private mapDetailsToCart(details: any[]) {
-      this.cart = details.map(d => ({
-         product: {
-            productId: d.producto_id,
-            productName: d.productos?.nombre || d.producto_id,
-            sku: d.productos?.sku || '',
-            price: d.precio_unitario,
-            stock: 999 
-         } as any,
-         quantity: d.cantidad,
-         price: d.precio_unitario,
-         subtotal: d.subtotal
-      }));
+      const map: { [key: string]: any } = {};
+
+      for (const d of details) {
+         const id = d.producto_id;
+         const isGift = d.es_obsequio === true;
+         const qty = Number(d.cantidad) || 0;
+
+         if (map[id]) {
+            if (isGift) {
+               map[id].giftQuantity = (map[id].giftQuantity || 0) + qty;
+            } else {
+               map[id].quantity += qty;
+               map[id].price = Number(d.precio_unitario) || 0;
+            }
+         } else {
+            map[id] = {
+               product: {
+                  productId: id,
+                  productName: d.productos?.nombre || id,
+                  sku: d.productos?.sku || '',
+                  price: Number(d.precio_unitario) || 0,
+                  stock: 999
+               },
+               quantity: isGift ? 0 : qty,
+               giftQuantity: isGift ? qty : 0,
+               price: isGift ? 0 : (Number(d.precio_unitario) || 0),
+               subtotal: isGift ? 0 : (Number(d.subtotal) || 0)
+            };
+         }
+      }
+
+      for (const d of details) {
+         const id = d.producto_id;
+         if (!d.es_obsequio && map[id]) {
+            map[id].price = Number(d.precio_unitario) || 0;
+            map[id].product.price = Number(d.precio_unitario) || 0;
+         }
+      }
+
+      this.cart = Object.values(map);
+      for (const item of this.cart) {
+         item.subtotal = item.quantity * item.price;
+      }
       this.calculateTotal();
    }
 
@@ -647,7 +697,8 @@ export class SalesCaptureComponent implements OnInit {
       if (this.manejaInventario && item.stock <= 0) return;
       const existingIndex = this.cart.findIndex(c => c.product.productId === item.productId);
       if (existingIndex >= 0) {
-         const atLimit = this.manejaInventario && this.cart[existingIndex].quantity >= item.stock;
+         const totalQty = this.cart[existingIndex].quantity + (this.cart[existingIndex].giftQuantity || 0);
+         const atLimit = this.manejaInventario && totalQty >= item.stock;
          if (!atLimit) {
             this.cart[existingIndex].quantity++;
             this.cart[existingIndex].subtotal = this.cart[existingIndex].quantity * item.price;
@@ -656,6 +707,7 @@ export class SalesCaptureComponent implements OnInit {
          this.cart.push({
             product: item,
             quantity: 1,
+            giftQuantity: 0,
             price: item.price,
             subtotal: item.price
          });
@@ -666,9 +718,10 @@ export class SalesCaptureComponent implements OnInit {
    updateQuantity(index: number, change: number) {
       const item = this.cart[index];
       const newQty = item.quantity + change;
+      const totalQty = newQty + (item.giftQuantity || 0);
       const validQty = this.manejaInventario
-         ? (newQty > 0 && newQty <= item.product.stock)
-         : newQty > 0;
+         ? (newQty >= 0 && totalQty <= item.product.stock)
+         : newQty >= 0;
       if (validQty) {
          item.quantity = newQty;
          item.subtotal = item.quantity * item.price;
@@ -676,11 +729,27 @@ export class SalesCaptureComponent implements OnInit {
       this.calculateTotal();
    }
 
+   updateGiftQuantity(index: number, change: number) {
+      const item = this.cart[index];
+      const newGiftQty = (item.giftQuantity || 0) + change;
+      const totalQty = item.quantity + newGiftQty;
+      const validQty = this.manejaInventario
+         ? (newGiftQty >= 0 && totalQty <= item.product.stock)
+         : newGiftQty >= 0;
+      if (validQty) {
+         item.giftQuantity = newGiftQty;
+      }
+   }
+
    setQuantity(index: number, value: number) {
       const item = this.cart[index];
       let newQty = value;
-      if (!newQty || newQty <= 0) newQty = 1;
-      if (this.manejaInventario && newQty > item.product.stock) newQty = item.product.stock;
+      if (!newQty || newQty < 0) newQty = 0;
+      let giftQty = item.giftQuantity || 0;
+      if (this.manejaInventario && (newQty + giftQty) > item.product.stock) {
+          newQty = item.product.stock - giftQty;
+          if (newQty < 0) newQty = 0;
+      }
       item.quantity = newQty;
       item.subtotal = item.quantity * item.price;
       this.calculateTotal();
@@ -699,15 +768,39 @@ export class SalesCaptureComponent implements OnInit {
       const input = event.target as HTMLInputElement;
       let valor = parseInt(input.value, 10);
 
-      if (isNaN(valor) || valor <= 0) {
+      if (isNaN(valor) || valor < 0) {
          input.value = String(this.cart[index].quantity); 
          return;
       }
 
       const item = this.cart[index];
+      let giftQty = item.giftQuantity || 0;
+      if (this.manejaInventario && valor + giftQty > item.product.stock) {
+          valor = item.product.stock - giftQty;
+          if (valor < 0) valor = 0;
+          input.value = String(valor);
+      }
       item.quantity = valor;
       item.subtotal = item.quantity * item.price;
       this.calculateTotal();
+   }
+
+   onGiftCantidadInput(index: number, event: Event) {
+      const input = event.target as HTMLInputElement;
+      let valor = parseInt(input.value, 10);
+
+      if (isNaN(valor) || valor < 0) {
+         input.value = String(this.cart[index].giftQuantity || 0);
+         return;
+      }
+
+      const item = this.cart[index];
+      if (this.manejaInventario && item.quantity + valor > item.product.stock) {
+          valor = item.product.stock - item.quantity;
+          if (valor < 0) valor = 0;
+          input.value = String(valor);
+      }
+      item.giftQuantity = valor;
    }
 
    formatCurrency(value: number): string {
@@ -779,7 +872,6 @@ export class SalesCaptureComponent implements OnInit {
                entrega_transportadora: this.entregaTransportadora
             });
             
-            await this.salesService.deleteDetails(ventaId);
          } else {
             ventaId = await this.salesService.createDraft({
                cliente_id: this.selectedClientId,
@@ -798,16 +890,38 @@ export class SalesCaptureComponent implements OnInit {
             });
          }
 
-         const items = this.cart.map(c => ({
-            venta_id: ventaId,
-            producto_id: c.product.productId,
-            cantidad: c.quantity,
-            precio_unitario: c.price,
-            subtotal: c.quantity * c.price
-         }));
-         await this.salesService.addDetails(items);
+         const items: any[] = [];
+         for (const c of this.cart) {
+            if (c.quantity > 0) {
+               items.push({
+                  venta_id: ventaId,
+                  producto_id: c.product.productId,
+                  cantidad: c.quantity,
+                  precio_unitario: c.price,
+                  subtotal: c.quantity * c.price,
+                  es_obsequio: false
+               });
+            }
+            if (c.giftQuantity && c.giftQuantity > 0) {
+               items.push({
+                  venta_id: ventaId,
+                  producto_id: c.product.productId,
+                  cantidad: c.giftQuantity,
+                  precio_unitario: 0,
+                  subtotal: 0,
+                  es_obsequio: true
+               });
+            }
+         }
+
+         if (this.editSaleId) {
+            await this.salesService.actualizarDetallesVenta(ventaId, items);
+         } else {
+            await this.salesService.addDetails(items);
+         }
+
          await this.salesService.confirmSale(ventaId);
-         
+
          this.processing = false;
          this.saleCompleted.emit();
          this.router.navigate(['/sales', ventaId, 'invoice']);

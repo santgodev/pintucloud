@@ -187,9 +187,9 @@ import { AuthService } from '../../core/services/auth.service';
                                 <!-- EDITAR -->
                                 <button *ngIf="sale.estado !== 'ANULADA' && isAdmin()" 
                                         (click)="editarVenta(sale)" 
-                                       class="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-all" 
+                                        class="w-8 h-8 flex items-center justify-center bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-all"
                                         title="Editar">
-                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                    </svg>
@@ -199,13 +199,13 @@ import { AuthService } from '../../core/services/auth.service';
                                <!-- ENTREGADO (Solo si AUTORIZADO) -->
                                 <button *ngIf="sale.estado === 'AUTORIZADO'" 
                                         (click)="toggleDeliveryStatus(sale)" 
-                                        class="p-2 rounded-lg transition-all" 
-                                        [class.bg-emerald-100]="sale.fecha_entrega"
-                                        [class.text-emerald-600]="sale.fecha_entrega"
-                                        [class.bg-slate-50]="!sale.fecha_entrega"
-                                        [class.text-slate-400]="!sale.fecha_entrega"
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-white"
+                                        [class.bg-emerald-500]="sale.fecha_entrega"
+                                        [class.hover:bg-emerald-600]="sale.fecha_entrega"
+                                        [class.bg-slate-500]="!sale.fecha_entrega"
+                                        [class.hover:bg-slate-600]="!sale.fecha_entrega"
                                         [title]="sale.fecha_entrega ? 'Marcado como ENTREGADO' : 'Marcar como ENTREGADO'">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
                                         <path d="m3.3 7 8.7 5 8.7-5"></path>
                                         <path d="M12 22V12"></path>
@@ -214,9 +214,9 @@ import { AuthService } from '../../core/services/auth.service';
 
                                 <!-- VER (Siempre visible) -->
                                <button (click)="verDetalle(sale.id)" 
-                                       class="p-2 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-lg transition-all" 
+                                       class="w-8 h-8 flex items-center justify-center bg-emerald-400 text-white hover:bg-emerald-500 rounded-lg transition-all"
                                        title="Ver Factura">
-                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                        <circle cx="12" cy="12" r="3"></circle>
                                    </svg>

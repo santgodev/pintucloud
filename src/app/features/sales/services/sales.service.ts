@@ -333,6 +333,18 @@ export class SalesService {
         if (error) throw error;
     }
 
+    async actualizarDetallesVenta(ventaId: string, items: any[]): Promise<void> {
+        const { error } = await this.supabase.client.rpc(
+            'actualizar_detalles_venta',
+            {
+                p_venta_id: ventaId,
+                p_items: items
+            }
+        );
+
+        if (error) throw error;
+    }
+
     async authorizeSale(ventaId: string): Promise<void> {
         const { error } = await this.supabase
             .from('ventas')
