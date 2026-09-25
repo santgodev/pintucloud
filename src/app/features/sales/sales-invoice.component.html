@@ -54,9 +54,9 @@
 
       <!-- Emisor -->
       <div class="emisor">
-        <div *ngIf="sale?.logoUrl" class="logo-box">
-          <img [src]="sale.logoUrl" alt="Logo Distribuidor"
-            style="height:150px; width:auto; max-width:none; object-fit:contain; display:block;">
+        <div class="logo-box">
+          <img [src]="sale?.logoUrl || '/logo_principal.png'" alt="Logo Distribuidor"
+            style="max-height: 80px; max-width: 80px; width: auto; height: auto; object-fit: contain; display: block;">
         </div>
       </div>
 
@@ -128,7 +128,7 @@
       <table class="dates-table">
         <thead>
           <tr>
-            <th colspan="2">Fecha y hora de la factura</th>
+            <th colspan="2">Fecha</th>
           </tr>
         </thead>
         <tbody>

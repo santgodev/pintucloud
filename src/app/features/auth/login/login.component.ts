@@ -23,9 +23,9 @@ import { AuthService } from '../../../core/services/auth.service';
         <!-- Content -->
         <div class="relative z-10">
           <div class="mb-8">
-            <img src="logo_superior.png"
+            <img src="logo_principal.png"
                  alt="Brochas y Rodillos Superior"
-                 style="max-width:260px; width:100%; height:auto; object-fit:contain; border-radius:8px; background:white; padding:12px;">
+                 style="max-width:120px; width:100%; height:auto; object-fit:contain; border-radius:8px; background:white; padding:12px;">
           </div>
           <h2 class="text-3xl font-bold tracking-tight max-w-md leading-tight">Gestión inteligente para tu inventario empresarial.</h2>
         </div>

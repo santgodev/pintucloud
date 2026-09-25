@@ -12,7 +12,7 @@ import { UiService } from '../../../core/services/ui.service';
     <aside class="sidebar" [class.mobile-open]="(uiService.sidebarVisible$ | async)">
        <div class="logo-area">
           <div class="logo-img-wrap">
-            <img src="logo_superior.png" alt="Brochas y Rodillos Superior" class="logo-img">
+            <img src="logo_principal.png" alt="Brochas y Rodillos Superior" class="logo-img">
           </div>
           <button class="mobile-close-btn" (click)="uiService.setSidebarVisible(false)">
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -156,7 +156,7 @@ import { UiService } from '../../../core/services/ui.service';
 
     .logo-img {
       width: 100%;
-      max-width: 240px;
+      max-width: 80px;
       height: auto;
       max-height: 110px;
       object-fit: contain;

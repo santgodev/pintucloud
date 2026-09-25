@@ -28,7 +28,7 @@ import { ShowcaseService } from './services/showcase.service';
             </button>
             <div class="h-8 w-[1px] bg-slate-100 hidden lg:block"></div>
             <div class="hidden sm:flex flex-col">
-              <img src="logo_superior.png" alt="Brochas y Rodillos Superior" class="h-10 max-w-[180px] object-contain object-left">
+              <img src="logo_principal.png" alt="Brochas y Rodillos Superior" class="h-10 max-w-[180px] object-contain object-left">
               <span class="text-[9px] md:text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em] leading-none mt-1">Catálogo Comercial</span>
             </div>
           </div>
