@@ -288,13 +288,22 @@ interface CartItem {
 
                 <div class="space-y-1">
                   <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight">Descuento</label>
-                  <select [(ngModel)]="descuentoPorcentaje" 
-                          class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-                    <option [value]="0">Sin descuento (0%)</option>
-                    <option [value]="3">3% de descuento</option>
-                    <option [value]="5">5% de descuento</option>
-                    <option [value]="10">10% de descuento</option>
-                  </select>
+                  <div class="flex flex-col sm:flex-row gap-2">
+                    <select [(ngModel)]="descuentoSeleccionado" (ngModelChange)="onDescuentoChange()"
+                            class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 flex-1">
+                      <option [ngValue]="0">Sin descuento (0%)</option>
+                      <option [ngValue]="3">3% de descuento</option>
+                      <option [ngValue]="5">5% de descuento</option>
+                      <option [ngValue]="10">10% de descuento</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                    <div *ngIf="descuentoSeleccionado === 'OTRO'" class="relative w-full sm:w-[140px]">
+                       <input type="number" step="0.01" [(ngModel)]="descuentoPorcentaje" min="0" max="100"
+                              class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 pr-6"
+                              placeholder="Ej: 7.5" />
+                       <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">%</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="mt-3">
@@ -387,6 +396,7 @@ export class SalesCaptureComponent implements OnInit {
    diasCredito = 15;
    tipoDocumento: number = 2;
    descuentoPorcentaje: number = 0;
+   descuentoSeleccionado: number | string = 0;
    observaciones: string = '';
    paymentMethod: string | null = 'EFECTIVO';
    entregaTransportadora: boolean = false;
@@ -558,7 +568,12 @@ export class SalesCaptureComponent implements OnInit {
          this.diasCredito = sale.dias_credito;
          this.paymentMethod = sale.metodo_pago;
          this.tipoDocumento = sale.tipo_documento;
-         this.descuentoPorcentaje = sale.descuento_porcentaje;
+         this.descuentoPorcentaje = sale.descuento_porcentaje || 0;
+         if ([0, 3, 5, 10].includes(this.descuentoPorcentaje)) {
+           this.descuentoSeleccionado = this.descuentoPorcentaje;
+         } else {
+           this.descuentoSeleccionado = 'OTRO';
+         }
          this.observaciones = sale.observaciones || '';
          this.entregaTransportadora = sale.entrega_transportadora || false;
       } catch (err) {
@@ -618,6 +633,12 @@ export class SalesCaptureComponent implements OnInit {
       this.calculateTotal();
       this.selectedBodega = this.bodegas.find(b => b.id === this.selectedBodegaId) || null;
       await this.loadInventory();
+   }
+
+   onDescuentoChange() {
+     if (this.descuentoSeleccionado !== 'OTRO') {
+       this.descuentoPorcentaje = Number(this.descuentoSeleccionado);
+     }
    }
 
    async loadInventory() {
@@ -852,6 +873,10 @@ export class SalesCaptureComponent implements OnInit {
          alert('Debe seleccionar un medio de pago.');
          return;
       }
+
+      if (this.descuentoPorcentaje < 0) this.descuentoPorcentaje = 0;
+      if (this.descuentoPorcentaje > 100) this.descuentoPorcentaje = 100;
+
       this.processing = true;
       try {
          let ventaId: string;

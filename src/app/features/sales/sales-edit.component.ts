@@ -47,6 +47,7 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
   paymentMethod = signal('EFECTIVO');
   tipoDocumento = signal(2);
   descuentoPorcentaje = signal(0);
+  descuentoSeleccionado = signal<number | 'OTRO'>(0);
   searchTerm = signal('');
 
   // Inventory & Clients
@@ -114,7 +115,9 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
       this.diasCredito.set(saleData.dias_credito ?? 30);
       this.paymentMethod.set((saleData.metodo_pago ?? 'EFECTIVO').toUpperCase());
       this.tipoDocumento.set(saleData.tipo_documento ?? 2);
-      this.descuentoPorcentaje.set(saleData.descuento_porcentaje ?? 0);
+      const desc = saleData.descuento_porcentaje ?? 0;
+      this.descuentoPorcentaje.set(desc);
+      this.descuentoSeleccionado.set([0, 3, 5, 10].includes(desc) ? desc : 'OTRO');
 
       // Map cart
       if ((saleData as any).detalle_ventas?.length) {
@@ -244,6 +247,11 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
 
   async guardarCambios() {
     if (!this.selectedClientId() || this.cart().length === 0 || !this.sale()?.id || (this.isAdmin() && !this.selectedBodegaId())) return;
+
+    // Ensure discount is within valid bounds
+    if (this.descuentoPorcentaje() < 0) this.descuentoPorcentaje.set(0);
+    if (this.descuentoPorcentaje() > 100) this.descuentoPorcentaje.set(100);
+
     this.isProcessing.set(true);
 
     try {
@@ -283,5 +291,12 @@ export class SalesEditComponent implements OnInit, CanComponentDeactivate {
       alert('Error al guardar cambios: ' + err.message);
       this.isProcessing.set(false);
     }
+  }
+  onDescuentoChange(val: any) {
+    this.descuentoSeleccionado.set(val);
+    if (val !== 'OTRO') {
+      this.descuentoPorcentaje.set(Number(val));
+    }
+    this.markAsDirty();
   }
 }

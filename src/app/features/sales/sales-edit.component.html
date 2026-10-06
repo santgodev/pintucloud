@@ -143,12 +143,19 @@
 
         <div class="mb-4">
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Descuento</label>
-          <select [(ngModel)]="descuentoPorcentaje" (change)="markAsDirty()" class="input-premium w-full">
-            <option [value]="0">Sin descuento (0%)</option>
-            <option [value]="3">3%</option>
-            <option [value]="5">5%</option>
-            <option [value]="10">10%</option>
-          </select>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <select [ngModel]="descuentoSeleccionado()" (ngModelChange)="onDescuentoChange($event)" class="input-premium w-full flex-1">
+              <option [ngValue]="0">Sin descuento (0%)</option>
+              <option [ngValue]="3">3%</option>
+              <option [ngValue]="5">5%</option>
+              <option [ngValue]="10">10%</option>
+              <option value="OTRO">Otro</option>
+            </select>
+            <div *ngIf="descuentoSeleccionado() === 'OTRO'" class="relative w-full sm:w-[140px]">
+               <input type="number" step="0.01" [(ngModel)]="descuentoPorcentaje" (ngModelChange)="markAsDirty()" min="0" max="100" class="input-premium w-full pr-8" placeholder="Ej: 7.5" />
+               <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">%</span>
+            </div>
+          </div>
         </div>
 
         <div *ngIf="descuentoPorcentaje() > 0" class="flex justify-between items-center mb-1 text-sm">

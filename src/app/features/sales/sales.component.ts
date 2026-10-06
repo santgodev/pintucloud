@@ -48,8 +48,8 @@ import * as XLSX from 'xlsx';
        <div class="animate-in fade-in duration-500">
           <!-- Contenedor Principal de Filtros -->
           <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
-            <!-- Filtros Avanzados -->
-            <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <!-- FILA 1 -->
+            <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
              
              <!-- Búsqueda Debounced -->
              <div class="relative lg:col-span-2">
@@ -84,25 +84,34 @@ import * as XLSX from 'xlsx';
                 </select>
              </div>
 
-             <!-- Filtro Bodega (Si hay varias) -->
-             <div *ngIf="bodegas.length > 1">
-                <select [(ngModel)]="filters.bodegaId" (change)="onFilterChange()" class="input-premium w-full">
-                   <option value="">Todas las bodegas</option>
-                   <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
+             <!-- Filtro Condición Pago -->
+             <div>
+                <select [(ngModel)]="filters.condicionPago" (change)="onFilterChange()" class="input-premium w-full">
+                   <option value="">Todas las condiciones</option>
+                   <option value="CONTADO">Contado</option>
+                   <option value="CREDITO">Crédito</option>
                 </select>
              </div>
 
-             <!-- Filtro Asesor (Si es Admin) -->
-           <div *ngIf="isAdmin()">
-                <select [(ngModel)]="filters.asesorId" (change)="onFilterChange()" class="input-premium w-full">
-                   <option value="">Todos los asesores</option>
-                   <option *ngFor="let u of asesores" [value]="u.id">{{ u.nombre_completo }}</option>
-                </select>
-              </div>
-           </div>
+             </div> <!-- /FILA 1 -->
 
-           <!-- Filtro Rango de Fechas -->
-           <div class="mb-4 flex flex-wrap items-start gap-3">
+             <!-- FILA 2 -->
+             <div class="mb-4 flex flex-wrap items-end gap-3">
+              <!-- Filtro Bodega (Si hay varias) -->
+              <div *ngIf="bodegas.length > 1" class="flex-1 min-w-[150px]">
+                 <select [(ngModel)]="filters.bodegaId" (change)="onFilterChange()" class="input-premium w-full">
+                    <option value="">Todas las bodegas</option>
+                    <option *ngFor="let b of bodegas" [value]="b.id">{{ b.nombre }}</option>
+                 </select>
+              </div>
+
+              <!-- Filtro Asesor (Si es Admin) -->
+              <div *ngIf="isAdmin()" class="flex-1 min-w-[150px]">
+                 <select [(ngModel)]="filters.asesorId" (change)="onFilterChange()" class="input-premium w-full">
+                    <option value="">Todos los asesores</option>
+                    <option *ngFor="let u of asesores" [value]="u.id">{{ u.nombre_completo }}</option>
+                 </select>
+              </div>
               <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
                  <label class="text-xs font-bold text-muted uppercase tracking-wider">Desde</label>
                  <input type="date" [(ngModel)]="fechaInicio"
@@ -113,7 +122,7 @@ import * as XLSX from 'xlsx';
                  <input type="date" [(ngModel)]="fechaFin"
                         class="h-10 w-full px-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none" />
               </div>
-              <div class="flex gap-2 items-end pt-5">
+              <div class="flex gap-2 items-end">
                  <button (click)="filtrarPorFecha()"
                          [disabled]="!fechaInicio || !fechaFin"
                          class="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all whitespace-nowrap">
@@ -325,7 +334,8 @@ export class SalesComponent implements OnInit {
       fechaHasta: '',
       asesorId: '',
       bodegaId: '',
-      despacho: ''
+      despacho: '',
+      condicionPago: '' as '' | 'CONTADO' | 'CREDITO'
    };
 
    // Para los dropdowns de filtros

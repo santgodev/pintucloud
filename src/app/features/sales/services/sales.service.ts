@@ -62,6 +62,7 @@ export interface SalesQueryParams {
     asesorId?: string;
     bodegaId?: string;
     despacho?: string;
+    condicionPago?: 'CONTADO' | 'CREDITO' | '';
     sortField?: string;
     sortDirection?: 'asc' | 'desc';
 }
@@ -157,6 +158,10 @@ export class SalesService {
             } else if (params.despacho === 'directo') {
                 query = query.eq('entrega_transportadora', false);
             }
+        }
+
+        if (params.condicionPago) {
+            query = query.eq('condicion_pago', params.condicionPago);
         }
 
         if (params.sortField) {
@@ -268,6 +273,10 @@ export class SalesService {
                 }
             }
 
+            if (params.condicionPago) {
+                query = query.eq('condicion_pago', params.condicionPago);
+            }
+
             if (params.sortField) {
                 if (params.sortField === 'clientName') {
                     query = query.order('razon_social', { foreignTable: 'clientes', ascending: params.sortDirection === 'asc' }).order('id', { ascending: params.sortDirection === 'asc' });
@@ -351,6 +360,10 @@ export class SalesService {
             } else if (params.despacho === 'directo') {
                 query = query.eq('entrega_transportadora', false);
             }
+        }
+
+        if (params.condicionPago) {
+            query = query.eq('condicion_pago', params.condicionPago);
         }
 
         const { data, error } = await query;
